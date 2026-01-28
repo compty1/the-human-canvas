@@ -1,0 +1,453 @@
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Layout } from "@/components/layout/Layout";
+import { ComicPanel, PopButton } from "@/components/pop-art";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, Save, Trash2, Image as ImageIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+
+type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research";
+
+const categoryOptions: { value: WritingCategory; label: string }[] = [
+  { value: "philosophy", label: "Philosophy" },
+  { value: "narrative", label: "Narrative" },
+  { value: "cultural", label: "Cultural" },
+  { value: "ux_review", label: "UX Review" },
+  { value: "research", label: "Research" },
+];
+
+const ArticleEditor = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isEditing = !!id;
+
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [content, setContent] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [category, setCategory] = useState<WritingCategory>("philosophy");
+  const [tags, setTags] = useState("");
+  const [readingTime, setReadingTime] = useState("5");
+  const [featuredImage, setFeaturedImage] = useState("");
+  const [published, setPublished] = useState(false);
+
+  // Check admin access
+  const { data: isAdmin, isLoading: isCheckingAdmin } = useQuery({
+    queryKey: ["is-admin", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      });
+      if (error) return false;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch existing article if editing
+  const { data: existingArticle, isLoading: isLoadingArticle } = useQuery({
+    queryKey: ["article-edit", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Populate form when editing
+  useEffect(() => {
+    if (existingArticle) {
+      setTitle(existingArticle.title);
+      setSlug(existingArticle.slug);
+      setContent(existingArticle.content || "");
+      setExcerpt(existingArticle.excerpt || "");
+      setCategory(existingArticle.category as WritingCategory);
+      setTags(existingArticle.tags?.join(", ") || "");
+      setReadingTime(String(existingArticle.reading_time_minutes || 5));
+      setFeaturedImage(existingArticle.featured_image || "");
+      setPublished(existingArticle.published || false);
+    }
+  }, [existingArticle]);
+
+  // Auto-generate slug from title
+  useEffect(() => {
+    if (!isEditing && title) {
+      const generatedSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      setSlug(generatedSlug);
+    }
+  }, [title, isEditing]);
+
+  // Featured image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = `${Date.now()}-${file.name}`;
+    const { data, error } = await supabase.storage
+      .from("content-images")
+      .upload(fileName, file);
+
+    if (error) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("content-images")
+      .getPublicUrl(data.path);
+
+    setFeaturedImage(urlData.publicUrl);
+  };
+
+  // Save mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const articleData = {
+        title,
+        slug,
+        content,
+        excerpt: excerpt || null,
+        category,
+        tags: tags ? tags.split(",").map((t) => t.trim()) : null,
+        reading_time_minutes: parseInt(readingTime) || 5,
+        featured_image: featuredImage || null,
+        published,
+      };
+
+      if (isEditing) {
+        const { error } = await supabase
+          .from("articles")
+          .update(articleData)
+          .eq("id", id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("articles").insert(articleData);
+
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["articles"] });
+      toast({
+        title: isEditing ? "Article saved" : "Article created",
+        description: published
+          ? "Your article is now live."
+          : "Your article has been saved as a draft.",
+      });
+      navigate("/articles");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) return;
+      const { error } = await supabase.from("articles").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["articles"] });
+      toast({
+        title: "Article deleted",
+        description: "The article has been removed.",
+      });
+      navigate("/articles");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = () => {
+    if (window.confirm("Are you sure you want to delete this article?")) {
+      deleteMutation.mutate();
+    }
+  };
+
+  if (isCheckingAdmin || isLoadingArticle) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-20">
+          <div className="max-w-3xl mx-auto">
+            <div className="h-12 bg-muted animate-pulse mb-4" />
+            <div className="h-64 bg-muted animate-pulse" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-20 text-center">
+          <h1 className="text-4xl font-display mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-8">
+            You don't have permission to access this page.
+          </p>
+          <Link to="/">
+            <PopButton>Go Home</PopButton>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto">
+          {/* Back Link */}
+          <Link
+            to="/articles"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Articles
+          </Link>
+
+          {/* Header */}
+          <ComicPanel className="p-6 mb-8">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-display">
+                {isEditing ? "Edit Article" : "New Article"}
+              </h1>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="published"
+                    checked={published}
+                    onCheckedChange={setPublished}
+                  />
+                  <Label htmlFor="published" className="font-bold">
+                    {published ? "Published" : "Draft"}
+                  </Label>
+                </div>
+              </div>
+            </div>
+          </ComicPanel>
+
+          {/* Form */}
+          <div className="space-y-6">
+            {/* Featured Image */}
+            <div>
+              <Label className="text-lg font-bold mb-2 block">
+                Featured Image
+              </Label>
+              <div className="border-2 border-foreground p-4">
+                {featuredImage ? (
+                  <div className="relative">
+                    <img
+                      src={featuredImage}
+                      alt="Featured"
+                      className="w-full h-48 object-cover border-2 border-foreground"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFeaturedImage("")}
+                      className="absolute top-2 right-2 p-2 bg-background border-2 border-foreground hover:bg-muted"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-32 cursor-pointer hover:bg-muted transition-colors">
+                    <ImageIcon className="w-8 h-8 mb-2 text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      Click to upload featured image
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="title" className="text-lg font-bold mb-2 block">
+                  Title
+                </Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Article title..."
+                  className="border-2 border-foreground text-lg"
+                />
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="category"
+                  className="text-lg font-bold mb-2 block"
+                >
+                  Category
+                </Label>
+                <Select value={category} onValueChange={(v) => setCategory(v as WritingCategory)}>
+                  <SelectTrigger className="border-2 border-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="slug" className="text-lg font-bold mb-2 block">
+                  Slug
+                </Label>
+                <Input
+                  id="slug"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="url-friendly-slug"
+                  className="border-2 border-foreground"
+                />
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="readingTime"
+                  className="text-lg font-bold mb-2 block"
+                >
+                  Reading Time (minutes)
+                </Label>
+                <Input
+                  id="readingTime"
+                  type="number"
+                  min="1"
+                  value={readingTime}
+                  onChange={(e) => setReadingTime(e.target.value)}
+                  className="border-2 border-foreground"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="excerpt" className="text-lg font-bold mb-2 block">
+                Excerpt
+              </Label>
+              <Input
+                id="excerpt"
+                value={excerpt}
+                onChange={(e) => setExcerpt(e.target.value)}
+                placeholder="Brief summary for article cards..."
+                className="border-2 border-foreground"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="tags" className="text-lg font-bold mb-2 block">
+                Tags (comma-separated)
+              </Label>
+              <Input
+                id="tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="philosophy, existentialism, life"
+                className="border-2 border-foreground"
+              />
+            </div>
+
+            <div>
+              <Label className="text-lg font-bold mb-2 block">Content</Label>
+              <RichTextEditor
+                content={content}
+                onChange={setContent}
+                placeholder="Start writing your article..."
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-between items-center pt-6 border-t-2 border-foreground">
+              {isEditing && (
+                <PopButton
+                  type="button"
+                  variant="secondary"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </PopButton>
+              )}
+              <div className="flex gap-4 ml-auto">
+                <Link to="/articles">
+                  <PopButton type="button" variant="secondary">
+                    Cancel
+                  </PopButton>
+                </Link>
+                <PopButton
+                  type="button"
+                  onClick={() => saveMutation.mutate()}
+                  disabled={saveMutation.isPending || !title || !slug}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {saveMutation.isPending ? "Saving..." : "Save"}
+                </PopButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default ArticleEditor;

@@ -20,6 +20,7 @@ export type Database = {
           content: string | null
           created_at: string
           excerpt: string | null
+          featured_image: string | null
           id: string
           published: boolean | null
           reading_time_minutes: number | null
@@ -33,6 +34,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           excerpt?: string | null
+          featured_image?: string | null
           id?: string
           published?: boolean | null
           reading_time_minutes?: number | null
@@ -46,6 +48,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           excerpt?: string | null
+          featured_image?: string | null
           id?: string
           published?: boolean | null
           reading_time_minutes?: number | null
@@ -275,6 +278,42 @@ export type Database = {
           id?: string
           name?: string
           proficiency?: number | null
+        }
+        Relationships: []
+      }
+      updates: {
+        Row: {
+          content: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          published: boolean | null
+          slug: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published?: boolean | null
+          slug: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published?: boolean | null
+          slug?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
