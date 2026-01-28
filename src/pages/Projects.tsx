@@ -82,14 +82,23 @@ const Projects = () => {
                   key={project.id}
                   className={`p-6 flex flex-col animate-fade-in stagger-${(index % 5) + 1}`}
                 >
-                  {/* Image */}
+                  {/* Logo + Image */}
                   {project.image_url && (
-                    <Link to={`/projects/${project.slug}`} className="block mb-4 -mx-6 -mt-6">
+                    <Link to={`/projects/${project.slug}`} className="block mb-4 -mx-6 -mt-6 relative">
                       <img 
                         src={project.image_url} 
                         alt={project.title}
                         className="w-full h-48 object-cover border-b-4 border-foreground"
                       />
+                      {project.logo_url && (
+                        <div className="absolute bottom-2 left-2 w-12 h-12 bg-background border-2 border-foreground p-1 flex items-center justify-center">
+                          <img 
+                            src={project.logo_url} 
+                            alt={`${project.title} logo`}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      )}
                     </Link>
                   )}
 

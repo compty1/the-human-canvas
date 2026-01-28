@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-// Fallback local artwork imports
+// Local asset imports for resolving paths
 import moodboard1 from "@/assets/artwork/moodboard-1.png";
 import moodboard2 from "@/assets/artwork/moodboard-2.png";
 import nancySinatra from "@/assets/artwork/nancy-sinatra.png";
@@ -25,6 +25,32 @@ import anarchist from "@/assets/artwork/anarchist.png";
 import harlequin from "@/assets/artwork/harlequin.png";
 import bandagedPortrait from "@/assets/artwork/bandaged-portrait.png";
 
+// Map local paths to resolved imports
+const localAssetMap: Record<string, string> = {
+  "/src/assets/artwork/moodboard-1.png": moodboard1,
+  "/src/assets/artwork/moodboard-2.png": moodboard2,
+  "/src/assets/artwork/nancy-sinatra.png": nancySinatra,
+  "/src/assets/artwork/zac-portrait.png": zacPortrait,
+  "/src/assets/artwork/piece-55.png": piece55,
+  "/src/assets/artwork/piece-56.png": piece56,
+  "/src/assets/artwork/piece-57.png": piece57,
+  "/src/assets/artwork/golden-hour.png": goldenHour,
+  "/src/assets/artwork/sailboat.png": sailboat,
+  "/src/assets/artwork/red-brick.png": redBrick,
+  "/src/assets/artwork/venice-palms.png": venicePalms,
+  "/src/assets/artwork/cemetery-stone.png": cemeteryStone,
+  "/src/assets/artwork/victorian-mansion.png": victorianMansion,
+  "/src/assets/artwork/hollywood-scene.png": hollywoodScene,
+  "/src/assets/artwork/anarchist.png": anarchist,
+  "/src/assets/artwork/harlequin.png": harlequin,
+  "/src/assets/artwork/bandaged-portrait.png": bandagedPortrait,
+};
+
+// Resolve image URL - converts local asset paths to imported modules
+const resolveImageUrl = (url: string): string => {
+  return localAssetMap[url] || url;
+};
+
 interface ArtworkItem {
   id: string;
   title: string;
@@ -33,27 +59,6 @@ interface ArtworkItem {
   category: string;
   likes: number;
 }
-
-// Static fallback data for when DB is empty or as defaults
-const fallbackArtwork: ArtworkItem[] = [
-  { id: "golden-hour", title: "Golden Hour", description: "The sun descends over rolling hills - a future artifact of light and land.", image: goldenHour, category: "photography", likes: 34 },
-  { id: "sailboat", title: "Sailboat at Dock", description: "Two figures prepare for water - a moment of human activity frozen in time.", image: sailboat, category: "photography", likes: 28 },
-  { id: "red-brick", title: "Red Brick Cathedral", description: "Architecture tells stories of those who built it.", image: redBrick, category: "photography", likes: 45 },
-  { id: "venice-palms", title: "Venice Palms", description: "Silhouettes reaching skyward - California's iconic sentinels.", image: venicePalms, category: "photography", likes: 31 },
-  { id: "cemetery-stone", title: "The 1859 Stone", description: "A gravestone from 1859 - the most literal artifact of humanity.", image: cemeteryStone, category: "photography", likes: 52 },
-  { id: "victorian-mansion", title: "Victorian Mansion", description: "Architectural history captured in amber light.", image: victorianMansion, category: "photography", likes: 39 },
-  { id: "hollywood-scene", title: "Hollywood Belief", description: "Street culture and belief systems intersecting.", image: hollywoodScene, category: "photography", likes: 27 },
-  { id: "anarchist", title: "The Anarchist", description: "Pop art portrait with crown and protest - social commentary through bold color.", image: anarchist, category: "colored", likes: 67 },
-  { id: "harlequin", title: "The Harlequin", description: "Masked identity with heterochromia - the duality of self.", image: harlequin, category: "colored", likes: 58 },
-  { id: "bandaged-portrait", title: "Bandaged Portrait", description: "Expression through imperfection - the beauty in wounds.", image: bandagedPortrait, category: "colored", likes: 44 },
-  { id: "nancy", title: "Nancy Sinatra", description: "Pop art tribute capturing the iconic presence and style of a cultural legend.", image: nancySinatra, category: "colored", likes: 42 },
-  { id: "self-portrait", title: "Self Portrait", description: "Introspective digital illustration exploring identity and perception.", image: zacPortrait, category: "colored", likes: 35 },
-  { id: "moodboard-1", title: "Moodboard I", description: "A visual exploration of contrast and emotion through minimalist composition.", image: moodboard1, category: "mixed", likes: 24 },
-  { id: "moodboard-2", title: "Moodboard II", description: "Continuing the journey into stark visual storytelling.", image: moodboard2, category: "mixed", likes: 18 },
-  { id: "composition-55", title: "Composition 55", description: "Abstract exploration of form and texture.", image: piece55, category: "sketch", likes: 15 },
-  { id: "composition-56", title: "Composition 56", description: "Study in light, shadow, and emotional depth.", image: piece56, category: "sketch", likes: 12 },
-  { id: "composition-57", title: "Composition 57", description: "Raw expression through line and movement.", image: piece57, category: "sketch", likes: 19 },
-];
 
 const categories = [
   { id: "all", label: "All Work" },
@@ -69,7 +74,7 @@ const ArtGallery = () => {
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkItem | null>(null);
   const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
 
-  // Fetch artwork from database
+  // Fetch all artwork from database
   const { data: dbArtwork = [], isLoading } = useQuery({
     queryKey: ["artwork-gallery"],
     queryFn: async () => {
@@ -82,22 +87,15 @@ const ArtGallery = () => {
     },
   });
 
-  // Merge database artwork with fallback, prioritizing database items
-  const artworkData: ArtworkItem[] = [
-    // Database artwork first
-    ...dbArtwork.map(item => ({
-      id: item.id,
-      title: item.title,
-      description: item.description || "",
-      image: item.image_url,
-      category: item.category || "mixed",
-      likes: 0, // Likes would come from likes table in production
-    })),
-    // Then fallback artwork for items not in DB (check by title to avoid duplicates)
-    ...fallbackArtwork.filter(
-      fallback => !dbArtwork.some(db => db.title.toLowerCase() === fallback.title.toLowerCase())
-    ),
-  ];
+  // Map database artwork to display format
+  const artworkData: ArtworkItem[] = dbArtwork.map(item => ({
+    id: item.id,
+    title: item.title,
+    description: item.description || "",
+    image: resolveImageUrl(item.image_url),
+    category: item.category || "mixed",
+    likes: 0,
+  }));
 
   const filteredArtwork =
     selectedCategory === "all"

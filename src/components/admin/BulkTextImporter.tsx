@@ -6,7 +6,7 @@ import { FileText, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface BulkTextImporterProps {
-  contentType: "project" | "product_review" | "experiment" | "article" | "client_project" | "favorite" | "inspiration";
+  contentType: "project" | "product_review" | "experiment" | "article" | "client_project" | "favorite" | "inspiration" | "update";
   onImport: (data: Record<string, unknown>) => void;
   maxLength?: number;
 }
@@ -16,6 +16,7 @@ const fieldMappings: Record<string, string[]> = {
   product_review: ["product_name", "company", "summary", "content", "strengths", "pain_points", "improvement_suggestions"],
   experiment: ["name", "description", "long_description", "platform", "management_info", "operation_details", "skills_demonstrated", "lessons_learned", "products_offered", "sample_reviews", "revenue", "costs"],
   article: ["title", "excerpt", "content", "tags"],
+  update: ["title", "excerpt", "content", "tags"],
   client_project: ["project_name", "client_name", "description", "long_description", "tech_stack", "features"],
   favorite: ["title", "description", "type", "creator_name", "impact_statement", "tags"],
   inspiration: ["title", "description", "detailed_content", "category", "influence_areas"],
