@@ -1,96 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* LeCompte Pop Art Design System - Bold, Vibrant, Human */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    /* Core Pop Art Palette */
+    --pop-magenta: 328 100% 54%;
+    --pop-cyan: 188 100% 50%;
+    --pop-yellow: 50 100% 50%;
+    --pop-orange: 25 100% 55%;
+    --pop-black: 0 0% 5%;
+    --pop-white: 0 0% 98%;
+    
+    /* Semantic Colors */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 5%;
+    
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 0 0% 5%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
+    --popover-foreground: 0 0% 5%;
+    
+    --primary: 328 100% 54%;
+    --primary-foreground: 0 0% 98%;
+    
+    --secondary: 188 100% 50%;
+    --secondary-foreground: 0 0% 5%;
+    
+    --accent: 50 100% 50%;
+    --accent-foreground: 0 0% 5%;
+    
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 40%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 10%;
+    --input: 0 0% 90%;
+    --ring: 328 100% 54%;
+    
+    --radius: 0px;
+    
     --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
+    --sidebar-foreground: 0 0% 5%;
+    --sidebar-primary: 328 100% 54%;
     --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 50 100% 50%;
+    --sidebar-accent-foreground: 0 0% 5%;
+    --sidebar-border: 0 0% 10%;
+    --sidebar-ring: 328 100% 54%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
+    
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 328 100% 60%;
+    --primary-foreground: 0 0% 5%;
+    
+    --secondary: 188 100% 55%;
+    --secondary-foreground: 0 0% 5%;
+    
+    --accent: 50 100% 55%;
+    --accent-foreground: 0 0% 5%;
+    
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    
+    --border: 0 0% 90%;
+    --input: 0 0% 15%;
+    
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 98%;
   }
 }
 
@@ -100,6 +93,214 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Bangers', cursive;
+    letter-spacing: 0.05em;
+  }
+}
+
+@layer components {
+  /* Halftone Pattern Overlay */
+  .halftone-overlay {
+    position: relative;
+  }
+  
+  .halftone-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, hsl(var(--pop-black) / 0.15) 1px, transparent 1px);
+    background-size: 4px 4px;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+  }
+  
+  .halftone-overlay-lg::after {
+    background-size: 8px 8px;
+  }
+
+  /* Comic Panel Border */
+  .comic-panel {
+    @apply relative border-4 border-foreground bg-card;
+    box-shadow: 6px 6px 0 0 hsl(var(--foreground));
+  }
+  
+  .comic-panel-sm {
+    @apply border-2;
+    box-shadow: 3px 3px 0 0 hsl(var(--foreground));
+  }
+  
+  .comic-panel-lg {
+    @apply border-[6px];
+    box-shadow: 10px 10px 0 0 hsl(var(--foreground));
+  }
+  
+  /* Pop Art Button */
+  .pop-button {
+    @apply relative inline-flex items-center justify-center px-6 py-3 font-bold uppercase tracking-wider;
+    @apply border-4 border-foreground bg-primary text-primary-foreground;
+    @apply transition-all duration-150 ease-out;
+    box-shadow: 4px 4px 0 0 hsl(var(--foreground));
+  }
+  
+  .pop-button:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 0 hsl(var(--foreground));
+  }
+  
+  .pop-button:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 0 hsl(var(--foreground));
+  }
+  
+  .pop-button-secondary {
+    @apply bg-secondary text-secondary-foreground;
+  }
+  
+  .pop-button-accent {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  /* Speech Bubble */
+  .speech-bubble {
+    @apply relative bg-background border-4 border-foreground p-4;
+    border-radius: 20px;
+  }
+  
+  .speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 30px;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 20px solid hsl(var(--foreground));
+  }
+  
+  .speech-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 34px;
+    width: 0;
+    height: 0;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 16px solid hsl(var(--background));
+    z-index: 1;
+  }
+
+  /* Ben-Day Dots Pattern */
+  .benday-dots {
+    background-image: radial-gradient(hsl(var(--pop-magenta) / 0.3) 2px, transparent 2px),
+                      radial-gradient(hsl(var(--pop-cyan) / 0.3) 2px, transparent 2px);
+    background-size: 12px 12px;
+    background-position: 0 0, 6px 6px;
+  }
+  
+  /* Screen Print Texture */
+  .screen-print {
+    background-image: 
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        hsl(var(--foreground) / 0.03) 2px,
+        hsl(var(--foreground) / 0.03) 4px
+      );
+  }
+
+  /* Pop Art Link Underline */
+  .pop-link {
+    @apply relative inline-block font-bold;
+  }
+  
+  .pop-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-1 bg-accent;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.3s ease-out;
+  }
+  
+  .pop-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  /* Ticker Animation */
+  .ticker {
+    @apply overflow-hidden whitespace-nowrap;
+  }
+  
+  .ticker-content {
+    @apply inline-block;
+    animation: ticker 20s linear infinite;
+  }
+  
+  @keyframes ticker {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* Image Pop Frame */
+  .pop-frame {
+    @apply relative;
+  }
+  
+  .pop-frame::before {
+    content: '';
+    @apply absolute inset-0 border-4 border-foreground;
+    transform: translate(8px, 8px);
+    z-index: -1;
+    background: hsl(var(--pop-cyan));
+  }
+  
+  .pop-frame-magenta::before {
+    background: hsl(var(--pop-magenta));
+  }
+  
+  .pop-frame-yellow::before {
+    background: hsl(var(--pop-yellow));
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--pop-magenta)) 0%,
+      hsl(var(--pop-cyan)) 50%,
+      hsl(var(--pop-yellow)) 100%
+    );
+  }
+}
+
+@layer utilities {
+  /* Stagger Animation Delays */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+  
+  /* Pop Art Shadows */
+  .shadow-pop {
+    box-shadow: 4px 4px 0 0 hsl(var(--foreground));
+  }
+  
+  .shadow-pop-lg {
+    box-shadow: 8px 8px 0 0 hsl(var(--foreground));
+  }
+  
+  /* Comic Caption Box */
+  .caption-box {
+    @apply bg-accent text-accent-foreground px-4 py-2 font-bold uppercase tracking-wide;
+    @apply border-2 border-foreground;
   }
 }
