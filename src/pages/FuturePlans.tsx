@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
-import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Target,
   BookOpen,
@@ -9,15 +10,16 @@ import {
   TrendingUp,
   Heart,
   GraduationCap,
+  Loader2,
 } from "lucide-react";
 
 interface LearningGoal {
   id: string;
   title: string;
-  description: string;
-  targetAmount: number;
-  raisedAmount: number;
-  progress: number;
+  description: string | null;
+  target_amount: number | null;
+  raised_amount: number | null;
+  progress_percent: number | null;
 }
 
 interface FuturePlan {
@@ -28,61 +30,27 @@ interface FuturePlan {
   category: "project" | "skill" | "exploration";
 }
 
-const learningGoals: LearningGoal[] = [
-  {
-    id: "1",
-    title: "Advanced AI/ML Course",
-    description: "Deep learning and machine learning fundamentals to integrate AI into future projects.",
-    targetAmount: 500,
-    raisedAmount: 125,
-    progress: 25,
-  },
-  {
-    id: "2",
-    title: "UX Research Certification",
-    description: "Professional certification in user research methods and analysis.",
-    targetAmount: 800,
-    raisedAmount: 320,
-    progress: 40,
-  },
-  {
-    id: "3",
-    title: "3D Modeling & Animation",
-    description: "Expand artistic capabilities into 3D digital art and motion graphics.",
-    targetAmount: 400,
-    raisedAmount: 60,
-    progress: 15,
-  },
-  {
-    id: "4",
-    title: "Data Visualization Mastery",
-    description: "Advanced techniques for presenting complex data in compelling visual formats.",
-    targetAmount: 300,
-    raisedAmount: 180,
-    progress: 60,
-  },
-];
-
+// Hardcoded future plans (could be migrated to DB in future)
 const futurePlans: FuturePlan[] = [
   {
     id: "1",
     title: "T1D Compass Mobile App",
     description: "Expand the T1D Compass platform into a full-featured mobile application with real-time health tracking.",
-    timeline: "Q2 2024",
+    timeline: "Q2 2025",
     category: "project",
   },
   {
     id: "2",
     title: "Philosophy Podcast",
     description: "Launch a podcast exploring philosophical concepts and their intersection with daily life and technology.",
-    timeline: "Q3 2024",
+    timeline: "Q3 2025",
     category: "exploration",
   },
   {
     id: "3",
     title: "Community Art Installation",
     description: "Create an interactive public art piece that reflects community stories and the human experience.",
-    timeline: "Q4 2024",
+    timeline: "Q4 2025",
     category: "project",
   },
   {
@@ -96,7 +64,7 @@ const futurePlans: FuturePlan[] = [
     id: "5",
     title: "Documentary Project",
     description: "Document stories of transformation and resilience in Type 1 Diabetes communities.",
-    timeline: "2025",
+    timeline: "2026",
     category: "exploration",
   },
   {
@@ -121,6 +89,19 @@ const categoryIcons = {
 };
 
 const FuturePlans = () => {
+  // Fetch learning goals from database
+  const { data: learningGoals = [], isLoading } = useQuery({
+    queryKey: ["learning-goals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("learning_goals")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as LearningGoal[];
+    },
+  });
+
   return (
     <Layout>
       {/* Hero */}
@@ -151,39 +132,49 @@ const FuturePlans = () => {
             Every dollar directly funds new skills that improve future projects.
           </p>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {learningGoals.map((goal, index) => (
-              <div
-                key={goal.id}
-                className={`p-6 border-4 border-background bg-foreground animate-fade-in stagger-${index + 1}`}
-              >
-                <h3 className="text-xl font-display text-pop-cyan mb-2">
-                  {goal.title}
-                </h3>
-                <p className="text-sm opacity-80 mb-4">{goal.description}</p>
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-pop-yellow" />
+            </div>
+          ) : learningGoals.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-lg opacity-60">Learning goals coming soon...</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              {learningGoals.map((goal, index) => (
+                <div
+                  key={goal.id}
+                  className={`p-6 border-4 border-background bg-foreground animate-fade-in stagger-${index + 1}`}
+                >
+                  <h3 className="text-xl font-display text-pop-cyan mb-2">
+                    {goal.title}
+                  </h3>
+                  <p className="text-sm opacity-80 mb-4">{goal.description}</p>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm font-bold">
-                    <span>${goal.raisedAmount} raised</span>
-                    <span>Goal: ${goal.targetAmount}</span>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm font-bold">
+                      <span>${goal.raised_amount || 0} raised</span>
+                      <span>Goal: ${goal.target_amount || 0}</span>
+                    </div>
+                    <div className="h-4 bg-pop-black border-2 border-background overflow-hidden">
+                      <div
+                        className="h-full bg-pop-yellow transition-all"
+                        style={{ width: `${goal.progress_percent || 0}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-4 bg-pop-black border-2 border-background overflow-hidden">
-                    <div
-                      className="h-full bg-pop-yellow transition-all"
-                      style={{ width: `${goal.progress}%` }}
-                    />
-                  </div>
+
+                  <Link to="/support">
+                    <button className="w-full py-2 font-bold uppercase tracking-wide border-2 border-background bg-pop-magenta text-background hover:bg-pop-cyan transition-colors">
+                      <Heart className="w-4 h-4 inline mr-2" />
+                      Contribute
+                    </button>
+                  </Link>
                 </div>
-
-                <Link to="/support">
-                  <button className="w-full py-2 font-bold uppercase tracking-wide border-2 border-background bg-pop-magenta text-background hover:bg-pop-cyan transition-colors">
-                    <Heart className="w-4 h-4 inline mr-2" />
-                    Contribute
-                  </button>
-                </Link>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
