@@ -70,6 +70,7 @@ const navGroups: NavGroup[] = [
       { label: "Skills", href: "/admin/skills", icon: Palette },
       { label: "Learning Goals", href: "/admin/learning-goals", icon: Target },
       { label: "Future Plans", href: "/admin/future-plans", icon: Rocket },
+      { label: "Supplies", href: "/admin/supplies", icon: Lightbulb },
     ],
   },
   {

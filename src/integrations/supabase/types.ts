@@ -217,6 +217,53 @@ export type Database = {
         }
         Relationships: []
       }
+      funding_campaigns: {
+        Row: {
+          campaign_type: string
+          created_at: string
+          description: string | null
+          id: string
+          project_id: string | null
+          raised_amount: number
+          status: string
+          target_amount: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          project_id?: string | null
+          raised_amount?: number
+          status?: string
+          target_amount?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          project_id?: string | null
+          raised_amount?: number
+          status?: string
+          target_amount?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funding_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_searches: {
         Row: {
           executed_at: string
@@ -540,7 +587,9 @@ export type Database = {
       }
       projects: {
         Row: {
+          accessibility_notes: string | null
           admin_notes: string | null
+          architecture_notes: string | null
           case_study: string | null
           color_palette: string[] | null
           created_at: string
@@ -550,11 +599,14 @@ export type Database = {
           features: string[] | null
           funding_goal: number | null
           funding_raised: number | null
+          github_stats: Json | null
+          github_url: string | null
           id: string
           image_url: string | null
           last_saved_draft: string | null
           long_description: string | null
           next_steps: string | null
+          performance_notes: string | null
           problem_statement: string | null
           results_metrics: Json | null
           screenshots: string[] | null
@@ -566,7 +618,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accessibility_notes?: string | null
           admin_notes?: string | null
+          architecture_notes?: string | null
           case_study?: string | null
           color_palette?: string[] | null
           created_at?: string
@@ -576,11 +630,14 @@ export type Database = {
           features?: string[] | null
           funding_goal?: number | null
           funding_raised?: number | null
+          github_stats?: Json | null
+          github_url?: string | null
           id?: string
           image_url?: string | null
           last_saved_draft?: string | null
           long_description?: string | null
           next_steps?: string | null
+          performance_notes?: string | null
           problem_statement?: string | null
           results_metrics?: Json | null
           screenshots?: string[] | null
@@ -592,7 +649,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accessibility_notes?: string | null
           admin_notes?: string | null
+          architecture_notes?: string | null
           case_study?: string | null
           color_palette?: string[] | null
           created_at?: string
@@ -602,11 +661,14 @@ export type Database = {
           features?: string[] | null
           funding_goal?: number | null
           funding_raised?: number | null
+          github_stats?: Json | null
+          github_url?: string | null
           id?: string
           image_url?: string | null
           last_saved_draft?: string | null
           long_description?: string | null
           next_steps?: string | null
+          performance_notes?: string | null
           problem_statement?: string | null
           results_metrics?: Json | null
           screenshots?: string[] | null
@@ -715,6 +777,48 @@ export type Database = {
           id?: string
           name?: string
           proficiency?: number | null
+        }
+        Relationships: []
+      }
+      supplies_needed: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          funded_amount: number
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          priority: string
+          product_url: string | null
+          status: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          funded_amount?: number
+          id?: string
+          image_url?: string | null
+          name: string
+          price?: number
+          priority?: string
+          product_url?: string | null
+          status?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          funded_amount?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          priority?: string
+          product_url?: string | null
+          status?: string
         }
         Relationships: []
       }

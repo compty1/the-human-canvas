@@ -17,7 +17,8 @@ import {
   Loader2, 
   Plus, 
   X,
-  Star
+  Star,
+  Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,8 @@ const ProductReviewEditor = () => {
   const [newImprovement, setNewImprovement] = useState("");
   const [newFutureRec, setNewFutureRec] = useState("");
   const [saving, setSaving] = useState(false);
+  const [analyzeUrl, setAnalyzeUrl] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
 
   // Fetch existing review if editing
   const { data: review, isLoading } = useQuery({
@@ -201,6 +204,66 @@ const ProductReviewEditor = () => {
             Save
           </PopButton>
         </div>
+
+        {/* AI Auto-Analyze */}
+        <ComicPanel className="p-6 bg-pop-cyan/10">
+          <h2 className="text-xl font-display mb-4">AI Auto-Analyze Product</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Enter a product URL to automatically generate a UX review using AI analysis
+          </p>
+          <div className="flex gap-4">
+            <Input
+              value={analyzeUrl}
+              onChange={(e) => setAnalyzeUrl(e.target.value)}
+              placeholder="https://product-website.com"
+              className="flex-grow"
+            />
+            <PopButton 
+              onClick={async () => {
+                if (!analyzeUrl) {
+                  toast.error("Please enter a URL");
+                  return;
+                }
+                setAnalyzing(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke("analyze-product", {
+                    body: { url: analyzeUrl },
+                  });
+                  if (error) throw error;
+                  if (data) {
+                    setFormData(prev => ({
+                      ...prev,
+                      product_name: data.product_name || prev.product_name,
+                      company: data.company || prev.company,
+                      category: data.category || prev.category,
+                      overall_rating: data.overall_rating || prev.overall_rating,
+                      summary: data.summary || prev.summary,
+                      pain_points: data.pain_points || prev.pain_points,
+                      strengths: data.strengths || prev.strengths,
+                      technical_issues: data.technical_issues || prev.technical_issues,
+                      improvement_suggestions: data.improvement_suggestions || prev.improvement_suggestions,
+                      future_recommendations: data.future_recommendations || prev.future_recommendations,
+                    }));
+                    toast.success("Product analyzed! Review generated.");
+                  }
+                } catch (error) {
+                  console.error(error);
+                  toast.error("Failed to analyze product");
+                } finally {
+                  setAnalyzing(false);
+                }
+              }}
+              disabled={analyzing}
+            >
+              {analyzing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-2" />
+              )}
+              Auto-Analyze
+            </PopButton>
+          </div>
+        </ComicPanel>
 
         {/* Basic Info */}
         <ComicPanel className="p-6">
