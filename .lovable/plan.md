@@ -1,249 +1,496 @@
 
-# Portfolio Enhancement Plan: Photography, Graphic Design, and Blog System
+# Comprehensive Admin System for LeCompte Portfolio
 
 ## Overview
 
-This plan adds two new creative categories to your Art Gallery (Photography and Graphic Design/Product Design), imports all your new uploaded artwork, and creates a complete blog system with both "Quick Updates" (short microblog entries) and "Full Articles" (long-form content with a rich text editor).
-
-Your philosophy of viewing culture as "future artifacts of humanity" will be woven into the descriptions, framing each piece as a captured moment of our existence.
+This plan creates a full-featured admin dashboard with traffic analytics, AI-powered content management, bulk import capabilities, lead generation, and complete site control for shanealecompte@gmail.com.
 
 ---
 
-## Part 1: Expand Art Gallery Categories
+## Phase 1: Admin Setup & Access Control
 
-### Database Changes
+### 1.1 Set Up Admin Role for Email
+Create database migration to:
+- Insert admin role for `shanealecompte@gmail.com` in `user_roles` table
+- Add trigger to auto-assign admin on signup with this email
 
-Update the artwork table to support new categories. The current categories are: colored, sketch, mixed. Adding:
-- **photography** - Landscape, architectural, street, and documentary photography
-- **graphic_design** - Stickers, product designs (mugs, cards), digital graphics
+### 1.2 Admin Dashboard Layout
+Create `/admin` route with:
+- Sidebar navigation for all admin sections
+- Pop art styled dashboard matching site aesthetic
+- Quick stats cards (total views, content count, pending drafts, leads)
+- Activity feed showing recent changes
 
-### New Artwork to Add
+---
 
-Copy all 10 uploaded images into the project assets and add to gallery:
+## Phase 2: Analytics & Traffic Tracking
 
-| Image | Title | Category | Description |
-|-------|-------|----------|-------------|
-| Final_Home_Print.png | Golden Hour | photography | The sun descends over rolling hills - a future artifact of light and land |
-| 16.png | Sailboat at Dock | photography | Two figures prepare for water - a moment of human activity frozen in time |
-| 17.png | Red Brick Cathedral | photography | Architecture tells stories of those who built it |
-| 21.png | Venice Palms | photography | Silhouettes reaching skyward - California's iconic sentinels |
-| 27.png | Cemetery Stone | photography | A gravestone from 1859 - the most literal artifact of humanity |
-| 36.png | Victorian Mansion | photography | Architectural history captured in amber light |
-| 38.png | Hollywood Scene | photography | Street culture and belief systems intersecting |
-| 97.png | The Anarchist | colored | Pop art portrait with crown and protest - social commentary through bold color |
-| 32.png | The Harlequin | colored | Masked identity with heterochromia - the duality of self |
-| 37.png | Bandaged Portrait | colored | Expression through imperfection - the beauty in wounds |
-
-### Updated Gallery Filter Bar
+### 2.1 Database Schema for Analytics
+Create new tables:
 
 ```text
-[All Work] [Photography] [Colored Digital] [Pencil & Sketch] [Mixed Media] [Graphic Design]
+page_views
+├── id (uuid)
+├── page_path (text)
+├── visitor_id (text) - anonymous fingerprint
+├── session_id (text)
+├── timestamp (timestamptz)
+├── time_on_page_seconds (int)
+├── referrer (text)
+├── user_agent (text)
+├── country (text)
+├── city (text)
+├── device_type (text)
+└── screen_size (text)
+
+link_clicks
+├── id (uuid)
+├── page_path (text)
+├── link_url (text)
+├── link_text (text)
+├── visitor_id (text)
+├── timestamp (timestamptz)
+└── session_id (text)
+
+sessions
+├── id (text) - session_id
+├── visitor_id (text)
+├── started_at (timestamptz)
+├── ended_at (timestamptz)
+├── pages_viewed (int)
+├── entry_page (text)
+├── exit_page (text)
+├── country (text)
+└── city (text)
+```
+
+### 2.2 Tracking Component
+Create `useAnalytics` hook that:
+- Generates anonymous visitor fingerprint
+- Tracks page views on route change
+- Records time-on-page before leaving
+- Captures link clicks
+- Uses IP geolocation API for location (via edge function)
+
+### 2.3 Analytics Dashboard
+Create `/admin/analytics` page with:
+- Real-time visitor count
+- Traffic charts (daily/weekly/monthly views)
+- Geographic heatmap
+- Top pages by views and time spent
+- Click tracking for all links
+- Device/browser breakdown
+- Session recordings list (page flow paths)
+- Bounce rate and engagement metrics
+
+---
+
+## Phase 3: Full Content Management System
+
+### 3.1 Site Content Table
+Create `site_content` table:
+
+```text
+site_content
+├── id (uuid)
+├── section_key (text) - unique identifier e.g. "header.tagline"
+├── content_type (enum) - "text" | "rich_text" | "image" | "json"
+├── content_value (text)
+├── is_draft (boolean)
+├── draft_value (text)
+├── updated_at (timestamptz)
+├── updated_by (uuid)
+└── notes (text) - admin notes
+```
+
+### 3.2 Content Sections to Manage
+
+**Header & Branding:**
+- Site name/logo
+- Navigation items
+- Contact email
+
+**Home Page:**
+- Hero tagline
+- Mission statement
+- Current projects ticker
+- Featured projects selection
+
+**About Page:**
+- Biography sections
+- Profile image
+- Services list
+- Areas of interest
+- Live projects showcase
+
+**Future Plans:**
+- Learning goals (manage from DB)
+- Vision board items (manage from DB)
+
+### 3.3 Content Editor Pages
+Create admin pages for each content type:
+- `/admin/content/site` - Header, footer, global content
+- `/admin/content/home` - Homepage sections
+- `/admin/content/about` - About page content
+- `/admin/projects` - Full project management
+- `/admin/articles` - Already exists, enhance
+- `/admin/updates` - Already exists, enhance
+- `/admin/artwork` - Artwork management
+- `/admin/skills` - Skills management
+- `/admin/learning-goals` - Learning goals
+- `/admin/future-plans` - Future plans items
+
+---
+
+## Phase 4: Enhanced Project Management
+
+### 4.1 Project Editor Enhancements
+Update project editor to include:
+- Site URL input field
+- "Auto-analyze" button that:
+  - Fetches site via edge function
+  - Extracts screenshots automatically
+  - Generates AI description of features
+  - Identifies tech stack from source
+  - Creates comprehensive portfolio entry
+
+### 4.2 Site Analyzer Edge Function
+Create `analyze-site` edge function:
+- Uses web scraping to fetch site content
+- Takes automated screenshots
+- Extracts meta information, colors, fonts
+- Detects technology stack
+- Generates AI summary of features and purpose
+- Returns structured data for project entry
+
+### 4.3 Project Fields to Add
+
+```text
+projects (update)
+├── screenshots (text[]) - array of image URLs
+├── features (text[]) - detected features
+├── color_palette (text[]) - extracted colors
+├── case_study (rich_text) - full case study content
+├── problem_statement (text)
+├── solution_summary (text)
+├── results_metrics (jsonb)
+├── admin_notes (text)
+└── next_steps (text)
 ```
 
 ---
 
-## Part 2: Quick Updates System (Microblog)
+## Phase 5: AI Copy Generation
 
-### Purpose
-Short-form entries (1-3 paragraphs) for quick thoughts, observations, work-in-progress notes, and brief commentary on topics.
+### 5.1 AI Writing Edge Function
+Create `generate-copy` edge function using Lovable AI:
+- Accepts content type (project, article, update, etc.)
+- Accepts context (existing content, style preferences)
+- Returns generated copy options
+- Supports regeneration and variations
 
-### Database Table: `updates`
+### 5.2 AI Integration Points
+Add AI generation buttons to:
+- Project descriptions (short and long)
+- Article excerpts and content
+- Update content
+- Artwork descriptions
+- About page sections
+- Any text field in admin
+
+### 5.3 AI Copy Modal
+Create reusable AI copy modal with:
+- Tone selection (professional, creative, casual)
+- Length options (brief, standard, detailed)
+- Generate variations (3 options)
+- Edit inline before applying
+- Save as draft option
+
+---
+
+## Phase 6: Draft System & Notes
+
+### 6.1 Enhance All Content Tables
+Add to projects, articles, updates, artwork:
+- `draft_content` (jsonb) - stored draft state
+- `admin_notes` (text) - internal notes
+- `next_steps` (text) - planned improvements
+- `last_saved_draft` (timestamptz)
+
+### 6.2 Admin Notes Section
+Create `/admin/notes` page with:
+- General brand notes
+- Traffic growth ideas
+- Content calendar
+- Feature wishlist
+- Build roadmap for each project
+- Marketing ideas
+
+### 6.3 Notes Table
 
 ```text
-+------------+-------------------+
-| id         | uuid (PK)         |
-| title      | text              |
-| content    | text (rich HTML)  |
-| excerpt    | text              |
-| tags       | text[]            |
-| published  | boolean           |
-| created_at | timestamp         |
-| updated_at | timestamp         |
-+------------+-------------------+
+admin_notes
+├── id (uuid)
+├── category (enum) - brand | marketing | content | traffic | ideas
+├── title (text)
+├── content (rich_text)
+├── priority (int)
+├── related_project_id (uuid, nullable)
+├── status (enum) - idea | planned | in_progress | done
+├── created_at (timestamptz)
+└── updated_at (timestamptz)
 ```
 
-### Updates Page (`/updates`)
-- Hero section with "Quick Updates" branding
-- Vertical timeline/feed layout with pop art comic panel cards
-- Each update shows: title, excerpt, date, tags, like button
-- Click to expand full content in modal or navigate to detail page
-- Admin-only: "New Update" button to access editor
+---
 
-### Updates Detail Page (`/updates/:slug`)
-- Full update content rendered as rich HTML
-- Like button
-- Share options
-- "More Updates" sidebar with related entries
+## Phase 7: Bulk Import System
+
+### 7.1 Bulk Import Page
+Create `/admin/import` with:
+- Content type selector (artwork, articles, projects, updates)
+- CSV/JSON file upload
+- Mapping interface for fields
+- Preview before import
+- Validation and error reporting
+- Progress indicator
+
+### 7.2 Import Templates
+Provide downloadable templates for:
+- Artwork bulk import (title, category, image_url, description)
+- Articles import (title, content, category, tags)
+- Updates import (title, content, tags)
+- Projects import (all fields)
+
+### 7.3 Image Bulk Upload
+For artwork specifically:
+- Multi-file image uploader
+- Auto-generate titles from filenames
+- Category assignment
+- AI-powered description generation option
 
 ---
 
-## Part 3: Full Articles System (Long-form Blog)
+## Phase 8: Lead Generation System
 
-### Purpose
-In-depth articles, essays, and stories with full rich text editing (images, formatting, embeds, etc.).
+### 8.1 Lead Database Tables
 
-### Database Updates
-
-The existing `articles` table already has the right structure. Need to:
-- Add an `update` category type or keep as separate table (keeping separate is cleaner)
-- Ensure `content` column stores rich HTML
-
-### Articles Page (`/articles`)
-- Hero section: "Deep Dives & Essays"
-- Category filter tabs (Philosophy, Narrative, Cultural, UX Reviews, Research)
-- Article cards showing: title, excerpt, category badge, reading time, date, featured image, tags
-- Each card links to full article page
-
-### Article Detail Page (`/articles/:slug`)
-- Full-width reading experience
-- Featured header image with halftone overlay
-- Category and reading time badges
-- Rich content rendered (headings, images, blockquotes, lists, code blocks)
-- Like button and share options
-- Related articles section at bottom
-
----
-
-## Part 4: Rich Text Editor Component
-
-### Technology Choice: Tiptap
-Tiptap is a headless rich text editor built on ProseMirror - highly customizable and works great with React/TypeScript. Features:
-- Bold, italic, underline, strikethrough
-- Headings (H1-H3)
-- Bullet and numbered lists
-- Blockquotes
-- Code blocks
-- Image upload and embedding
-- Links
-- Undo/redo
-
-### Editor Component Features
-- Pop art styled toolbar matching site aesthetic
-- Image upload to storage bucket
-- Preview mode toggle
-- Auto-save drafts
-- Character/word count
-- Keyboard shortcuts
-
-### Admin Editor Pages
-- `/admin/updates/new` - Create new update
-- `/admin/updates/:id/edit` - Edit existing update
-- `/admin/articles/new` - Create new article
-- `/admin/articles/:id/edit` - Edit existing article
-
----
-
-## Part 5: Navigation Updates
-
-### Header Navigation
-Current: Art | Projects | Writing | Skills | Future | Support | About
-
-Updated:
 ```text
-Art | Projects | Writing (dropdown) | Skills | Future | Support | About
-                    |
-                    +-- Updates (Quick Notes)
-                    +-- Articles (Full Essays)
+leads
+├── id (uuid)
+├── name (text)
+├── company (text)
+├── email (text)
+├── website (text)
+├── linkedin (text)
+├── industry (text)
+├── company_size (text)
+├── location (text)
+├── match_score (int) - 0-100
+├── match_reasons (text[])
+├── source (text) - where found
+├── status (enum) - new | contacted | responded | converted | archived
+├── notes (text)
+├── last_contacted (timestamptz)
+├── created_at (timestamptz)
+└── updated_at (timestamptz)
+
+lead_searches
+├── id (uuid)
+├── search_query (text)
+├── filters (jsonb)
+├── results_count (int)
+├── executed_at (timestamptz)
+└── status (enum) - pending | completed | failed
 ```
 
-Or keep flat:
+### 8.2 Lead Finder Edge Function
+Create `find-leads` edge function:
+- Searches public business directories
+- Matches against your brand/skills profile
+- Scores relevance based on:
+  - Industry alignment (T1D, art, tech)
+  - Company size (small businesses, startups)
+  - Location preferences
+  - Service needs (web dev, design, content)
+- Returns structured lead data
+
+### 8.3 Lead Dashboard
+Create `/admin/leads` page with:
+- Lead search interface with filters
+- Industry/company size/location selectors
+- "Find Matches" button
+- Results grid with match scores
+- Lead detail modal with:
+  - Full company analysis
+  - Contact information
+  - LinkedIn links
+  - Website analysis
+  - Suggested outreach approach
+- Status tracking pipeline
+- Export to CSV
+- Last search history
+
+### 8.4 Lead Update Scheduler
+Create scheduled edge function that:
+- Runs weekly or on-demand
+- Searches for new potential leads
+- Updates existing lead information
+- Notifies admin of new high-match leads
+
+---
+
+## Phase 9: Account Management
+
+### 9.1 Admin Profile Settings
+Create `/admin/settings` page with:
+- Change password functionality
+- Email preferences
+- Notification settings
+- API keys management
+- Export all data
+
+### 9.2 Activity Log Table
+
 ```text
-Art | Projects | Updates | Articles | Skills | Future | Support | About
+admin_activity_log
+├── id (uuid)
+├── user_id (uuid)
+├── action (text) - e.g. "updated_project", "generated_ai_copy"
+├── entity_type (text)
+├── entity_id (uuid)
+├── details (jsonb)
+├── ip_address (text)
+└── created_at (timestamptz)
 ```
 
-### Writing Hub Page (`/writing`)
-Transform current Writing page into a hub that showcases both:
-- "Latest Updates" section with 3 most recent quick notes
-- "Featured Articles" section with top articles
-- Links to full Updates and Articles archives
+### 9.3 Activity Dashboard
+Show in admin overview:
+- Recent actions with timestamps
+- Content modification history
+- Login history
+- AI usage stats
 
 ---
 
-## Part 6: Storage Bucket for Images
+## Phase 10: Navigation & UI
 
-### Create Storage Bucket
-- Bucket name: `content-images`
-- Purpose: Store images uploaded through the rich text editor
-- Public access for displaying in articles/updates
-- RLS policies: Admin can upload, everyone can view
+### 10.1 Admin Sidebar Navigation
+```text
+Dashboard
+├── Overview (stats, activity)
+├── Analytics (traffic, clicks)
+│
+Content
+├── Site Settings (header, footer, global)
+├── Home Page
+├── About Page
+├── Projects
+├── Articles
+├── Updates
+├── Artwork
+├── Skills
+├── Learning Goals
+├── Future Plans
+│
+Tools
+├── AI Copy Generator
+├── Bulk Import
+├── Lead Finder
+├── Notes & Ideas
+│
+Account
+├── Settings
+├── Activity Log
+└── Sign Out
+```
+
+### 10.2 Admin Layout Component
+Create `AdminLayout` with:
+- Collapsible sidebar
+- Top bar with quick actions
+- Notification center
+- Search across all content
 
 ---
 
-## Part 7: Admin Access Control
+## Technical Implementation Details
 
-### Admin Features
-- Only users with `admin` role can access editor pages
-- Admin dashboard link in header (visible only to admins)
-- Publish/unpublish toggle for content
-- Edit and delete capabilities
+### Edge Functions to Create
 
-### RLS Policies
-- Updates: Everyone can read published, admins can CRUD all
-- Articles: Same pattern (already implemented)
+1. **analyze-site** - Fetches and analyzes websites
+2. **generate-copy** - AI copy generation via Lovable AI
+3. **find-leads** - Lead discovery and matching
+4. **geolocate-ip** - Visitor location lookup
+5. **update-leads** - Scheduled lead refresh
+
+### New Components
+
+1. `AdminLayout.tsx` - Dashboard wrapper
+2. `AdminSidebar.tsx` - Navigation sidebar
+3. `ContentEditor.tsx` - Generic content editor
+4. `AIWriterModal.tsx` - AI copy generation interface
+5. `BulkImporter.tsx` - Import wizard
+6. `LeadCard.tsx` - Lead display component
+7. `AnalyticsChart.tsx` - Traffic visualization
+8. `DraftIndicator.tsx` - Shows draft status
+9. `NotesEditor.tsx` - Admin notes interface
+10. `useAnalytics.tsx` - Tracking hook
+
+### New Pages (in /admin/)
+
+1. `Dashboard.tsx` - Main overview
+2. `Analytics.tsx` - Traffic analytics
+3. `SiteContent.tsx` - Global content
+4. `HomeContent.tsx` - Home page editor
+5. `AboutContent.tsx` - About page editor
+6. `ProjectEditor.tsx` - Enhanced project editor
+7. `ArtworkManager.tsx` - Artwork CRUD
+8. `SkillsManager.tsx` - Skills CRUD
+9. `LearningGoalsManager.tsx` - Learning goals
+10. `FuturePlansManager.tsx` - Future plans
+11. `BulkImport.tsx` - Import interface
+12. `LeadFinder.tsx` - Lead generation
+13. `Notes.tsx` - Admin notes
+14. `Settings.tsx` - Account settings
+15. `ActivityLog.tsx` - Action history
+
+---
+
+## Database Migrations Required
+
+1. Create `page_views` table
+2. Create `link_clicks` table
+3. Create `sessions` table
+4. Create `site_content` table
+5. Create `admin_notes` table
+6. Create `leads` table
+7. Create `lead_searches` table
+8. Create `admin_activity_log` table
+9. Update `projects` table with new fields
+10. Update `articles`, `updates`, `artwork` with draft fields
+11. Add admin role for specific email
+12. RLS policies for all new tables (admin only)
 
 ---
 
 ## Implementation Order
 
-1. **Database Migration** - Create `updates` table, update artwork table categories
-2. **Storage Bucket** - Create `content-images` bucket with RLS
-3. **Copy New Artwork** - Import all 10 uploaded images to project
-4. **Update Art Gallery** - Add new categories and artwork entries
-5. **Install Tiptap** - Add tiptap dependencies
-6. **Rich Text Editor Component** - Build reusable editor with pop art styling
-7. **Updates Pages** - List page, detail page
-8. **Articles Pages** - List page, detail page
-9. **Admin Editor Pages** - New/edit pages for both content types
-10. **Navigation Updates** - Header dropdown or Writing hub
-11. **Update Skills Page** - Add Photography and Graphic Design skills
+1. **Week 1**: Admin setup, dashboard layout, basic navigation
+2. **Week 2**: Content management for all sections
+3. **Week 3**: Analytics tracking and visualization
+4. **Week 4**: AI integration and copy generation
+5. **Week 5**: Project analyzer and bulk import
+6. **Week 6**: Lead generation system
+7. **Week 7**: Notes, drafts, and refinements
+8. **Week 8**: Testing, polish, and documentation
 
 ---
 
-## Files to Create/Modify
+## Security Considerations
 
-### New Files
-- `src/components/editor/RichTextEditor.tsx` - Tiptap editor component
-- `src/components/editor/EditorToolbar.tsx` - Pop art styled toolbar
-- `src/pages/Updates.tsx` - Updates listing page
-- `src/pages/UpdateDetail.tsx` - Single update view
-- `src/pages/Articles.tsx` - Articles listing page
-- `src/pages/ArticleDetail.tsx` - Single article view
-- `src/pages/admin/UpdateEditor.tsx` - Create/edit updates
-- `src/pages/admin/ArticleEditor.tsx` - Create/edit articles
-
-### Modified Files
-- `src/pages/ArtGallery.tsx` - Add new categories and artwork
-- `src/pages/Writing.tsx` - Transform to hub page
-- `src/pages/Skills.tsx` - Add Photography and Graphic Design skills
-- `src/components/layout/Header.tsx` - Update navigation
-- `src/App.tsx` - Add new routes
-
-### New Assets
-- `src/assets/artwork/golden-hour.png`
-- `src/assets/artwork/sailboat.png`
-- `src/assets/artwork/red-brick.png`
-- `src/assets/artwork/venice-palms.png`
-- `src/assets/artwork/cemetery-stone.png`
-- `src/assets/artwork/victorian-mansion.png`
-- `src/assets/artwork/hollywood-scene.png`
-- `src/assets/artwork/anarchist.png`
-- `src/assets/artwork/harlequin.png`
-- `src/assets/artwork/bandaged-portrait.png`
-
----
-
-## Technical Notes
-
-### Dependencies to Add
-- `@tiptap/react` - Core editor
-- `@tiptap/starter-kit` - Basic extensions bundle
-- `@tiptap/extension-image` - Image support
-- `@tiptap/extension-link` - Link support
-- `@tiptap/extension-placeholder` - Placeholder text
-
-### Key Design Considerations
-- Editor maintains pop art aesthetic with bold borders and color accents
-- Content rendering uses prose styling for readability
-- Mobile-responsive editor with collapsible toolbar
-- Image optimization for uploaded photos
-- SEO-friendly article URLs using slugs
+- All admin routes protected by `has_role()` check
+- RLS policies restrict all new tables to admin only
+- Activity logging for audit trail
+- Rate limiting on AI and lead finding endpoints
+- Secure password change with email verification
+- Session management with proper token handling
