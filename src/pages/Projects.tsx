@@ -1,110 +1,30 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, LikeButton } from "@/components/pop-art";
-import { ExternalLink, ArrowRight, Heart } from "lucide-react";
-
-type ProjectStatus = "live" | "in_progress";
-
-interface Project {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  status: ProjectStatus;
-  url?: string;
-  techStack: string[];
-  fundingGoal?: number;
-  fundingRaised?: number;
-  likes: number;
-}
-
-const projectsData: Project[] = [
-  {
-    id: "1",
-    title: "Notardex",
-    slug: "notardex",
-    description: "A virtual notebook platform with powerful features for organizing your thoughts, notes, and ideas. Built for thinkers and creators who need a flexible digital workspace.",
-    status: "live",
-    url: "https://notardex.com",
-    techStack: ["React", "TypeScript", "Supabase", "Tailwind"],
-    likes: 45,
-  },
-  {
-    id: "2",
-    title: "Solutiodex",
-    slug: "solutiodex",
-    description: "A community-driven search engine that provides social solutions from public posts and other public sources. Finding answers through collective wisdom.",
-    status: "live",
-    url: "https://solutiodex.com",
-    techStack: ["React", "Node.js", "PostgreSQL", "AI/ML"],
-    likes: 38,
-  },
-  {
-    id: "3",
-    title: "Zodaci",
-    slug: "zodaci",
-    description: "Birth chart and astrology site exploring cosmic connections. Discover your celestial blueprint and understand the stars' influence on your journey.",
-    status: "live",
-    url: "https://zodaci.com",
-    techStack: ["React", "TypeScript", "Astrology APIs"],
-    likes: 52,
-  },
-  {
-    id: "4",
-    title: "T1D Compass",
-    slug: "t1d-compass",
-    description: "A comprehensive Type 1 Diabetes management and community tool. Helping those with T1D navigate daily life, track health metrics, and connect with others on the same journey.",
-    status: "in_progress",
-    techStack: ["React Native", "TypeScript", "Supabase", "Health APIs"],
-    fundingGoal: 5000,
-    fundingRaised: 1250,
-    likes: 67,
-  },
-  {
-    id: "5",
-    title: "Pulse Network",
-    slug: "pulse-network",
-    description: "A social change organizing platform designed to connect activists, community organizers, and change-makers. Amplifying voices and coordinating action for impact.",
-    status: "in_progress",
-    techStack: ["React", "GraphQL", "PostgreSQL", "Real-time"],
-    fundingGoal: 7500,
-    fundingRaised: 2100,
-    likes: 41,
-  },
-  {
-    id: "6",
-    title: "UX Lens",
-    slug: "ux-lens",
-    description: "Product and service experience review case studies. Deep dives into what makes digital experiences work — and what doesn't. Building a library of UX insights.",
-    status: "in_progress",
-    techStack: ["React", "MDX", "Notion API"],
-    fundingGoal: 3000,
-    fundingRaised: 450,
-    likes: 23,
-  },
-];
+import { supabase } from "@/integrations/supabase/client";
+import { ExternalLink, ArrowRight, Heart, Loader2 } from "lucide-react";
 
 const Projects = () => {
-  const [filter, setFilter] = useState<"all" | "live" | "in_progress">("all");
-  const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<"all" | "live" | "in_progress" | "planned">("all");
 
-  const filteredProjects =
-    filter === "all"
-      ? projectsData
-      : projectsData.filter((p) => p.status === filter);
+  const { data: projects, isLoading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const toggleLike = (id: string) => {
-    setLikedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
+  const filteredProjects = projects?.filter(p => 
+    filter === "all" ? true : p.status === filter
+  );
 
   return (
     <Layout>
@@ -130,6 +50,7 @@ const Projects = () => {
               { id: "all", label: "All Projects" },
               { id: "live", label: "Live" },
               { id: "in_progress", label: "In Progress" },
+              { id: "planned", label: "Planned" },
             ].map((f) => (
               <button
                 key={f.id}
@@ -150,93 +71,126 @@ const Projects = () => {
       {/* Projects Grid */}
       <section className="py-16 screen-print">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProjects.map((project, index) => (
-              <ComicPanel
-                key={project.id}
-                className={`p-6 flex flex-col animate-fade-in stagger-${(index % 5) + 1}`}
-              >
-                {/* Status Badge */}
-                <div
-                  className={`inline-block self-start px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground mb-4 ${
-                    project.status === "live"
-                      ? "bg-pop-cyan"
-                      : "bg-pop-yellow"
-                  }`}
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : filteredProjects && filteredProjects.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredProjects.map((project, index) => (
+                <ComicPanel
+                  key={project.id}
+                  className={`p-6 flex flex-col animate-fade-in stagger-${(index % 5) + 1}`}
                 >
-                  {project.status === "live" ? "Live" : "In Progress"}
-                </div>
-
-                <h3 className="text-2xl font-display mb-3">{project.title}</h3>
-                <p className="text-sm font-sans text-muted-foreground mb-4 flex-grow">
-                  {project.description}
-                </p>
-
-                {/* Tech Stack */}
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {project.techStack.map((tech) => (
-                    <span
-                      key={tech}
-                      className="px-2 py-1 text-xs font-bold bg-muted border border-foreground"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Funding Progress (for in-progress projects) */}
-                {project.status === "in_progress" && project.fundingGoal && (
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm font-bold mb-1">
-                      <span>Funding Progress</span>
-                      <span>
-                        ${project.fundingRaised?.toLocaleString()} / $
-                        {project.fundingGoal.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="h-3 bg-muted border-2 border-foreground overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{
-                          width: `${
-                            ((project.fundingRaised || 0) / project.fundingGoal) *
-                            100
-                          }%`,
-                        }}
+                  {/* Image */}
+                  {project.image_url && (
+                    <Link to={`/projects/${project.slug}`} className="block mb-4 -mx-6 -mt-6">
+                      <img 
+                        src={project.image_url} 
+                        alt={project.title}
+                        className="w-full h-48 object-cover border-b-4 border-foreground"
                       />
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center justify-between mt-auto pt-4 border-t-2 border-muted">
-                  <LikeButton
-                    count={project.likes + (likedItems.has(project.id) ? 1 : 0)}
-                    liked={likedItems.has(project.id)}
-                    onLike={() => toggleLike(project.id)}
-                  />
-
-                  {project.status === "live" && project.url ? (
-                    <a
-                      href={project.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="pop-link text-sm font-bold inline-flex items-center gap-1"
-                    >
-                      Visit Site <ExternalLink className="w-4 h-4" />
-                    </a>
-                  ) : (
-                    <Link
-                      to="/support"
-                      className="pop-link text-sm font-bold inline-flex items-center gap-1"
-                    >
-                      <Heart className="w-4 h-4" /> Sponsor
                     </Link>
                   )}
-                </div>
-              </ComicPanel>
-            ))}
-          </div>
+
+                  {/* Status Badge */}
+                  <div
+                    className={`inline-block self-start px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground mb-4 ${
+                      project.status === "live"
+                        ? "bg-pop-cyan"
+                        : project.status === "in_progress"
+                        ? "bg-pop-yellow"
+                        : "bg-muted"
+                    }`}
+                  >
+                    {project.status === "live" ? "Live" : project.status === "in_progress" ? "In Progress" : "Planned"}
+                  </div>
+
+                  <Link to={`/projects/${project.slug}`}>
+                    <h3 className="text-2xl font-display mb-3 hover:text-primary transition-colors">{project.title}</h3>
+                  </Link>
+                  <p className="text-sm font-sans text-muted-foreground mb-4 flex-grow">
+                    {project.description}
+                  </p>
+
+                  {/* Tech Stack */}
+                  {project.tech_stack && project.tech_stack.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-4">
+                      {project.tech_stack.slice(0, 4).map((tech) => (
+                        <span
+                          key={tech}
+                          className="px-2 py-1 text-xs font-bold bg-muted border border-foreground"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                      {project.tech_stack.length > 4 && (
+                        <span className="px-2 py-1 text-xs font-bold bg-muted border border-foreground">
+                          +{project.tech_stack.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Funding Progress (for in-progress projects) */}
+                  {project.status === "in_progress" && project.funding_goal && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm font-bold mb-1">
+                        <span>Funding Progress</span>
+                        <span>
+                          ${(project.funding_raised || 0).toLocaleString()} / $
+                          {project.funding_goal.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="h-3 bg-muted border-2 border-foreground overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{
+                            width: `${
+                              ((project.funding_raised || 0) / project.funding_goal) *
+                              100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between mt-auto pt-4 border-t-2 border-muted">
+                    <Link 
+                      to={`/projects/${project.slug}`}
+                      className="pop-link text-sm font-bold inline-flex items-center gap-1"
+                    >
+                      View Details <ArrowRight className="w-4 h-4" />
+                    </Link>
+
+                    {project.status === "live" && project.external_url ? (
+                      <a
+                        href={project.external_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pop-link text-sm font-bold inline-flex items-center gap-1"
+                      >
+                        Visit Site <ExternalLink className="w-4 h-4" />
+                      </a>
+                    ) : project.status !== "live" ? (
+                      <Link
+                        to="/support"
+                        className="pop-link text-sm font-bold inline-flex items-center gap-1"
+                      >
+                        <Heart className="w-4 h-4" /> Sponsor
+                      </Link>
+                    ) : null}
+                  </div>
+                </ComicPanel>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No projects found</p>
+            </div>
+          )}
         </div>
       </section>
 

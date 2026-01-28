@@ -37,6 +37,8 @@ import BulkImport from "./pages/admin/BulkImport";
 import NotesManager from "./pages/admin/NotesManager";
 import ActivityLog from "./pages/admin/ActivityLog";
 import Settings from "./pages/admin/Settings";
+import ProductReviewsManager from "./pages/admin/ProductReviewsManager";
+import ProductReviewEditor from "./pages/admin/ProductReviewEditor";
 
 import UpdateEditor from "./pages/admin/UpdateEditor";
 import ArticleEditor from "./pages/admin/ArticleEditor";
@@ -98,6 +100,9 @@ const App = () => (
               <Route path="/admin/notes" element={<NotesManager />} />
               <Route path="/admin/activity" element={<ActivityLog />} />
               <Route path="/admin/settings" element={<Settings />} />
+              <Route path="/admin/product-reviews" element={<ProductReviewsManager />} />
+              <Route path="/admin/product-reviews/new" element={<ProductReviewEditor />} />
+              <Route path="/admin/product-reviews/:id/edit" element={<ProductReviewEditor />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
