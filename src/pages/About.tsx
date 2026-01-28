@@ -120,6 +120,10 @@ const About = () => {
                 title: "Personal Transformation",
                 description: "Documenting and celebrating the powerful journeys of overcoming and growth.",
               },
+              {
+                title: "Building Furniture",
+                description: "Crafting functional pieces by hand — the intersection of design, engineering, and tactile creation.",
+              },
             ].map((interest) => (
               <div
                 key={interest.title}

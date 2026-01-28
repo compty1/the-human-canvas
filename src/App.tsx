@@ -20,8 +20,24 @@ import Support from "./pages/Support";
 import About from "./pages/About";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ProjectDetail from "./pages/ProjectDetail";
+import ProductReviews from "./pages/ProductReviews";
+import ProductReviewDetail from "./pages/ProductReviewDetail";
 
 // Admin pages
+import ProjectsManager from "./pages/admin/ProjectsManager";
+import ProjectEditor from "./pages/admin/ProjectEditor";
+import ArtworkManager from "./pages/admin/ArtworkManager";
+import ArtworkEditor from "./pages/admin/ArtworkEditor";
+import SkillsManager from "./pages/admin/SkillsManager";
+import LearningGoalsManager from "./pages/admin/LearningGoalsManager";
+import LeadFinder from "./pages/admin/LeadFinder";
+import AIWriter from "./pages/admin/AIWriter";
+import BulkImport from "./pages/admin/BulkImport";
+import NotesManager from "./pages/admin/NotesManager";
+import ActivityLog from "./pages/admin/ActivityLog";
+import Settings from "./pages/admin/Settings";
+
 import UpdateEditor from "./pages/admin/UpdateEditor";
 import ArticleEditor from "./pages/admin/ArticleEditor";
 import Dashboard from "./pages/admin/Dashboard";
@@ -57,6 +73,9 @@ const App = () => (
               <Route path="/support" element={<Support />} />
               <Route path="/about" element={<About />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/projects/:slug" element={<ProjectDetail />} />
+              <Route path="/product-reviews" element={<ProductReviews />} />
+              <Route path="/product-reviews/:slug" element={<ProductReviewDetail />} />
               
               {/* Admin routes */}
               <Route path="/admin" element={<Dashboard />} />
@@ -65,6 +84,20 @@ const App = () => (
               <Route path="/admin/updates/:id/edit" element={<UpdateEditor />} />
               <Route path="/admin/articles/new" element={<ArticleEditor />} />
               <Route path="/admin/articles/:id/edit" element={<ArticleEditor />} />
+              <Route path="/admin/projects" element={<ProjectsManager />} />
+              <Route path="/admin/projects/new" element={<ProjectEditor />} />
+              <Route path="/admin/projects/:id/edit" element={<ProjectEditor />} />
+              <Route path="/admin/artwork" element={<ArtworkManager />} />
+              <Route path="/admin/artwork/new" element={<ArtworkEditor />} />
+              <Route path="/admin/artwork/:id/edit" element={<ArtworkEditor />} />
+              <Route path="/admin/skills" element={<SkillsManager />} />
+              <Route path="/admin/learning-goals" element={<LearningGoalsManager />} />
+              <Route path="/admin/leads" element={<LeadFinder />} />
+              <Route path="/admin/ai-writer" element={<AIWriter />} />
+              <Route path="/admin/import" element={<BulkImport />} />
+              <Route path="/admin/notes" element={<NotesManager />} />
+              <Route path="/admin/activity" element={<ActivityLog />} />
+              <Route path="/admin/settings" element={<Settings />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

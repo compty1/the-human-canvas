@@ -168,6 +168,8 @@ const Skills = () => {
               "Personal Transformation",
               "Community Building",
               "Innovation",
+              "Furniture Building",
+              "Craftsmanship",
             ].map((interest, index) => (
               <div
                 key={interest}

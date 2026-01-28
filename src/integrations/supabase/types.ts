@@ -433,6 +433,81 @@ export type Database = {
         }
         Relationships: []
       }
+      product_reviews: {
+        Row: {
+          admin_notes: string | null
+          category: string
+          company: string
+          competitor_comparison: Json | null
+          content: string | null
+          created_at: string
+          featured_image: string | null
+          future_recommendations: string[] | null
+          id: string
+          improvement_suggestions: string[] | null
+          overall_rating: number | null
+          pain_points: string[] | null
+          product_name: string
+          published: boolean | null
+          screenshots: string[] | null
+          slug: string
+          strengths: string[] | null
+          summary: string | null
+          technical_issues: string[] | null
+          updated_at: string
+          user_complaints: Json | null
+          user_experience_analysis: Json | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: string
+          company: string
+          competitor_comparison?: Json | null
+          content?: string | null
+          created_at?: string
+          featured_image?: string | null
+          future_recommendations?: string[] | null
+          id?: string
+          improvement_suggestions?: string[] | null
+          overall_rating?: number | null
+          pain_points?: string[] | null
+          product_name: string
+          published?: boolean | null
+          screenshots?: string[] | null
+          slug: string
+          strengths?: string[] | null
+          summary?: string | null
+          technical_issues?: string[] | null
+          updated_at?: string
+          user_complaints?: Json | null
+          user_experience_analysis?: Json | null
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string
+          company?: string
+          competitor_comparison?: Json | null
+          content?: string | null
+          created_at?: string
+          featured_image?: string | null
+          future_recommendations?: string[] | null
+          id?: string
+          improvement_suggestions?: string[] | null
+          overall_rating?: number | null
+          pain_points?: string[] | null
+          product_name?: string
+          published?: boolean | null
+          screenshots?: string[] | null
+          slug?: string
+          strengths?: string[] | null
+          summary?: string | null
+          technical_issues?: string[] | null
+          updated_at?: string
+          user_complaints?: Json | null
+          user_experience_analysis?: Json | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
