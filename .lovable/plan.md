@@ -1,496 +1,478 @@
 
-# Comprehensive Admin System for LeCompte Portfolio
+# Portfolio Enhancement Plan: Product Experience Reviews, Interests, Admin Completion, and Content Additions
 
 ## Overview
 
-This plan creates a full-featured admin dashboard with traffic analytics, AI-powered content management, bulk import capabilities, lead generation, and complete site control for shanealecompte@gmail.com.
+This plan implements new portfolio features including:
+1. Adding "Building Furniture" to interests
+2. New Product Experience Review section with Dexcom G7 case study
+3. Making projects clickable with detailed pages
+4. Uploading remaining graphic design work
+5. Completing all missing admin content management pages
+
+All existing functionality will be preserved - only additions and enhancements.
 
 ---
 
-## Phase 1: Admin Setup & Access Control
+## Part 1: Add Building Furniture to Interests
 
-### 1.1 Set Up Admin Role for Email
-Create database migration to:
-- Insert admin role for `shanealecompte@gmail.com` in `user_roles` table
-- Add trigger to auto-assign admin on signup with this email
+### Files to Modify
 
-### 1.2 Admin Dashboard Layout
-Create `/admin` route with:
-- Sidebar navigation for all admin sections
-- Pop art styled dashboard matching site aesthetic
-- Quick stats cards (total views, content count, pending drafts, leads)
-- Activity feed showing recent changes
+**src/pages/About.tsx**
+- Add "Building Furniture" to the "What Drives Me" grid with description: "Crafting functional pieces by hand - the intersection of design, engineering, and tactile creation."
+
+**src/pages/Skills.tsx**
+- Add "Furniture Building" to the Areas of Interest grid alongside existing interests
 
 ---
 
-## Phase 2: Analytics & Traffic Tracking
+## Part 2: Project Detail Pages (Clickable Projects)
 
-### 2.1 Database Schema for Analytics
-Create new tables:
+### New Database Fields
+No schema changes needed - the `projects` table already has all required fields:
+- `long_description`, `screenshots`, `features`, `problem_statement`, `solution_summary`, `case_study`, `results_metrics`, `tech_stack`, `external_url`
 
-```text
-page_views
-├── id (uuid)
-├── page_path (text)
-├── visitor_id (text) - anonymous fingerprint
-├── session_id (text)
-├── timestamp (timestamptz)
-├── time_on_page_seconds (int)
-├── referrer (text)
-├── user_agent (text)
-├── country (text)
-├── city (text)
-├── device_type (text)
-└── screen_size (text)
+### New Files to Create
 
-link_clicks
-├── id (uuid)
-├── page_path (text)
-├── link_url (text)
-├── link_text (text)
-├── visitor_id (text)
-├── timestamp (timestamptz)
-└── session_id (text)
+**src/pages/ProjectDetail.tsx**
+Full project detail page featuring:
+- Hero section with project title, status badge, and featured image
+- Problem statement section
+- Solution summary with key features list
+- Screenshot gallery with lightbox
+- Tech stack badges
+- Case study content (rich text)
+- Results/metrics display
+- Live site link button
+- Like/sponsor actions
+- Related projects section
 
-sessions
-├── id (text) - session_id
-├── visitor_id (text)
-├── started_at (timestamptz)
-├── ended_at (timestamptz)
-├── pages_viewed (int)
-├── entry_page (text)
-├── exit_page (text)
-├── country (text)
-└── city (text)
+### Modifications
+
+**src/pages/Projects.tsx**
+- Change project cards to link to `/projects/:slug`
+- Keep external "Visit Site" link as secondary action
+- Add "View Details" as primary action linking to detail page
+
+**src/App.tsx**
+- Add route: `/projects/:slug` -> `ProjectDetail`
+
+---
+
+## Part 3: Product Experience Reviews Section
+
+### Database Changes
+
+Add new enum value to `writing_category`:
+```sql
+ALTER TYPE writing_category ADD VALUE 'product_review';
 ```
 
-### 2.2 Tracking Component
-Create `useAnalytics` hook that:
-- Generates anonymous visitor fingerprint
-- Tracks page views on route change
-- Records time-on-page before leaving
-- Captures link clicks
-- Uses IP geolocation API for location (via edge function)
-
-### 2.3 Analytics Dashboard
-Create `/admin/analytics` page with:
-- Real-time visitor count
-- Traffic charts (daily/weekly/monthly views)
-- Geographic heatmap
-- Top pages by views and time spent
-- Click tracking for all links
-- Device/browser breakdown
-- Session recordings list (page flow paths)
-- Bounce rate and engagement metrics
-
----
-
-## Phase 3: Full Content Management System
-
-### 3.1 Site Content Table
-Create `site_content` table:
-
+Create new `product_reviews` table for comprehensive product analysis:
 ```text
-site_content
-├── id (uuid)
-├── section_key (text) - unique identifier e.g. "header.tagline"
-├── content_type (enum) - "text" | "rich_text" | "image" | "json"
-├── content_value (text)
-├── is_draft (boolean)
-├── draft_value (text)
-├── updated_at (timestamptz)
-├── updated_by (uuid)
-└── notes (text) - admin notes
+product_reviews
+- id (uuid)
+- product_name (text)
+- company (text)
+- slug (text, unique)
+- category (text) - e.g., "Medical Device", "Software", "Consumer Product"
+- overall_rating (int) - 1-10 scale
+- summary (text) - brief overview
+- content (rich_text) - full analysis
+- user_experience_analysis (jsonb) - structured UX breakdown
+- pain_points (text[]) - list of frustrations
+- strengths (text[]) - what works well
+- technical_issues (text[]) - bugs/failures
+- improvement_suggestions (text[]) - detailed recommendations
+- future_recommendations (text[]) - strategic suggestions
+- competitor_comparison (jsonb) - optional comparison data
+- user_complaints (jsonb) - aggregated complaints
+- featured_image (text)
+- screenshots (text[])
+- published (boolean)
+- admin_notes (text)
+- created_at (timestamptz)
+- updated_at (timestamptz)
 ```
 
-### 3.2 Content Sections to Manage
+### New Files to Create
 
-**Header & Branding:**
-- Site name/logo
-- Navigation items
-- Contact email
+**src/pages/ProductReviews.tsx**
+Product Experience hub page:
+- Hero explaining the review methodology
+- Filter by product category
+- Grid of product review cards
+- Featured review section
 
-**Home Page:**
-- Hero tagline
-- Mission statement
-- Current projects ticker
-- Featured projects selection
+**src/pages/ProductReviewDetail.tsx**
+Full product review page with sections:
+- Product overview header with rating badge
+- Executive summary
+- User Experience Analysis breakdown:
+  - First impressions
+  - Daily usage experience
+  - Learning curve
+  - Accessibility
+  - Error handling
+- Pain Points & Frustrations (list with details)
+- What Works Well (strengths)
+- Technical Issues & Failures
+- Improvement Suggestions with priority
+- Future Recommendations
+- User Complaints Summary (aggregated data)
+- Competitor mention (if applicable)
 
-**About Page:**
-- Biography sections
-- Profile image
-- Services list
-- Areas of interest
-- Live projects showcase
+**src/pages/admin/ProductReviewEditor.tsx**
+Admin editor for product reviews with:
+- Product name and company inputs
+- Category selector
+- Rating slider (1-10)
+- Rich text content editor
+- Structured sections for each analysis area
+- Screenshot uploader
+- AI copy generation for sections
 
-**Future Plans:**
-- Learning goals (manage from DB)
-- Vision board items (manage from DB)
+### Dexcom G7 Case Study Content
 
-### 3.3 Content Editor Pages
-Create admin pages for each content type:
-- `/admin/content/site` - Header, footer, global content
-- `/admin/content/home` - Homepage sections
-- `/admin/content/about` - About page content
-- `/admin/projects` - Full project management
-- `/admin/articles` - Already exists, enhance
-- `/admin/updates` - Already exists, enhance
-- `/admin/artwork` - Artwork management
-- `/admin/skills` - Skills management
-- `/admin/learning-goals` - Learning goals
-- `/admin/future-plans` - Future plans items
+Pre-populate with comprehensive Dexcom G7 analysis:
+- **Product**: Dexcom G7 Continuous Glucose Monitor
+- **Company**: Dexcom
+- **Category**: Medical Device / Diabetes Technology
+- **Rating**: 6/10
 
----
+**Pain Points to include:**
+- Sensor adhesive issues (falls off prematurely)
+- Bluetooth connectivity drops
+- App crashes and data loss
+- 12-day sensor limit vs competitor 14-day
+- Warm-up time frustrations
+- Compression lows giving false readings
+- Alert fatigue from non-customizable alarms
+- Transmitter battery issues
+- Limited historical data access
+- Insurance and cost barriers
 
-## Phase 4: Enhanced Project Management
+**Technical Issues:**
+- Signal loss during sleep
+- App-hardware sync failures
+- iOS/Android disparity in features
+- Calibration accuracy variance
+- Integration issues with insulin pumps
 
-### 4.1 Project Editor Enhancements
-Update project editor to include:
-- Site URL input field
-- "Auto-analyze" button that:
-  - Fetches site via edge function
-  - Extracts screenshots automatically
-  - Generates AI description of features
-  - Identifies tech stack from source
-  - Creates comprehensive portfolio entry
+**Improvement Suggestions:**
+- Extended sensor life (14+ days)
+- Improved adhesive formulation
+- Better Bluetooth reliability
+- Customizable alert thresholds
+- Enhanced data export options
+- Improved compression low algorithm
+- Better third-party integration APIs
 
-### 4.2 Site Analyzer Edge Function
-Create `analyze-site` edge function:
-- Uses web scraping to fetch site content
-- Takes automated screenshots
-- Extracts meta information, colors, fonts
-- Detects technology stack
-- Generates AI summary of features and purpose
-- Returns structured data for project entry
+### Navigation Updates
 
-### 4.3 Project Fields to Add
+**src/components/layout/Header.tsx**
+- Add "Product Reviews" or "UX Reviews" to navigation
 
-```text
-projects (update)
-├── screenshots (text[]) - array of image URLs
-├── features (text[]) - detected features
-├── color_palette (text[]) - extracted colors
-├── case_study (rich_text) - full case study content
-├── problem_statement (text)
-├── solution_summary (text)
-├── results_metrics (jsonb)
-├── admin_notes (text)
-└── next_steps (text)
-```
-
----
-
-## Phase 5: AI Copy Generation
-
-### 5.1 AI Writing Edge Function
-Create `generate-copy` edge function using Lovable AI:
-- Accepts content type (project, article, update, etc.)
-- Accepts context (existing content, style preferences)
-- Returns generated copy options
-- Supports regeneration and variations
-
-### 5.2 AI Integration Points
-Add AI generation buttons to:
-- Project descriptions (short and long)
-- Article excerpts and content
-- Update content
-- Artwork descriptions
-- About page sections
-- Any text field in admin
-
-### 5.3 AI Copy Modal
-Create reusable AI copy modal with:
-- Tone selection (professional, creative, casual)
-- Length options (brief, standard, detailed)
-- Generate variations (3 options)
-- Edit inline before applying
-- Save as draft option
+**src/App.tsx**
+- Add routes: `/product-reviews`, `/product-reviews/:slug`
 
 ---
 
-## Phase 6: Draft System & Notes
+## Part 4: Complete Admin Content Management Pages
 
-### 6.1 Enhance All Content Tables
-Add to projects, articles, updates, artwork:
-- `draft_content` (jsonb) - stored draft state
-- `admin_notes` (text) - internal notes
-- `next_steps` (text) - planned improvements
-- `last_saved_draft` (timestamptz)
+### Missing Admin Pages to Create
 
-### 6.2 Admin Notes Section
-Create `/admin/notes` page with:
-- General brand notes
-- Traffic growth ideas
-- Content calendar
-- Feature wishlist
-- Build roadmap for each project
-- Marketing ideas
+Based on AdminLayout sidebar, these pages need creation:
 
-### 6.3 Notes Table
+**src/pages/admin/SiteContent.tsx** (/admin/content/site)
+- Edit site-wide content: header tagline, footer text, contact email
+- Logo upload capability
+- Navigation item management
+- Global settings
 
-```text
-admin_notes
-├── id (uuid)
-├── category (enum) - brand | marketing | content | traffic | ideas
-├── title (text)
-├── content (rich_text)
-├── priority (int)
-├── related_project_id (uuid, nullable)
-├── status (enum) - idea | planned | in_progress | done
-├── created_at (timestamptz)
-└── updated_at (timestamptz)
-```
+**src/pages/admin/HomeContent.tsx** (/admin/content/home)
+- Hero section text editing
+- Featured projects selector
+- Ticker content management
+- Mission statement editor
 
----
+**src/pages/admin/AboutContent.tsx** (/admin/content/about)
+- Biography sections editor
+- Profile image uploader
+- Services list management
+- Areas of interest CRUD
+- Quote/speech bubble content
 
-## Phase 7: Bulk Import System
+**src/pages/admin/ProjectsManager.tsx** (/admin/projects)
+- List all projects with status badges
+- Quick edit inline
+- "New Project" button
+- Delete/archive capability
+- Bulk actions
 
-### 7.1 Bulk Import Page
-Create `/admin/import` with:
-- Content type selector (artwork, articles, projects, updates)
-- CSV/JSON file upload
-- Mapping interface for fields
-- Preview before import
-- Validation and error reporting
-- Progress indicator
+**src/pages/admin/ProjectEditor.tsx** (/admin/projects/new, /admin/projects/:id/edit)
+- Full project form with all fields
+- Site URL input with "Auto-Analyze" button (uses analyze-site edge function)
+- Screenshot uploader (multiple)
+- Tech stack tag input
+- Features list builder
+- Problem/solution text areas
+- Case study rich text editor
+- Draft save functionality
+- AI copy generation for descriptions
+- Preview mode
 
-### 7.2 Import Templates
-Provide downloadable templates for:
-- Artwork bulk import (title, category, image_url, description)
-- Articles import (title, content, category, tags)
-- Updates import (title, content, tags)
-- Projects import (all fields)
+**src/pages/admin/ArtworkManager.tsx** (/admin/artwork)
+- Grid view of all artwork
+- Category filter
+- Upload new artwork
+- Bulk upload support
+- Quick edit title/description
+- Delete capability
 
-### 7.3 Image Bulk Upload
-For artwork specifically:
-- Multi-file image uploader
-- Auto-generate titles from filenames
-- Category assignment
-- AI-powered description generation option
+**src/pages/admin/ArtworkEditor.tsx** (/admin/artwork/new, /admin/artwork/:id/edit)
+- Image uploader
+- Title, description, category
+- AI description generation
+- Draft support
 
----
+**src/pages/admin/SkillsManager.tsx** (/admin/skills)
+- List all skills by category
+- Add/edit/delete skills
+- Proficiency slider
+- Icon selector
+- Reorder capability
 
-## Phase 8: Lead Generation System
+**src/pages/admin/LearningGoalsManager.tsx** (/admin/learning-goals)
+- CRUD for learning goals
+- Progress tracking
+- Funding goal management
+- Description editor
 
-### 8.1 Lead Database Tables
+**src/pages/admin/FuturePlansManager.tsx** (/admin/future-plans)
+- Vision items management
+- Roadmap editor
+- Status tracking
 
-```text
-leads
-├── id (uuid)
-├── name (text)
-├── company (text)
-├── email (text)
-├── website (text)
-├── linkedin (text)
-├── industry (text)
-├── company_size (text)
-├── location (text)
-├── match_score (int) - 0-100
-├── match_reasons (text[])
-├── source (text) - where found
-├── status (enum) - new | contacted | responded | converted | archived
-├── notes (text)
-├── last_contacted (timestamptz)
-├── created_at (timestamptz)
-└── updated_at (timestamptz)
-
-lead_searches
-├── id (uuid)
-├── search_query (text)
-├── filters (jsonb)
-├── results_count (int)
-├── executed_at (timestamptz)
-└── status (enum) - pending | completed | failed
-```
-
-### 8.2 Lead Finder Edge Function
-Create `find-leads` edge function:
-- Searches public business directories
-- Matches against your brand/skills profile
-- Scores relevance based on:
-  - Industry alignment (T1D, art, tech)
-  - Company size (small businesses, startups)
-  - Location preferences
-  - Service needs (web dev, design, content)
-- Returns structured lead data
-
-### 8.3 Lead Dashboard
-Create `/admin/leads` page with:
-- Lead search interface with filters
-- Industry/company size/location selectors
-- "Find Matches" button
+**src/pages/admin/LeadFinder.tsx** (/admin/leads)
+- Search interface with filters:
+  - Industry selector
+  - Company size
+  - Location
+  - Service needs
+- "Find Matches" button (uses find-leads edge function)
 - Results grid with match scores
-- Lead detail modal with:
-  - Full company analysis
-  - Contact information
-  - LinkedIn links
-  - Website analysis
-  - Suggested outreach approach
-- Status tracking pipeline
+- Lead detail modal
+- Status pipeline (new -> contacted -> responded -> converted)
+- Notes field
 - Export to CSV
-- Last search history
 
-### 8.4 Lead Update Scheduler
-Create scheduled edge function that:
-- Runs weekly or on-demand
-- Searches for new potential leads
-- Updates existing lead information
-- Notifies admin of new high-match leads
+**src/pages/admin/BulkImport.tsx** (/admin/import)
+- Content type selector (artwork, articles, projects, updates)
+- File upload (CSV/JSON)
+- Column mapping interface
+- Preview table
+- Import button with progress
+- Error reporting
+- Download templates
 
----
+**src/pages/admin/NotesManager.tsx** (/admin/notes)
+- Notes list by category (brand, marketing, content, traffic, ideas)
+- Rich text note editor
+- Priority sorting
+- Status tracking
+- Project linking
 
-## Phase 9: Account Management
+**src/pages/admin/AIWriter.tsx** (/admin/ai-writer)
+- Content type selector
+- Context input (existing content to improve)
+- Tone selector (professional, creative, casual)
+- Length selector
+- Generate button (uses generate-copy edge function)
+- Multiple variations display
+- Copy to clipboard
+- Apply to content button
 
-### 9.1 Admin Profile Settings
-Create `/admin/settings` page with:
-- Change password functionality
+**src/pages/admin/Settings.tsx** (/admin/settings)
+- Password change form
 - Email preferences
-- Notification settings
-- API keys management
-- Export all data
+- Profile settings
+- Data export (download all content as JSON)
 
-### 9.2 Activity Log Table
+**src/pages/admin/ActivityLog.tsx** (/admin/activity)
+- Paginated activity log table
+- Filter by action type
+- Filter by date range
+- Entity links
 
-```text
-admin_activity_log
-├── id (uuid)
-├── user_id (uuid)
-├── action (text) - e.g. "updated_project", "generated_ai_copy"
-├── entity_type (text)
-├── entity_id (uuid)
-├── details (jsonb)
-├── ip_address (text)
-└── created_at (timestamptz)
+### Route Updates
+
+**src/App.tsx**
+Add all new admin routes:
+```
+/admin/content/site
+/admin/content/home  
+/admin/content/about
+/admin/projects
+/admin/projects/new
+/admin/projects/:id/edit
+/admin/artwork
+/admin/artwork/new
+/admin/artwork/:id/edit
+/admin/skills
+/admin/learning-goals
+/admin/future-plans
+/admin/leads
+/admin/import
+/admin/notes
+/admin/ai-writer
+/admin/settings
+/admin/activity
+/admin/product-reviews
+/admin/product-reviews/new
+/admin/product-reviews/:id/edit
 ```
 
-### 9.3 Activity Dashboard
-Show in admin overview:
-- Recent actions with timestamps
-- Content modification history
-- Login history
-- AI usage stats
+---
+
+## Part 5: Add Remaining Artwork
+
+### Process
+User will need to upload additional graphic design images (stickers, product mockups). Once uploaded:
+
+1. Copy images to `src/assets/artwork/` with descriptive names
+2. Add entries to ArtGallery.tsx with category "graphic_design"
+3. Alternatively, use the new admin ArtworkManager to add via database
+
+### Placeholder Graphic Design Entries
+Prepare the UI to showcase:
+- Sticker designs (already have some)
+- Product mockups (mugs, cards)
+- Digital graphics
 
 ---
 
-## Phase 10: Navigation & UI
+## Part 6: Update Skills for New Interests
 
-### 10.1 Admin Sidebar Navigation
-```text
-Dashboard
-├── Overview (stats, activity)
-├── Analytics (traffic, clicks)
-│
-Content
-├── Site Settings (header, footer, global)
-├── Home Page
-├── About Page
-├── Projects
-├── Articles
-├── Updates
-├── Artwork
-├── Skills
-├── Learning Goals
-├── Future Plans
-│
-Tools
-├── AI Copy Generator
-├── Bulk Import
-├── Lead Finder
-├── Notes & Ideas
-│
-Account
-├── Settings
-├── Activity Log
-└── Sign Out
+**src/pages/Skills.tsx**
+Add new skill category:
+```typescript
+{
+  title: "Furniture Building & Woodworking",
+  color: "bg-amber-500",
+  skills: [
+    { name: "Furniture Design", proficiency: 75, icon: Hammer },
+    { name: "Woodworking", proficiency: 70, icon: Hammer },
+    { name: "Finishing & Staining", proficiency: 65, icon: Palette },
+    { name: "Power Tools", proficiency: 72, icon: Wrench },
+  ],
+}
 ```
 
-### 10.2 Admin Layout Component
-Create `AdminLayout` with:
-- Collapsible sidebar
-- Top bar with quick actions
-- Notification center
-- Search across all content
-
----
-
-## Technical Implementation Details
-
-### Edge Functions to Create
-
-1. **analyze-site** - Fetches and analyzes websites
-2. **generate-copy** - AI copy generation via Lovable AI
-3. **find-leads** - Lead discovery and matching
-4. **geolocate-ip** - Visitor location lookup
-5. **update-leads** - Scheduled lead refresh
-
-### New Components
-
-1. `AdminLayout.tsx` - Dashboard wrapper
-2. `AdminSidebar.tsx` - Navigation sidebar
-3. `ContentEditor.tsx` - Generic content editor
-4. `AIWriterModal.tsx` - AI copy generation interface
-5. `BulkImporter.tsx` - Import wizard
-6. `LeadCard.tsx` - Lead display component
-7. `AnalyticsChart.tsx` - Traffic visualization
-8. `DraftIndicator.tsx` - Shows draft status
-9. `NotesEditor.tsx` - Admin notes interface
-10. `useAnalytics.tsx` - Tracking hook
-
-### New Pages (in /admin/)
-
-1. `Dashboard.tsx` - Main overview
-2. `Analytics.tsx` - Traffic analytics
-3. `SiteContent.tsx` - Global content
-4. `HomeContent.tsx` - Home page editor
-5. `AboutContent.tsx` - About page editor
-6. `ProjectEditor.tsx` - Enhanced project editor
-7. `ArtworkManager.tsx` - Artwork CRUD
-8. `SkillsManager.tsx` - Skills CRUD
-9. `LearningGoalsManager.tsx` - Learning goals
-10. `FuturePlansManager.tsx` - Future plans
-11. `BulkImport.tsx` - Import interface
-12. `LeadFinder.tsx` - Lead generation
-13. `Notes.tsx` - Admin notes
-14. `Settings.tsx` - Account settings
-15. `ActivityLog.tsx` - Action history
-
----
-
-## Database Migrations Required
-
-1. Create `page_views` table
-2. Create `link_clicks` table
-3. Create `sessions` table
-4. Create `site_content` table
-5. Create `admin_notes` table
-6. Create `leads` table
-7. Create `lead_searches` table
-8. Create `admin_activity_log` table
-9. Update `projects` table with new fields
-10. Update `articles`, `updates`, `artwork` with draft fields
-11. Add admin role for specific email
-12. RLS policies for all new tables (admin only)
+Add to Areas of Interest grid:
+- "Furniture Building"
+- "Craftsmanship"
 
 ---
 
 ## Implementation Order
 
-1. **Week 1**: Admin setup, dashboard layout, basic navigation
-2. **Week 2**: Content management for all sections
-3. **Week 3**: Analytics tracking and visualization
-4. **Week 4**: AI integration and copy generation
-5. **Week 5**: Project analyzer and bulk import
-6. **Week 6**: Lead generation system
-7. **Week 7**: Notes, drafts, and refinements
-8. **Week 8**: Testing, polish, and documentation
+### Phase 1: Database & Core Setup
+1. Add `product_reviews` table migration
+2. Update writing_category enum
+
+### Phase 2: Project Detail Pages  
+3. Create ProjectDetail.tsx
+4. Update Projects.tsx with links
+5. Add route
+
+### Phase 3: Product Reviews
+6. Create ProductReviews.tsx
+7. Create ProductReviewDetail.tsx
+8. Create admin ProductReviewEditor.tsx
+9. Add Dexcom G7 seed data
+10. Update navigation
+
+### Phase 4: Admin Pages (Priority Order)
+11. ProjectsManager.tsx & ProjectEditor.tsx
+12. ArtworkManager.tsx & ArtworkEditor.tsx
+13. LeadFinder.tsx
+14. AIWriter.tsx
+15. BulkImport.tsx
+16. SkillsManager.tsx
+17. LearningGoalsManager.tsx
+18. FuturePlansManager.tsx
+19. NotesManager.tsx
+20. SiteContent.tsx
+21. HomeContent.tsx
+22. AboutContent.tsx
+23. Settings.tsx
+24. ActivityLog.tsx
+
+### Phase 5: Content Updates
+25. Add furniture building to About.tsx interests
+26. Add furniture building to Skills.tsx
+27. Add graphic design placeholder entries
+
+### Phase 6: Route Updates
+28. Add all new routes to App.tsx
 
 ---
 
-## Security Considerations
+## Files Summary
 
-- All admin routes protected by `has_role()` check
-- RLS policies restrict all new tables to admin only
-- Activity logging for audit trail
-- Rate limiting on AI and lead finding endpoints
-- Secure password change with email verification
-- Session management with proper token handling
+### New Files (24)
+- src/pages/ProjectDetail.tsx
+- src/pages/ProductReviews.tsx
+- src/pages/ProductReviewDetail.tsx
+- src/pages/admin/ProductReviewEditor.tsx
+- src/pages/admin/SiteContent.tsx
+- src/pages/admin/HomeContent.tsx
+- src/pages/admin/AboutContent.tsx
+- src/pages/admin/ProjectsManager.tsx
+- src/pages/admin/ProjectEditor.tsx
+- src/pages/admin/ArtworkManager.tsx
+- src/pages/admin/ArtworkEditor.tsx
+- src/pages/admin/SkillsManager.tsx
+- src/pages/admin/LearningGoalsManager.tsx
+- src/pages/admin/FuturePlansManager.tsx
+- src/pages/admin/LeadFinder.tsx
+- src/pages/admin/BulkImport.tsx
+- src/pages/admin/NotesManager.tsx
+- src/pages/admin/AIWriter.tsx
+- src/pages/admin/Settings.tsx
+- src/pages/admin/ActivityLog.tsx
+- supabase/migrations/[timestamp]_product_reviews.sql
+
+### Modified Files (6)
+- src/pages/About.tsx (add furniture interest)
+- src/pages/Skills.tsx (add furniture skills + interest)
+- src/pages/Projects.tsx (make clickable)
+- src/components/layout/Header.tsx (add Product Reviews nav)
+- src/App.tsx (add all new routes)
+- src/integrations/supabase/types.ts (auto-generated after migration)
+
+---
+
+## Technical Notes
+
+### Edge Functions Already Available
+- `analyze-site` - For auto-analyzing project URLs
+- `generate-copy` - For AI copy generation
+- `find-leads` - For lead discovery
+
+### Existing Components to Reuse
+- `AdminLayout` - Wrapper for all admin pages
+- `RichTextEditor` - For content editing
+- `ComicPanel`, `PopButton`, `LikeButton` - Pop art UI components
+- `Input`, `Label`, `Select`, `Switch` - Form components
+
+### Database Tables Ready
+- `projects` - Has all fields needed
+- `artwork` - Ready for admin management
+- `skills` - Ready for admin management
+- `learning_goals` - Ready for admin management
+- `leads`, `lead_searches` - Ready for lead finder
+- `admin_notes` - Ready for notes manager
+- `admin_activity_log` - Ready for activity log
+- `site_content` - Ready for site settings
