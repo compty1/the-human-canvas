@@ -99,42 +99,53 @@ Format your response as JSON with these fields:
   "suggestedTags": []
 }`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { 
-            role: "system", 
-            content: "You are a portfolio content generator. Generate compelling, professional content for project entries. Always respond with valid JSON." 
-          },
-          { role: "user", content: analysisPrompt },
-        ],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const error = await aiResponse.text();
-      console.error("AI Gateway error:", error);
-      throw new Error(`AI analysis failed: ${aiResponse.status}`);
-    }
-
-    const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content || "{}";
+    let analysis: Record<string, unknown> = {};
     
-    // Parse AI response
-    let analysis;
     try {
-      // Extract JSON from response (in case there's extra text)
-      const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-      analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-    } catch {
-      console.error("Failed to parse AI response:", aiContent);
-      analysis = {};
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { 
+              role: "system", 
+              content: "You are a portfolio content generator. Generate compelling, professional content for project entries. Always respond with valid JSON." 
+            },
+            { role: "user", content: analysisPrompt },
+          ],
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("AI Gateway error:", aiResponse.status, errorText);
+        // Continue with empty analysis instead of throwing
+      } else {
+        const responseText = await aiResponse.text();
+        console.log("AI response text length:", responseText.length);
+        
+        if (responseText && responseText.trim()) {
+          try {
+            const aiData = JSON.parse(responseText);
+            const aiContent = aiData.choices?.[0]?.message?.content || "{}";
+            
+            // Extract JSON from response (in case there's extra text)
+            const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              analysis = JSON.parse(jsonMatch[0]);
+            }
+          } catch (parseError) {
+            console.error("Failed to parse AI response:", parseError);
+          }
+        }
+      }
+    } catch (aiError) {
+      console.error("AI request failed:", aiError);
+      // Continue with empty analysis
     }
 
     // Return response with fields matching ProjectEditor form exactly
@@ -143,16 +154,16 @@ Format your response as JSON with these fields:
         success: true,
         url,
         // Top-level fields for direct form mapping in ProjectEditor
-        title: analysis.title || titleMatch?.[1] || parsedUrl.hostname,
-        description: analysis.shortDescription || descriptionMatch?.[1] || "",
-        long_description: analysis.longDescription || "",
-        tech_stack: analysis.techStack?.length ? analysis.techStack : techStack,
-        features: analysis.features || [],
-        problem_statement: analysis.problemStatement || "",
-        solution_summary: analysis.solutionSummary || "",
+        title: (analysis.title as string) || titleMatch?.[1] || parsedUrl.hostname,
+        description: (analysis.shortDescription as string) || descriptionMatch?.[1] || "",
+        long_description: (analysis.longDescription as string) || "",
+        tech_stack: Array.isArray(analysis.techStack) && analysis.techStack.length > 0 ? analysis.techStack : techStack,
+        features: Array.isArray(analysis.features) ? analysis.features : [],
+        problem_statement: (analysis.problemStatement as string) || "",
+        solution_summary: (analysis.solutionSummary as string) || "",
         // Additional metadata
         metadata: {
-          title: titleMatch?.[1] || analysis.title || parsedUrl.hostname,
+          title: titleMatch?.[1] || (analysis.title as string) || parsedUrl.hostname,
           description: descriptionMatch?.[1] || "",
           ogImage: ogImageMatch?.[1] || null,
         },
