@@ -4,11 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Loader2, Link as LinkIcon, Sparkles, Plus, X } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Link as LinkIcon, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 const types = [
@@ -178,6 +179,19 @@ const FavoriteEditor = () => {
             </h1>
           </div>
         </div>
+
+        {/* Bulk Text Importer */}
+        <BulkTextImporter
+          contentType="favorite"
+          onImport={(data) => {
+            if (data.title) setForm(prev => ({ ...prev, title: String(data.title) }));
+            if (data.description) setForm(prev => ({ ...prev, description: String(data.description) }));
+            if (data.impact_statement) setForm(prev => ({ ...prev, impact_statement: String(data.impact_statement) }));
+            if (data.creator_name) setForm(prev => ({ ...prev, creator_name: String(data.creator_name) }));
+            if (data.type) setForm(prev => ({ ...prev, type: String(data.type) }));
+            if (data.tags) setForm(prev => ({ ...prev, tags: Array.isArray(data.tags) ? data.tags : [] }));
+          }}
+        />
 
         {/* Import from URL */}
         <ComicPanel className="p-6 bg-pop-cyan/10">

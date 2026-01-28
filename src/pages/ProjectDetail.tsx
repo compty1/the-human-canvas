@@ -77,9 +77,20 @@ const ProjectDetail = () => {
             </div>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-display gradient-text mb-6">
-            {project.title}
-          </h1>
+          <div className="flex items-center gap-4 mb-6">
+            {project.logo_url && (
+              <div className="w-16 h-16 bg-background border-4 border-foreground p-2 flex items-center justify-center flex-shrink-0">
+                <img 
+                  src={project.logo_url} 
+                  alt={`${project.title} logo`}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
+            <h1 className="text-5xl md:text-7xl font-display gradient-text">
+              {project.title}
+            </h1>
+          </div>
           
           <p className="text-xl font-sans max-w-3xl text-muted-foreground mb-8">
             {project.description}

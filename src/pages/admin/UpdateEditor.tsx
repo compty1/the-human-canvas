@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -218,6 +219,17 @@ const UpdateEditor = () => {
               </div>
             </div>
           </ComicPanel>
+
+          {/* Bulk Text Importer */}
+          <BulkTextImporter
+            contentType="update"
+            onImport={(data) => {
+              if (data.title) setTitle(String(data.title));
+              if (data.content) setContent(String(data.content));
+              if (data.excerpt) setExcerpt(String(data.excerpt));
+              if (data.tags) setTags(Array.isArray(data.tags) ? data.tags.join(", ") : String(data.tags));
+            }}
+          />
 
           {/* Form */}
           <div className="space-y-6">
