@@ -137,10 +137,20 @@ Format your response as JSON with these fields:
       analysis = {};
     }
 
+    // Return response with fields matching ProjectEditor form exactly
     return new Response(
       JSON.stringify({
         success: true,
         url,
+        // Top-level fields for direct form mapping in ProjectEditor
+        title: analysis.title || titleMatch?.[1] || parsedUrl.hostname,
+        description: analysis.shortDescription || descriptionMatch?.[1] || "",
+        long_description: analysis.longDescription || "",
+        tech_stack: analysis.techStack?.length ? analysis.techStack : techStack,
+        features: analysis.features || [],
+        problem_statement: analysis.problemStatement || "",
+        solution_summary: analysis.solutionSummary || "",
+        // Additional metadata
         metadata: {
           title: titleMatch?.[1] || analysis.title || parsedUrl.hostname,
           description: descriptionMatch?.[1] || "",

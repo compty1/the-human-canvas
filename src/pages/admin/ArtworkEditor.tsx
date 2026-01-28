@@ -3,11 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { ImageUploader } from "@/components/admin/ImageUploader";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Sparkles, Loader2, Image } from "lucide-react";
+import { Save, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const ArtworkEditor = () => {
@@ -132,17 +133,6 @@ const ArtworkEditor = () => {
           </div>
         </div>
 
-        {/* Preview */}
-        {form.image_url && (
-          <ComicPanel className="overflow-hidden">
-            <img 
-              src={form.image_url} 
-              alt={form.title || "Preview"}
-              className="w-full max-h-96 object-contain bg-muted"
-            />
-          </ComicPanel>
-        )}
-
         {/* Form */}
         <ComicPanel className="p-6">
           <div className="grid gap-4">
@@ -156,18 +146,13 @@ const ArtworkEditor = () => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="image_url">Image URL *</Label>
-              <Input
-                id="image_url"
-                value={form.image_url}
-                onChange={(e) => setForm(prev => ({ ...prev, image_url: e.target.value }))}
-                placeholder="https://..."
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Upload to storage or use an external URL
-              </p>
-            </div>
+            {/* Image Upload */}
+            <ImageUploader
+              value={form.image_url}
+              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+              label="Artwork Image *"
+              folder="artwork"
+            />
 
             <div>
               <Label htmlFor="category">Category</Label>

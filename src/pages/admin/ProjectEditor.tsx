@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,6 @@ import {
   Save, 
   ArrowLeft, 
   Sparkles, 
-  Globe,
   Plus,
   X,
   Loader2
@@ -34,6 +34,7 @@ const ProjectEditor = () => {
     image_url: "",
     tech_stack: [] as string[],
     features: [] as string[],
+    screenshots: [] as string[],
     problem_statement: "",
     solution_summary: "",
     case_study: "",
@@ -73,6 +74,7 @@ const ProjectEditor = () => {
         image_url: project.image_url || "",
         tech_stack: project.tech_stack || [],
         features: project.features || [],
+        screenshots: project.screenshots || [],
         problem_statement: project.problem_statement || "",
         solution_summary: project.solution_summary || "",
         case_study: project.case_study || "",
@@ -130,8 +132,11 @@ const ProjectEditor = () => {
           ...prev,
           title: data.title || prev.title,
           description: data.description || prev.description,
+          long_description: data.long_description || prev.long_description,
           tech_stack: data.tech_stack || prev.tech_stack,
           features: data.features || prev.features,
+          problem_statement: data.problem_statement || prev.problem_statement,
+          solution_summary: data.solution_summary || prev.solution_summary,
         }));
         toast.success("Site analyzed! Fields updated.");
       }
@@ -297,15 +302,22 @@ const ProjectEditor = () => {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="image_url">Featured Image URL</Label>
-              <Input
-                id="image_url"
-                value={form.image_url}
-                onChange={(e) => setForm(prev => ({ ...prev, image_url: e.target.value }))}
-                placeholder="https://..."
-              />
-            </div>
+            {/* Featured Image Upload */}
+            <ImageUploader
+              value={form.image_url}
+              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+              label="Featured Image"
+              folder="projects"
+            />
+
+            {/* Screenshots Gallery */}
+            <MultiImageUploader
+              value={form.screenshots}
+              onChange={(urls) => setForm(prev => ({ ...prev, screenshots: urls }))}
+              label="Screenshots"
+              folder="projects/screenshots"
+              maxImages={8}
+            />
           </div>
         </ComicPanel>
 

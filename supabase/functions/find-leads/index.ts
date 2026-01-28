@@ -25,7 +25,7 @@ serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -35,17 +35,19 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify admin role
+    // Get current user using getUser() instead of deprecated getClaims()
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claims?.claims) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error("Auth error:", userError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claims.claims.sub;
+    const userId = user.id;
     const { data: isAdmin } = await supabase.rpc("has_role", {
       _user_id: userId,
       _role: "admin",
@@ -54,7 +56,7 @@ serve(async (req) => {
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403,
-        headers: corsHeaders,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -150,6 +152,28 @@ Make these realistic and relevant. Focus on companies that genuinely need creati
       results_count: leads.length,
       status: "completed",
     });
+
+    // Save the generated leads to the database
+    if (leads.length > 0) {
+      const leadsToInsert = leads.map((lead: any) => ({
+        name: lead.name || null,
+        company: lead.company || lead.name,
+        industry: lead.industry || null,
+        company_size: lead.company_size || null,
+        location: lead.location || null,
+        match_score: lead.match_score || null,
+        match_reasons: lead.match_reasons || [],
+        website: lead.website || null,
+        linkedin: lead.linkedin || null,
+        source: "ai_generated",
+        status: "new",
+      }));
+
+      const { error: insertError } = await supabase.from("leads").insert(leadsToInsert);
+      if (insertError) {
+        console.error("Failed to save leads:", insertError);
+      }
+    }
 
     return new Response(
       JSON.stringify({
