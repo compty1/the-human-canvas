@@ -54,6 +54,22 @@ serve(async (req) => {
     const descriptionMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
     const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
     
+    // Extract favicon/logo with priority order
+    const appleTouchIconMatch = html.match(/<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
+    const faviconLargeMatch = html.match(/<link[^>]*rel=["']icon["'][^>]*sizes=["'](?:192|180|152|144|128|96|72|64|48|32)x[^"']*["'][^>]*href=["']([^"']+)["']/i);
+    const faviconMatch = html.match(/<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["']/i);
+    
+    // Resolve logo URL (prefer larger icons)
+    let logoUrl = appleTouchIconMatch?.[1] || faviconLargeMatch?.[1] || faviconMatch?.[1];
+    if (logoUrl && !logoUrl.startsWith("http")) {
+      // Make relative URLs absolute
+      logoUrl = new URL(logoUrl, url).href;
+    }
+    if (!logoUrl) {
+      // Fallback to /favicon.ico
+      logoUrl = new URL("/favicon.ico", url).href;
+    }
+    
     // Extract colors (simplified - looks for hex codes)
     const colorMatches = html.match(/#[0-9A-Fa-f]{6}/g) || [];
     const uniqueColors = [...new Set(colorMatches)].slice(0, 10);
@@ -161,11 +177,13 @@ Format your response as JSON with these fields:
         features: Array.isArray(analysis.features) ? analysis.features : [],
         problem_statement: (analysis.problemStatement as string) || "",
         solution_summary: (analysis.solutionSummary as string) || "",
+        logo_url: logoUrl,
         // Additional metadata
         metadata: {
           title: titleMatch?.[1] || (analysis.title as string) || parsedUrl.hostname,
           description: descriptionMatch?.[1] || "",
           ogImage: ogImageMatch?.[1] || null,
+          logo: logoUrl,
         },
         colorPalette: uniqueColors,
         detectedTech: techStack,

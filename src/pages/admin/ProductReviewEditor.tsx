@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { RichTextEditor } from "@/components/editor";
 import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -204,6 +205,26 @@ const ProductReviewEditor = () => {
             Save
           </PopButton>
         </div>
+
+        {/* Bulk Text Import */}
+        <ComicPanel className="p-6">
+          <h2 className="text-xl font-display mb-4">Bulk Text Import</h2>
+          <BulkTextImporter
+            contentType="product_review"
+            onImport={(data) => {
+              setFormData(prev => ({
+                ...prev,
+                product_name: (data.product_name as string) || prev.product_name,
+                company: (data.company as string) || prev.company,
+                summary: (data.summary as string) || prev.summary,
+                content: (data.content as string) || prev.content,
+                strengths: (data.strengths as string[]) || prev.strengths,
+                pain_points: (data.pain_points as string[]) || prev.pain_points,
+                improvement_suggestions: (data.improvement_suggestions as string[]) || prev.improvement_suggestions,
+              }));
+            }}
+          />
+        </ComicPanel>
 
         {/* AI Auto-Analyze */}
         <ComicPanel className="p-6 bg-pop-cyan/10">

@@ -1,15 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogIn } from "lucide-react";
+import { Menu, X, User, LogIn, Settings } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { PopButton } from "@/components/pop-art";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
   { label: "Art", href: "/art" },
   { label: "Projects", href: "/projects" },
   { label: "Client Work", href: "/client-work" },
   { label: "UX Reviews", href: "/product-reviews" },
+  { label: "Experiments", href: "/experiments" },
+  { label: "Store", href: "/store" },
   { label: "Writing", href: "/writing" },
   { label: "Favorites", href: "/favorites" },
   { label: "Inspirations", href: "/inspirations" },
@@ -22,6 +26,21 @@ export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
+
+  // Check if user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ["is-admin-header", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      });
+      return data;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b-4 border-foreground">
@@ -56,6 +75,15 @@ export const Header = () => {
           <div className="hidden lg:flex items-center gap-2">
             {user ? (
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="flex items-center gap-2 px-3 py-2 bg-pop-yellow border-2 border-foreground hover:bg-pop-yellow/80 transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="font-bold text-sm">Admin</span>
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
@@ -116,6 +144,15 @@ export const Header = () => {
             <div className="mt-4 pt-4 border-t-2 border-foreground">
               {user ? (
                 <div className="space-y-2">
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="block py-2 font-bold text-pop-yellow"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admin Panel
+                    </Link>
+                  )}
                   <Link
                     to="/profile"
                     className="block py-2 font-bold"
