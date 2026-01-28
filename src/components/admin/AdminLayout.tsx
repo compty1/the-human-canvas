@@ -28,6 +28,7 @@ import {
   Menu,
   Home,
   Info,
+  Star,
 } from "lucide-react";
 import { PopButton } from "@/components/pop-art";
 import { toast } from "@/hooks/use-toast";
@@ -64,6 +65,7 @@ const navGroups: NavGroup[] = [
       { label: "Projects", href: "/admin/projects", icon: FolderKanban },
       { label: "Articles", href: "/admin/articles", icon: Newspaper },
       { label: "Updates", href: "/admin/updates", icon: MessageSquare },
+      { label: "Product Reviews", href: "/admin/product-reviews", icon: Star },
       { label: "Artwork", href: "/admin/artwork", icon: Image },
       { label: "Skills", href: "/admin/skills", icon: Palette },
       { label: "Learning Goals", href: "/admin/learning-goals", icon: Target },
