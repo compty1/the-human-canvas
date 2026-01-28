@@ -14,14 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_notes: {
+        Row: {
+          category: Database["public"]["Enums"]["note_category"]
+          content: string | null
+          created_at: string
+          id: string
+          priority: number | null
+          related_project_id: string | null
+          status: Database["public"]["Enums"]["note_status"] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["note_category"]
+          content?: string | null
+          created_at?: string
+          id?: string
+          priority?: number | null
+          related_project_id?: string | null
+          status?: Database["public"]["Enums"]["note_status"] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["note_category"]
+          content?: string | null
+          created_at?: string
+          id?: string
+          priority?: number | null
+          related_project_id?: string | null
+          status?: Database["public"]["Enums"]["note_status"] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notes_related_project_id_fkey"
+            columns: ["related_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       articles: {
         Row: {
+          admin_notes: string | null
           category: Database["public"]["Enums"]["writing_category"]
           content: string | null
           created_at: string
+          draft_content: Json | null
           excerpt: string | null
           featured_image: string | null
           id: string
+          last_saved_draft: string | null
+          next_steps: string | null
           published: boolean | null
           reading_time_minutes: number | null
           slug: string
@@ -30,12 +111,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_notes?: string | null
           category: Database["public"]["Enums"]["writing_category"]
           content?: string | null
           created_at?: string
+          draft_content?: Json | null
           excerpt?: string | null
           featured_image?: string | null
           id?: string
+          last_saved_draft?: string | null
+          next_steps?: string | null
           published?: boolean | null
           reading_time_minutes?: number | null
           slug: string
@@ -44,12 +129,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_notes?: string | null
           category?: Database["public"]["Enums"]["writing_category"]
           content?: string | null
           created_at?: string
+          draft_content?: Json | null
           excerpt?: string | null
           featured_image?: string | null
           id?: string
+          last_saved_draft?: string | null
+          next_steps?: string | null
           published?: boolean | null
           reading_time_minutes?: number | null
           slug?: string
@@ -61,25 +150,31 @@ export type Database = {
       }
       artwork: {
         Row: {
+          admin_notes: string | null
           category: string | null
           created_at: string
           description: string | null
+          draft_content: Json | null
           id: string
           image_url: string
           title: string
         }
         Insert: {
+          admin_notes?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
+          draft_content?: Json | null
           id?: string
           image_url: string
           title: string
         }
         Update: {
+          admin_notes?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
+          draft_content?: Json | null
           id?: string
           image_url?: string
           title?: string
@@ -119,6 +214,93 @@ export type Database = {
           stripe_payment_id?: string | null
           target_id?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      lead_searches: {
+        Row: {
+          executed_at: string
+          filters: Json | null
+          id: string
+          results_count: number | null
+          search_query: string | null
+          status: Database["public"]["Enums"]["search_status"] | null
+        }
+        Insert: {
+          executed_at?: string
+          filters?: Json | null
+          id?: string
+          results_count?: number | null
+          search_query?: string | null
+          status?: Database["public"]["Enums"]["search_status"] | null
+        }
+        Update: {
+          executed_at?: string
+          filters?: Json | null
+          id?: string
+          results_count?: number | null
+          search_query?: string | null
+          status?: Database["public"]["Enums"]["search_status"] | null
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          company: string | null
+          company_size: string | null
+          created_at: string
+          email: string | null
+          id: string
+          industry: string | null
+          last_contacted: string | null
+          linkedin: string | null
+          location: string | null
+          match_reasons: string[] | null
+          match_score: number | null
+          name: string | null
+          notes: string | null
+          source: string | null
+          status: Database["public"]["Enums"]["lead_status"] | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          company?: string | null
+          company_size?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          industry?: string | null
+          last_contacted?: string | null
+          linkedin?: string | null
+          location?: string | null
+          match_reasons?: string[] | null
+          match_score?: number | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"] | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          company?: string | null
+          company_size?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          industry?: string | null
+          last_contacted?: string | null
+          linkedin?: string | null
+          location?: string | null
+          match_reasons?: string[] | null
+          match_score?: number | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: Database["public"]["Enums"]["lead_status"] | null
+          updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -176,6 +358,81 @@ export type Database = {
         }
         Relationships: []
       }
+      link_clicks: {
+        Row: {
+          id: string
+          link_text: string | null
+          link_url: string
+          page_path: string
+          session_id: string
+          timestamp: string
+          visitor_id: string
+        }
+        Insert: {
+          id?: string
+          link_text?: string | null
+          link_url: string
+          page_path: string
+          session_id: string
+          timestamp?: string
+          visitor_id: string
+        }
+        Update: {
+          id?: string
+          link_text?: string | null
+          link_url?: string
+          page_path?: string
+          session_id?: string
+          timestamp?: string
+          visitor_id?: string
+        }
+        Relationships: []
+      }
+      page_views: {
+        Row: {
+          city: string | null
+          country: string | null
+          device_type: string | null
+          id: string
+          page_path: string
+          referrer: string | null
+          screen_size: string | null
+          session_id: string
+          time_on_page_seconds: number | null
+          timestamp: string
+          user_agent: string | null
+          visitor_id: string
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          page_path: string
+          referrer?: string | null
+          screen_size?: string | null
+          session_id: string
+          time_on_page_seconds?: number | null
+          timestamp?: string
+          user_agent?: string | null
+          visitor_id: string
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          page_path?: string
+          referrer?: string | null
+          screen_size?: string | null
+          session_id?: string
+          time_on_page_seconds?: number | null
+          timestamp?: string
+          user_agent?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -208,49 +465,154 @@ export type Database = {
       }
       projects: {
         Row: {
+          admin_notes: string | null
+          case_study: string | null
+          color_palette: string[] | null
           created_at: string
           description: string | null
+          draft_content: Json | null
           external_url: string | null
+          features: string[] | null
           funding_goal: number | null
           funding_raised: number | null
           id: string
           image_url: string | null
+          last_saved_draft: string | null
           long_description: string | null
+          next_steps: string | null
+          problem_statement: string | null
+          results_metrics: Json | null
+          screenshots: string[] | null
           slug: string
+          solution_summary: string | null
           status: Database["public"]["Enums"]["project_status"]
           tech_stack: string[] | null
           title: string
           updated_at: string
         }
         Insert: {
+          admin_notes?: string | null
+          case_study?: string | null
+          color_palette?: string[] | null
           created_at?: string
           description?: string | null
+          draft_content?: Json | null
           external_url?: string | null
+          features?: string[] | null
           funding_goal?: number | null
           funding_raised?: number | null
           id?: string
           image_url?: string | null
+          last_saved_draft?: string | null
           long_description?: string | null
+          next_steps?: string | null
+          problem_statement?: string | null
+          results_metrics?: Json | null
+          screenshots?: string[] | null
           slug: string
+          solution_summary?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           tech_stack?: string[] | null
           title: string
           updated_at?: string
         }
         Update: {
+          admin_notes?: string | null
+          case_study?: string | null
+          color_palette?: string[] | null
           created_at?: string
           description?: string | null
+          draft_content?: Json | null
           external_url?: string | null
+          features?: string[] | null
           funding_goal?: number | null
           funding_raised?: number | null
           id?: string
           image_url?: string | null
+          last_saved_draft?: string | null
           long_description?: string | null
+          next_steps?: string | null
+          problem_statement?: string | null
+          results_metrics?: Json | null
+          screenshots?: string[] | null
           slug?: string
+          solution_summary?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           tech_stack?: string[] | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sessions: {
+        Row: {
+          city: string | null
+          country: string | null
+          ended_at: string | null
+          entry_page: string | null
+          exit_page: string | null
+          id: string
+          pages_viewed: number | null
+          started_at: string
+          visitor_id: string
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          ended_at?: string | null
+          entry_page?: string | null
+          exit_page?: string | null
+          id: string
+          pages_viewed?: number | null
+          started_at?: string
+          visitor_id: string
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          ended_at?: string | null
+          entry_page?: string | null
+          exit_page?: string | null
+          id?: string
+          pages_viewed?: number | null
+          started_at?: string
+          visitor_id?: string
+        }
+        Relationships: []
+      }
+      site_content: {
+        Row: {
+          content_type: Database["public"]["Enums"]["content_type"]
+          content_value: string | null
+          draft_value: string | null
+          id: string
+          is_draft: boolean | null
+          notes: string | null
+          section_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content_type?: Database["public"]["Enums"]["content_type"]
+          content_value?: string | null
+          draft_value?: string | null
+          id?: string
+          is_draft?: boolean | null
+          notes?: string | null
+          section_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content_type?: Database["public"]["Enums"]["content_type"]
+          content_value?: string | null
+          draft_value?: string | null
+          id?: string
+          is_draft?: boolean | null
+          notes?: string | null
+          section_key?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -283,10 +645,14 @@ export type Database = {
       }
       updates: {
         Row: {
+          admin_notes: string | null
           content: string | null
           created_at: string
+          draft_content: Json | null
           excerpt: string | null
           id: string
+          last_saved_draft: string | null
+          next_steps: string | null
           published: boolean | null
           slug: string
           tags: string[] | null
@@ -294,10 +660,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_notes?: string | null
           content?: string | null
           created_at?: string
+          draft_content?: Json | null
           excerpt?: string | null
           id?: string
+          last_saved_draft?: string | null
+          next_steps?: string | null
           published?: boolean | null
           slug: string
           tags?: string[] | null
@@ -305,10 +675,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_notes?: string | null
           content?: string | null
           created_at?: string
+          draft_content?: Json | null
           excerpt?: string | null
           id?: string
+          last_saved_draft?: string | null
+          next_steps?: string | null
           published?: boolean | null
           slug?: string
           tags?: string[] | null
@@ -357,7 +731,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      content_type: "text" | "rich_text" | "image" | "json"
+      lead_status: "new" | "contacted" | "responded" | "converted" | "archived"
+      note_category: "brand" | "marketing" | "content" | "traffic" | "ideas"
+      note_status: "idea" | "planned" | "in_progress" | "done"
       project_status: "live" | "in_progress" | "planned"
+      search_status: "pending" | "completed" | "failed"
       writing_category:
         | "philosophy"
         | "narrative"
@@ -492,7 +871,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      content_type: ["text", "rich_text", "image", "json"],
+      lead_status: ["new", "contacted", "responded", "converted", "archived"],
+      note_category: ["brand", "marketing", "content", "traffic", "ideas"],
+      note_status: ["idea", "planned", "in_progress", "done"],
       project_status: ["live", "in_progress", "planned"],
+      search_status: ["pending", "completed", "failed"],
       writing_category: [
         "philosophy",
         "narrative",
