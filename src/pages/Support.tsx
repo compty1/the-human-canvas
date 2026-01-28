@@ -1,60 +1,87 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
-import { ComicPanel, PopButton, SpeechBubble } from "@/components/pop-art";
-import { Heart, Gift, GraduationCap, Users, Check } from "lucide-react";
+import { ComicPanel, PopButton } from "@/components/pop-art";
+import { FundingCard, FundingModal } from "@/components/funding";
+import { supabase } from "@/integrations/supabase/client";
+import { Heart, Gift, GraduationCap, Users, Check, Code, Beaker, Package, Loader2 } from "lucide-react";
 
-const donationAmounts = [5, 10, 25, 50, 100];
-
-interface SponsorableProject {
+interface FundingCampaign {
   id: string;
+  campaign_type: string;
   title: string;
-  description: string;
-  fundingGoal: number;
-  fundingRaised: number;
+  description: string | null;
+  target_amount: number;
+  raised_amount: number;
+  project_id: string | null;
+  status: string;
 }
 
-const sponsorableProjects: SponsorableProject[] = [
-  {
-    id: "t1d-compass",
-    title: "T1D Compass",
-    description: "Type 1 Diabetes management and community tool",
-    fundingGoal: 5000,
-    fundingRaised: 1250,
-  },
-  {
-    id: "pulse-network",
-    title: "Pulse Network",
-    description: "Social change organizing platform",
-    fundingGoal: 7500,
-    fundingRaised: 2100,
-  },
-  {
-    id: "ux-lens",
-    title: "UX Lens",
-    description: "Product experience case studies",
-    fundingGoal: 3000,
-    fundingRaised: 450,
-  },
-];
+interface LearningGoal {
+  id: string;
+  title: string;
+  description: string | null;
+  target_amount: number | null;
+  raised_amount: number | null;
+  progress_percent: number | null;
+}
 
-const learningGoals = [
-  { id: "ai-ml", title: "AI/ML Course", amount: 500 },
-  { id: "ux-cert", title: "UX Certification", amount: 800 },
-  { id: "3d-art", title: "3D Modeling", amount: 400 },
-];
-
-const thankYouWall = [
-  { name: "Anonymous", message: "Keep creating!", amount: 25 },
-  { name: "Sarah M.", message: "Love your T1D work", amount: 50 },
-  { name: "Tech Enthusiast", message: "Supporting innovation", amount: 100 },
-  { name: "Art Lover", message: "Beautiful portraits!", amount: 10 },
-];
+const donationAmounts = [5, 10, 25, 50, 100];
 
 const Support = () => {
   const [selectedDonation, setSelectedDonation] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [selectedLearning, setSelectedLearning] = useState<string | null>(null);
+  const [generalDonationOpen, setGeneralDonationOpen] = useState(false);
+  const [learningModalOpen, setLearningModalOpen] = useState(false);
+
+  // Fetch funding campaigns
+  const { data: campaigns = [], isLoading: loadingCampaigns } = useQuery({
+    queryKey: ["funding-campaigns"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("funding_campaigns")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as FundingCampaign[];
+    },
+  });
+
+  // Fetch learning goals
+  const { data: learningGoals = [], isLoading: loadingGoals } = useQuery({
+    queryKey: ["learning-goals-support"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("learning_goals")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as LearningGoal[];
+    },
+  });
+
+  // Fetch thank you wall
+  const { data: contributions = [] } = useQuery({
+    queryKey: ["thank-you-wall"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contributions")
+        .select("amount, message, created_at")
+        .eq("show_publicly", true)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Group campaigns by type
+  const developmentCampaigns = campaigns.filter(c => c.campaign_type === "development");
+  const researchCampaigns = campaigns.filter(c => c.campaign_type === "research");
+
+  const selectedLearningGoal = learningGoals.find(g => g.id === selectedLearning);
 
   return (
     <Layout>
@@ -72,7 +99,7 @@ const Support = () => {
         </div>
       </section>
 
-      {/* Donation Options */}
+      {/* Quick Donation */}
       <section className="py-16 screen-print">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-3 gap-8">
@@ -115,7 +142,11 @@ const Support = () => {
                 />
               </div>
 
-              <PopButton variant="primary" className="w-full justify-center">
+              <PopButton 
+                variant="primary" 
+                className="w-full justify-center"
+                onClick={() => setGeneralDonationOpen(true)}
+              >
                 <Heart className="w-4 h-4 mr-2" />
                 Donate{" "}
                 {selectedDonation
@@ -126,61 +157,50 @@ const Support = () => {
               </PopButton>
             </ComicPanel>
 
-            {/* Sponsor a Project */}
+            {/* Fund Development */}
             <ComicPanel className="p-6">
               <div className="flex items-center gap-3 mb-6">
-                <Users className="w-8 h-8 text-secondary" />
-                <h3 className="text-2xl font-display">Sponsor Project</h3>
+                <Code className="w-8 h-8 text-blue-600" />
+                <h3 className="text-2xl font-display">Fund Development</h3>
               </div>
               <p className="text-sm text-muted-foreground mb-6">
-                Fund a specific in-progress project.
+                Support the programming and development of active projects.
               </p>
 
-              <div className="space-y-3 mb-6">
-                {sponsorableProjects.map((project) => (
-                  <button
-                    key={project.id}
-                    onClick={() => setSelectedProject(project.id)}
-                    className={`w-full p-3 text-left border-2 border-foreground transition-all ${
-                      selectedProject === project.id
-                        ? "bg-secondary"
-                        : "bg-background hover:bg-muted"
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold">{project.title}</span>
-                      {selectedProject === project.id && (
-                        <Check className="w-5 h-5" />
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {project.description}
-                    </p>
-                    <div className="mt-2 h-2 bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-primary"
-                        style={{
-                          width: `${
-                            (project.fundingRaised / project.fundingGoal) * 100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <PopButton
-                variant="secondary"
-                className="w-full justify-center"
-                disabled={!selectedProject}
-              >
-                <Heart className="w-4 h-4 mr-2" />
-                Sponsor This Project
-              </PopButton>
+              {loadingCampaigns ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : developmentCampaigns.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No active development campaigns right now.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {developmentCampaigns.slice(0, 3).map((campaign) => {
+                    const progress = campaign.target_amount > 0 
+                      ? (campaign.raised_amount / campaign.target_amount) * 100 
+                      : 0;
+                    return (
+                      <div key={campaign.id} className="p-3 border-2 border-foreground bg-background">
+                        <div className="font-bold text-sm">{campaign.title}</div>
+                        <div className="mt-2 h-2 bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500"
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          ${campaign.raised_amount} / ${campaign.target_amount}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </ComicPanel>
 
-            {/* Fund a Class */}
+            {/* Fund Learning */}
             <ComicPanel className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <GraduationCap className="w-8 h-8 text-accent" />
@@ -190,29 +210,36 @@ const Support = () => {
                 Contribute to specific learning goals and courses.
               </p>
 
-              <div className="space-y-3 mb-6">
-                {learningGoals.map((goal) => (
-                  <button
-                    key={goal.id}
-                    onClick={() => setSelectedLearning(goal.id)}
-                    className={`w-full p-3 text-left border-2 border-foreground transition-all ${
-                      selectedLearning === goal.id
-                        ? "bg-accent"
-                        : "bg-background hover:bg-muted"
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold">{goal.title}</span>
-                      <span className="text-sm">${goal.amount}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {loadingGoals ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-3 mb-6">
+                  {learningGoals.slice(0, 3).map((goal) => (
+                    <button
+                      key={goal.id}
+                      onClick={() => setSelectedLearning(goal.id)}
+                      className={`w-full p-3 text-left border-2 border-foreground transition-all ${
+                        selectedLearning === goal.id
+                          ? "bg-accent"
+                          : "bg-background hover:bg-muted"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold">{goal.title}</span>
+                        <span className="text-sm">${goal.target_amount || 0}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <PopButton
                 variant="accent"
                 className="w-full justify-center"
                 disabled={!selectedLearning}
+                onClick={() => setLearningModalOpen(true)}
               >
                 <Heart className="w-4 h-4 mr-2" />
                 Fund This Course
@@ -221,6 +248,34 @@ const Support = () => {
           </div>
         </div>
       </section>
+
+      {/* Fund Research Section */}
+      {researchCampaigns.length > 0 && (
+        <section className="py-16 bg-muted">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center gap-3 mb-8">
+              <Beaker className="w-8 h-8 text-purple-600" />
+              <h2 className="text-4xl font-display">Fund Research</h2>
+            </div>
+            <p className="text-muted-foreground mb-8 max-w-2xl">
+              Support research initiatives that drive innovation and discovery.
+            </p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {researchCampaigns.map((campaign) => (
+                <FundingCard
+                  key={campaign.id}
+                  id={campaign.id}
+                  type="research"
+                  title={campaign.title}
+                  description={campaign.description || ""}
+                  targetAmount={campaign.target_amount}
+                  raisedAmount={campaign.raised_amount}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Thank You Wall */}
       <section className="py-16 bg-foreground text-background">
@@ -232,20 +287,28 @@ const Support = () => {
             Gratitude to everyone who has contributed to the journey. 💛
           </p>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {thankYouWall.map((contributor, index) => (
-              <div
-                key={index}
-                className="p-4 border-2 border-background text-center"
-              >
-                <div className="text-2xl font-display text-pop-cyan mb-2">
-                  ${contributor.amount}
+          {contributions.length === 0 ? (
+            <p className="text-center opacity-60">
+              Be the first to appear on the Thank You wall!
+            </p>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {contributions.map((contributor, index) => (
+                <div
+                  key={index}
+                  className="p-4 border-2 border-background text-center"
+                >
+                  <div className="text-2xl font-display text-pop-cyan mb-2">
+                    ${contributor.amount}
+                  </div>
+                  <div className="font-bold">Supporter</div>
+                  {contributor.message && (
+                    <p className="text-sm opacity-80 mt-1">"{contributor.message}"</p>
+                  )}
                 </div>
-                <div className="font-bold">{contributor.name}</div>
-                <p className="text-sm opacity-80 mt-1">"{contributor.message}"</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <p className="text-center text-sm opacity-60 mt-8">
             Want to appear here? Opt-in when you contribute!
@@ -253,7 +316,7 @@ const Support = () => {
         </div>
       </section>
 
-      {/* Why Support */}
+      {/* Where Your Support Goes */}
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
@@ -303,6 +366,27 @@ const Support = () => {
           </p>
         </div>
       </section>
+
+      {/* General Donation Modal */}
+      <FundingModal
+        open={generalDonationOpen}
+        onOpenChange={setGeneralDonationOpen}
+        title="Make a Donation"
+        description="Your contribution supports ongoing projects and creative work."
+        contributionType="general"
+      />
+
+      {/* Learning Goal Modal */}
+      {selectedLearningGoal && (
+        <FundingModal
+          open={learningModalOpen}
+          onOpenChange={setLearningModalOpen}
+          title={`Fund: ${selectedLearningGoal.title}`}
+          description={selectedLearningGoal.description || undefined}
+          targetId={selectedLearningGoal.id}
+          contributionType="research"
+        />
+      )}
     </Layout>
   );
 };

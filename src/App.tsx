@@ -43,11 +43,17 @@ import SiteContent from "./pages/admin/SiteContent";
 import HomeContent from "./pages/admin/HomeContent";
 import AboutContent from "./pages/admin/AboutContent";
 import FuturePlansManager from "./pages/admin/FuturePlansManager";
+import SuppliesManager from "./pages/admin/SuppliesManager";
+import ArticlesManager from "./pages/admin/ArticlesManager";
+import UpdatesManager from "./pages/admin/UpdatesManager";
 
 import UpdateEditor from "./pages/admin/UpdateEditor";
 import ArticleEditor from "./pages/admin/ArticleEditor";
 import Dashboard from "./pages/admin/Dashboard";
 import Analytics from "./pages/admin/Analytics";
+
+// Public pages
+import Supplies from "./pages/Supplies";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +88,7 @@ const App = () => (
               <Route path="/projects/:slug" element={<ProjectDetail />} />
               <Route path="/product-reviews" element={<ProductReviews />} />
               <Route path="/product-reviews/:slug" element={<ProductReviewDetail />} />
+              <Route path="/supplies" element={<Supplies />} />
               
               {/* Admin routes */}
               <Route path="/admin" element={<Dashboard />} />
@@ -111,6 +118,9 @@ const App = () => (
               <Route path="/admin/content/home" element={<HomeContent />} />
               <Route path="/admin/content/about" element={<AboutContent />} />
               <Route path="/admin/future-plans" element={<FuturePlansManager />} />
+              <Route path="/admin/supplies" element={<SuppliesManager />} />
+              <Route path="/admin/articles" element={<ArticlesManager />} />
+              <Route path="/admin/updates" element={<UpdatesManager />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

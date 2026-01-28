@@ -14,7 +14,9 @@ import {
   Sparkles, 
   Plus,
   X,
-  Loader2
+  Loader2,
+  Github,
+  Camera
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,6 +33,7 @@ const ProjectEditor = () => {
     long_description: "",
     status: "planned" as "live" | "in_progress" | "planned",
     external_url: "",
+    github_url: "",
     image_url: "",
     tech_stack: [] as string[],
     features: [] as string[],
@@ -40,11 +43,14 @@ const ProjectEditor = () => {
     case_study: "",
     funding_goal: "",
     admin_notes: "",
+    architecture_notes: "",
+    accessibility_notes: "",
   });
 
   const [newTech, setNewTech] = useState("");
   const [newFeature, setNewFeature] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzing, setAnalyzing] = useState<string>("");
+  const [capturingScreenshots, setCapturingScreenshots] = useState(false);
 
   // Load existing project
   const { data: project, isLoading } = useQuery({
@@ -71,6 +77,7 @@ const ProjectEditor = () => {
         long_description: project.long_description || "",
         status: project.status || "planned",
         external_url: project.external_url || "",
+        github_url: (project as Record<string, unknown>).github_url as string || "",
         image_url: project.image_url || "",
         tech_stack: project.tech_stack || [],
         features: project.features || [],
@@ -80,6 +87,8 @@ const ProjectEditor = () => {
         case_study: project.case_study || "",
         funding_goal: project.funding_goal?.toString() || "",
         admin_notes: project.admin_notes || "",
+        architecture_notes: (project as Record<string, unknown>).architecture_notes as string || "",
+        accessibility_notes: (project as Record<string, unknown>).accessibility_notes as string || "",
       });
     }
   }, [project]);
@@ -119,7 +128,7 @@ const ProjectEditor = () => {
       return;
     }
 
-    setAnalyzing(true);
+    setAnalyzing("site");
     try {
       const { data, error } = await supabase.functions.invoke("analyze-site", {
         body: { url: form.external_url },
@@ -144,7 +153,75 @@ const ProjectEditor = () => {
       toast.error("Failed to analyze site");
       console.error(error);
     } finally {
-      setAnalyzing(false);
+      setAnalyzing("");
+    }
+  };
+
+  const analyzeGitHub = async () => {
+    if (!form.github_url) {
+      toast.error("Please enter a GitHub URL first");
+      return;
+    }
+
+    setAnalyzing("github");
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-github", {
+        body: { url: form.github_url },
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        setForm(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          description: data.description || prev.description,
+          long_description: data.long_description || prev.long_description,
+          tech_stack: [...new Set([...prev.tech_stack, ...(data.tech_stack || [])])],
+          features: [...new Set([...prev.features, ...(data.features || [])])],
+          problem_statement: data.problem_statement || prev.problem_statement,
+          solution_summary: data.solution_summary || prev.solution_summary,
+          external_url: data.external_url || prev.external_url,
+        }));
+        toast.success("GitHub repository analyzed!");
+      }
+    } catch (error) {
+      toast.error("Failed to analyze GitHub repository");
+      console.error(error);
+    } finally {
+      setAnalyzing("");
+    }
+  };
+
+  const captureScreenshots = async () => {
+    const url = form.external_url || form.github_url;
+    if (!url) {
+      toast.error("Please enter a URL first");
+      return;
+    }
+
+    setCapturingScreenshots(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("capture-screenshots", {
+        body: { url },
+      });
+
+      if (error) throw error;
+
+      if (data?.screenshots && data.screenshots.length > 0) {
+        setForm(prev => ({
+          ...prev,
+          screenshots: [...new Set([...prev.screenshots, ...data.screenshots])],
+        }));
+        toast.success(`Captured ${data.screenshots.length} screenshots!`);
+      } else {
+        toast.info("No screenshots could be captured from this URL");
+      }
+    } catch (error) {
+      toast.error("Failed to capture screenshots");
+      console.error(error);
+    } finally {
+      setCapturingScreenshots(false);
     }
   };
 
@@ -204,28 +281,67 @@ const ProjectEditor = () => {
 
         {/* URL Analyzer */}
         <ComicPanel className="p-6 bg-pop-cyan/10">
-          <div className="flex items-end gap-4">
-            <div className="flex-grow">
-              <Label htmlFor="url">Project URL (for auto-analysis)</Label>
-              <Input
-                id="url"
-                value={form.external_url}
-                onChange={(e) => setForm(prev => ({ ...prev, external_url: e.target.value }))}
-                placeholder="https://yourproject.com"
-              />
+          <h2 className="text-xl font-display mb-4">Import & Analyze</h2>
+          <div className="grid gap-4">
+            <div className="flex items-end gap-4">
+              <div className="flex-grow">
+                <Label htmlFor="url">Project URL</Label>
+                <Input
+                  id="url"
+                  value={form.external_url}
+                  onChange={(e) => setForm(prev => ({ ...prev, external_url: e.target.value }))}
+                  placeholder="https://yourproject.com"
+                />
+              </div>
+              <PopButton onClick={analyzeUrl} disabled={!!analyzing}>
+                {analyzing === "site" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                Analyze Site
+              </PopButton>
             </div>
-            <PopButton onClick={analyzeUrl} disabled={analyzing}>
-              {analyzing ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 mr-2" />
-              )}
-              Auto-Analyze
-            </PopButton>
+            
+            <div className="flex items-end gap-4">
+              <div className="flex-grow">
+                <Label htmlFor="github_url">GitHub Repository URL</Label>
+                <Input
+                  id="github_url"
+                  value={form.github_url}
+                  onChange={(e) => setForm(prev => ({ ...prev, github_url: e.target.value }))}
+                  placeholder="https://github.com/user/repo"
+                />
+              </div>
+              <PopButton onClick={analyzeGitHub} disabled={!!analyzing}>
+                {analyzing === "github" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Github className="w-4 h-4 mr-2" />
+                )}
+                Import from GitHub
+              </PopButton>
+            </div>
+
+            <div>
+              <PopButton 
+                variant="secondary" 
+                size="sm" 
+                onClick={captureScreenshots} 
+                disabled={capturingScreenshots || (!form.external_url && !form.github_url)}
+              >
+                {capturingScreenshots ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4 mr-2" />
+                )}
+                Auto-Capture Screenshots
+              </PopButton>
+              <p className="text-xs text-muted-foreground mt-1">
+                Extract images from the project URL
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Enter the live URL and click analyze to auto-fill project details
-          </p>
         </ComicPanel>
 
         {/* Basic Info */}

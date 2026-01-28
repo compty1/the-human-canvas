@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, LikeButton } from "@/components/pop-art";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-// Original artwork
+// Fallback local artwork imports
 import moodboard1 from "@/assets/artwork/moodboard-1.png";
 import moodboard2 from "@/assets/artwork/moodboard-2.png";
 import nancySinatra from "@/assets/artwork/nancy-sinatra.png";
@@ -12,8 +14,6 @@ import zacPortrait from "@/assets/artwork/zac-portrait.png";
 import piece55 from "@/assets/artwork/piece-55.png";
 import piece56 from "@/assets/artwork/piece-56.png";
 import piece57 from "@/assets/artwork/piece-57.png";
-
-// New artwork - Photography
 import goldenHour from "@/assets/artwork/golden-hour.png";
 import sailboat from "@/assets/artwork/sailboat.png";
 import redBrick from "@/assets/artwork/red-brick.png";
@@ -21,8 +21,6 @@ import venicePalms from "@/assets/artwork/venice-palms.png";
 import cemeteryStone from "@/assets/artwork/cemetery-stone.png";
 import victorianMansion from "@/assets/artwork/victorian-mansion.png";
 import hollywoodScene from "@/assets/artwork/hollywood-scene.png";
-
-// New artwork - Digital/Colored
 import anarchist from "@/assets/artwork/anarchist.png";
 import harlequin from "@/assets/artwork/harlequin.png";
 import bandagedPortrait from "@/assets/artwork/bandaged-portrait.png";
@@ -36,150 +34,25 @@ interface ArtworkItem {
   likes: number;
 }
 
-const artworkData: ArtworkItem[] = [
-  // Photography - Future Artifacts
-  {
-    id: "golden-hour",
-    title: "Golden Hour",
-    description: "The sun descends over rolling hills - a future artifact of light and land. Each sunset is a fleeting document of our existence.",
-    image: goldenHour,
-    category: "photography",
-    likes: 34,
-  },
-  {
-    id: "sailboat",
-    title: "Sailboat at Dock",
-    description: "Two figures prepare for water - a moment of human activity frozen in time. Future beings will wonder about our vessels.",
-    image: sailboat,
-    category: "photography",
-    likes: 28,
-  },
-  {
-    id: "red-brick",
-    title: "Red Brick Cathedral",
-    description: "Architecture tells stories of those who built it. This artifact speaks of faith, craft, and the human need for the sacred.",
-    image: redBrick,
-    category: "photography",
-    likes: 45,
-  },
-  {
-    id: "venice-palms",
-    title: "Venice Palms",
-    description: "Silhouettes reaching skyward - California's iconic sentinels. These trees mark our era as clearly as columns marked Rome.",
-    image: venicePalms,
-    category: "photography",
-    likes: 31,
-  },
-  {
-    id: "cemetery-stone",
-    title: "The 1859 Stone",
-    description: "A gravestone from 1859 - the most literal artifact of humanity. Someone loved enough to carve a name in stone forever.",
-    image: cemeteryStone,
-    category: "photography",
-    likes: 52,
-  },
-  {
-    id: "victorian-mansion",
-    title: "Victorian Mansion",
-    description: "Architectural history captured in amber light. These walls have witnessed over a century of human stories.",
-    image: victorianMansion,
-    category: "photography",
-    likes: 39,
-  },
-  {
-    id: "hollywood-scene",
-    title: "Hollywood Belief",
-    description: "Street culture and belief systems intersecting. A document of how we spread ideas in public spaces.",
-    image: hollywoodScene,
-    category: "photography",
-    likes: 27,
-  },
-  
-  // Digital Art - Colored
-  {
-    id: "anarchist",
-    title: "The Anarchist",
-    description: "Pop art portrait with crown and protest - social commentary through bold color. Inspired by Brett Helquist's narrative intensity.",
-    image: anarchist,
-    category: "colored",
-    likes: 67,
-  },
-  {
-    id: "harlequin",
-    title: "The Harlequin",
-    description: "Masked identity with heterochromia - the duality of self. We all wear masks; some choose more interesting ones.",
-    image: harlequin,
-    category: "colored",
-    likes: 58,
-  },
-  {
-    id: "bandaged-portrait",
-    title: "Bandaged Portrait",
-    description: "Expression through imperfection - the beauty in wounds. Each art piece is a direct channel of my interpretation of reality.",
-    image: bandagedPortrait,
-    category: "colored",
-    likes: 44,
-  },
-  {
-    id: "nancy",
-    title: "Nancy Sinatra",
-    description: "Pop art tribute capturing the iconic presence and style of a cultural legend.",
-    image: nancySinatra,
-    category: "colored",
-    likes: 42,
-  },
-  {
-    id: "self-portrait",
-    title: "Self Portrait",
-    description: "Introspective digital illustration exploring identity and perception.",
-    image: zacPortrait,
-    category: "colored",
-    likes: 35,
-  },
-  
-  // Mixed Media
-  {
-    id: "moodboard-1",
-    title: "Moodboard I",
-    description: "A visual exploration of contrast and emotion through minimalist composition.",
-    image: moodboard1,
-    category: "mixed",
-    likes: 24,
-  },
-  {
-    id: "moodboard-2",
-    title: "Moodboard II",
-    description: "Continuing the journey into stark visual storytelling.",
-    image: moodboard2,
-    category: "mixed",
-    likes: 18,
-  },
-  
-  // Sketch
-  {
-    id: "composition-55",
-    title: "Composition 55",
-    description: "Abstract exploration of form and texture.",
-    image: piece55,
-    category: "sketch",
-    likes: 15,
-  },
-  {
-    id: "composition-56",
-    title: "Composition 56",
-    description: "Study in light, shadow, and emotional depth.",
-    image: piece56,
-    category: "sketch",
-    likes: 12,
-  },
-  {
-    id: "composition-57",
-    title: "Composition 57",
-    description: "Raw expression through line and movement.",
-    image: piece57,
-    category: "sketch",
-    likes: 19,
-  },
+// Static fallback data for when DB is empty or as defaults
+const fallbackArtwork: ArtworkItem[] = [
+  { id: "golden-hour", title: "Golden Hour", description: "The sun descends over rolling hills - a future artifact of light and land.", image: goldenHour, category: "photography", likes: 34 },
+  { id: "sailboat", title: "Sailboat at Dock", description: "Two figures prepare for water - a moment of human activity frozen in time.", image: sailboat, category: "photography", likes: 28 },
+  { id: "red-brick", title: "Red Brick Cathedral", description: "Architecture tells stories of those who built it.", image: redBrick, category: "photography", likes: 45 },
+  { id: "venice-palms", title: "Venice Palms", description: "Silhouettes reaching skyward - California's iconic sentinels.", image: venicePalms, category: "photography", likes: 31 },
+  { id: "cemetery-stone", title: "The 1859 Stone", description: "A gravestone from 1859 - the most literal artifact of humanity.", image: cemeteryStone, category: "photography", likes: 52 },
+  { id: "victorian-mansion", title: "Victorian Mansion", description: "Architectural history captured in amber light.", image: victorianMansion, category: "photography", likes: 39 },
+  { id: "hollywood-scene", title: "Hollywood Belief", description: "Street culture and belief systems intersecting.", image: hollywoodScene, category: "photography", likes: 27 },
+  { id: "anarchist", title: "The Anarchist", description: "Pop art portrait with crown and protest - social commentary through bold color.", image: anarchist, category: "colored", likes: 67 },
+  { id: "harlequin", title: "The Harlequin", description: "Masked identity with heterochromia - the duality of self.", image: harlequin, category: "colored", likes: 58 },
+  { id: "bandaged-portrait", title: "Bandaged Portrait", description: "Expression through imperfection - the beauty in wounds.", image: bandagedPortrait, category: "colored", likes: 44 },
+  { id: "nancy", title: "Nancy Sinatra", description: "Pop art tribute capturing the iconic presence and style of a cultural legend.", image: nancySinatra, category: "colored", likes: 42 },
+  { id: "self-portrait", title: "Self Portrait", description: "Introspective digital illustration exploring identity and perception.", image: zacPortrait, category: "colored", likes: 35 },
+  { id: "moodboard-1", title: "Moodboard I", description: "A visual exploration of contrast and emotion through minimalist composition.", image: moodboard1, category: "mixed", likes: 24 },
+  { id: "moodboard-2", title: "Moodboard II", description: "Continuing the journey into stark visual storytelling.", image: moodboard2, category: "mixed", likes: 18 },
+  { id: "composition-55", title: "Composition 55", description: "Abstract exploration of form and texture.", image: piece55, category: "sketch", likes: 15 },
+  { id: "composition-56", title: "Composition 56", description: "Study in light, shadow, and emotional depth.", image: piece56, category: "sketch", likes: 12 },
+  { id: "composition-57", title: "Composition 57", description: "Raw expression through line and movement.", image: piece57, category: "sketch", likes: 19 },
 ];
 
 const categories = [
@@ -195,6 +68,36 @@ const ArtGallery = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkItem | null>(null);
   const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
+
+  // Fetch artwork from database
+  const { data: dbArtwork = [], isLoading } = useQuery({
+    queryKey: ["artwork-gallery"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("artwork")
+        .select("id, title, description, image_url, category")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Merge database artwork with fallback, prioritizing database items
+  const artworkData: ArtworkItem[] = [
+    // Database artwork first
+    ...dbArtwork.map(item => ({
+      id: item.id,
+      title: item.title,
+      description: item.description || "",
+      image: item.image_url,
+      category: item.category || "mixed",
+      likes: 0, // Likes would come from likes table in production
+    })),
+    // Then fallback artwork for items not in DB (check by title to avoid duplicates)
+    ...fallbackArtwork.filter(
+      fallback => !dbArtwork.some(db => db.title.toLowerCase() === fallback.title.toLowerCase())
+    ),
+  ];
 
   const filteredArtwork =
     selectedCategory === "all"
@@ -254,7 +157,11 @@ const ArtGallery = () => {
       {/* Gallery Grid */}
       <section className="py-16 screen-print">
         <div className="container mx-auto px-4">
-          {filteredArtwork.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredArtwork.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-xl text-muted-foreground">
                 No artwork in this category yet. More coming soon!
