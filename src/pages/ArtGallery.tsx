@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
-import { ComicPanel, HalftoneImage, LikeButton } from "@/components/pop-art";
+import { ComicPanel, LikeButton } from "@/components/pop-art";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 
+// Original artwork
 import moodboard1 from "@/assets/artwork/moodboard-1.png";
 import moodboard2 from "@/assets/artwork/moodboard-2.png";
 import nancySinatra from "@/assets/artwork/nancy-sinatra.png";
@@ -11,6 +12,20 @@ import zacPortrait from "@/assets/artwork/zac-portrait.png";
 import piece55 from "@/assets/artwork/piece-55.png";
 import piece56 from "@/assets/artwork/piece-56.png";
 import piece57 from "@/assets/artwork/piece-57.png";
+
+// New artwork - Photography
+import goldenHour from "@/assets/artwork/golden-hour.png";
+import sailboat from "@/assets/artwork/sailboat.png";
+import redBrick from "@/assets/artwork/red-brick.png";
+import venicePalms from "@/assets/artwork/venice-palms.png";
+import cemeteryStone from "@/assets/artwork/cemetery-stone.png";
+import victorianMansion from "@/assets/artwork/victorian-mansion.png";
+import hollywoodScene from "@/assets/artwork/hollywood-scene.png";
+
+// New artwork - Digital/Colored
+import anarchist from "@/assets/artwork/anarchist.png";
+import harlequin from "@/assets/artwork/harlequin.png";
+import bandagedPortrait from "@/assets/artwork/bandaged-portrait.png";
 
 interface ArtworkItem {
   id: string;
@@ -22,24 +37,91 @@ interface ArtworkItem {
 }
 
 const artworkData: ArtworkItem[] = [
+  // Photography - Future Artifacts
   {
-    id: "1",
-    title: "Moodboard I",
-    description: "A visual exploration of contrast and emotion through minimalist composition.",
-    image: moodboard1,
-    category: "mixed",
-    likes: 24,
+    id: "golden-hour",
+    title: "Golden Hour",
+    description: "The sun descends over rolling hills - a future artifact of light and land. Each sunset is a fleeting document of our existence.",
+    image: goldenHour,
+    category: "photography",
+    likes: 34,
   },
   {
-    id: "2",
-    title: "Moodboard II",
-    description: "Continuing the journey into stark visual storytelling.",
-    image: moodboard2,
-    category: "mixed",
-    likes: 18,
+    id: "sailboat",
+    title: "Sailboat at Dock",
+    description: "Two figures prepare for water - a moment of human activity frozen in time. Future beings will wonder about our vessels.",
+    image: sailboat,
+    category: "photography",
+    likes: 28,
   },
   {
-    id: "3",
+    id: "red-brick",
+    title: "Red Brick Cathedral",
+    description: "Architecture tells stories of those who built it. This artifact speaks of faith, craft, and the human need for the sacred.",
+    image: redBrick,
+    category: "photography",
+    likes: 45,
+  },
+  {
+    id: "venice-palms",
+    title: "Venice Palms",
+    description: "Silhouettes reaching skyward - California's iconic sentinels. These trees mark our era as clearly as columns marked Rome.",
+    image: venicePalms,
+    category: "photography",
+    likes: 31,
+  },
+  {
+    id: "cemetery-stone",
+    title: "The 1859 Stone",
+    description: "A gravestone from 1859 - the most literal artifact of humanity. Someone loved enough to carve a name in stone forever.",
+    image: cemeteryStone,
+    category: "photography",
+    likes: 52,
+  },
+  {
+    id: "victorian-mansion",
+    title: "Victorian Mansion",
+    description: "Architectural history captured in amber light. These walls have witnessed over a century of human stories.",
+    image: victorianMansion,
+    category: "photography",
+    likes: 39,
+  },
+  {
+    id: "hollywood-scene",
+    title: "Hollywood Belief",
+    description: "Street culture and belief systems intersecting. A document of how we spread ideas in public spaces.",
+    image: hollywoodScene,
+    category: "photography",
+    likes: 27,
+  },
+  
+  // Digital Art - Colored
+  {
+    id: "anarchist",
+    title: "The Anarchist",
+    description: "Pop art portrait with crown and protest - social commentary through bold color. Inspired by Brett Helquist's narrative intensity.",
+    image: anarchist,
+    category: "colored",
+    likes: 67,
+  },
+  {
+    id: "harlequin",
+    title: "The Harlequin",
+    description: "Masked identity with heterochromia - the duality of self. We all wear masks; some choose more interesting ones.",
+    image: harlequin,
+    category: "colored",
+    likes: 58,
+  },
+  {
+    id: "bandaged-portrait",
+    title: "Bandaged Portrait",
+    description: "Expression through imperfection - the beauty in wounds. Each art piece is a direct channel of my interpretation of reality.",
+    image: bandagedPortrait,
+    category: "colored",
+    likes: 44,
+  },
+  {
+    id: "nancy",
     title: "Nancy Sinatra",
     description: "Pop art tribute capturing the iconic presence and style of a cultural legend.",
     image: nancySinatra,
@@ -47,15 +129,35 @@ const artworkData: ArtworkItem[] = [
     likes: 42,
   },
   {
-    id: "4",
+    id: "self-portrait",
     title: "Self Portrait",
     description: "Introspective digital illustration exploring identity and perception.",
     image: zacPortrait,
     category: "colored",
     likes: 35,
   },
+  
+  // Mixed Media
   {
-    id: "5",
+    id: "moodboard-1",
+    title: "Moodboard I",
+    description: "A visual exploration of contrast and emotion through minimalist composition.",
+    image: moodboard1,
+    category: "mixed",
+    likes: 24,
+  },
+  {
+    id: "moodboard-2",
+    title: "Moodboard II",
+    description: "Continuing the journey into stark visual storytelling.",
+    image: moodboard2,
+    category: "mixed",
+    likes: 18,
+  },
+  
+  // Sketch
+  {
+    id: "composition-55",
     title: "Composition 55",
     description: "Abstract exploration of form and texture.",
     image: piece55,
@@ -63,7 +165,7 @@ const artworkData: ArtworkItem[] = [
     likes: 15,
   },
   {
-    id: "6",
+    id: "composition-56",
     title: "Composition 56",
     description: "Study in light, shadow, and emotional depth.",
     image: piece56,
@@ -71,7 +173,7 @@ const artworkData: ArtworkItem[] = [
     likes: 12,
   },
   {
-    id: "7",
+    id: "composition-57",
     title: "Composition 57",
     description: "Raw expression through line and movement.",
     image: piece57,
@@ -82,9 +184,11 @@ const artworkData: ArtworkItem[] = [
 
 const categories = [
   { id: "all", label: "All Work" },
+  { id: "photography", label: "Photography" },
   { id: "colored", label: "Colored Digital" },
   { id: "sketch", label: "Pencil & Sketch" },
   { id: "mixed", label: "Mixed Media" },
+  { id: "graphic_design", label: "Graphic Design" },
 ];
 
 const ArtGallery = () => {
@@ -119,7 +223,8 @@ const ArtGallery = () => {
             Art Gallery
           </h1>
           <p className="text-xl font-sans max-w-2xl text-muted-foreground">
-            Exploring the human experience through visual art — portraits, abstracts,
+            Future artifacts of humanity — each piece is a direct channel of my 
+            interpretation of reality and experience. Photography, portraits, abstracts,
             and compositions that reflect society, emotion, and transformation.
           </p>
         </div>
@@ -149,35 +254,62 @@ const ArtGallery = () => {
       {/* Gallery Grid */}
       <section className="py-16 screen-print">
         <div className="container mx-auto px-4">
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {filteredArtwork.map((artwork, index) => (
-              <ComicPanel
-                key={artwork.id}
-                className={`break-inside-avoid p-4 animate-fade-in stagger-${(index % 5) + 1}`}
-                onClick={() => setSelectedArtwork(artwork)}
-              >
-                <div className="halftone-overlay overflow-hidden border-2 border-foreground">
-                  <img
-                    src={artwork.image}
-                    alt={artwork.title}
-                    className="w-full h-auto object-cover transition-transform duration-300 hover:scale-105"
-                  />
-                </div>
-                <div className="mt-4 flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-display">{artwork.title}</h3>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {artwork.category}
-                    </p>
+          {filteredArtwork.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-xl text-muted-foreground">
+                No artwork in this category yet. More coming soon!
+              </p>
+            </div>
+          ) : (
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+              {filteredArtwork.map((artwork, index) => (
+                <ComicPanel
+                  key={artwork.id}
+                  className={`break-inside-avoid p-4 animate-fade-in stagger-${(index % 5) + 1}`}
+                  onClick={() => setSelectedArtwork(artwork)}
+                >
+                  <div className="halftone-overlay overflow-hidden border-2 border-foreground">
+                    <img
+                      src={artwork.image}
+                      alt={artwork.title}
+                      className="w-full h-auto object-cover transition-transform duration-300 hover:scale-105"
+                    />
                   </div>
-                  <LikeButton
-                    count={artwork.likes + (likedItems.has(artwork.id) ? 1 : 0)}
-                    liked={likedItems.has(artwork.id)}
-                    onLike={() => toggleLike(artwork.id)}
-                  />
-                </div>
-              </ComicPanel>
-            ))}
+                  <div className="mt-4 flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-display">{artwork.title}</h3>
+                      <p className="text-sm text-muted-foreground capitalize">
+                        {artwork.category.replace("_", " ")}
+                      </p>
+                    </div>
+                    <LikeButton
+                      count={artwork.likes + (likedItems.has(artwork.id) ? 1 : 0)}
+                      liked={likedItems.has(artwork.id)}
+                      onLike={() => toggleLike(artwork.id)}
+                    />
+                  </div>
+                </ComicPanel>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Philosophy Section */}
+      <section className="py-16 bg-foreground text-background">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-4xl font-display text-pop-yellow mb-8">
+              Future Artifacts of Humanity
+            </h2>
+            <p className="text-lg font-sans leading-relaxed">
+              I view culture and our creations as future artifacts — imagine a being 
+              discovering our remnants in ancient ruins thousands of years from now. 
+              Each photograph, each portrait, each composition is a document of our 
+              existence, a fragment of the human experience preserved in pixels and 
+              pigment. Inspired by the narrative intensity of Brett Helquist and the 
+              raw emotion of the human condition.
+            </p>
           </div>
         </div>
       </section>
@@ -206,7 +338,7 @@ const ArtGallery = () => {
                 </div>
                 <div className="p-8">
                   <div className="caption-box inline-block mb-4 capitalize">
-                    {selectedArtwork.category}
+                    {selectedArtwork.category.replace("_", " ")}
                   </div>
                   <h2 className="text-4xl font-display mb-4">
                     {selectedArtwork.title}

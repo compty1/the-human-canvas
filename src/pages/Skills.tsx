@@ -57,8 +57,28 @@ const skillCategories: SkillCategory[] = [
     ],
   },
   {
-    title: "Research & Analysis",
+    title: "Photography",
+    color: "bg-pop-orange",
+    skills: [
+      { name: "Landscape Photography", proficiency: 85, icon: Palette },
+      { name: "Architectural Photography", proficiency: 82, icon: Palette },
+      { name: "Street & Documentary", proficiency: 80, icon: Palette },
+      { name: "Photo Editing", proficiency: 75, icon: Palette },
+    ],
+  },
+  {
+    title: "Graphic Design",
     color: "bg-secondary",
+    skills: [
+      { name: "Product Design (Mugs, Cards)", proficiency: 80, icon: Palette },
+      { name: "Sticker Design", proficiency: 85, icon: Palette },
+      { name: "Brand Identity", proficiency: 75, icon: Palette },
+      { name: "Print Design", proficiency: 78, icon: Palette },
+    ],
+  },
+  {
+    title: "Research & Analysis",
+    color: "bg-primary",
     skills: [
       { name: "Data Analysis", proficiency: 75, icon: BarChart },
       { name: "Academic Research", proficiency: 82, icon: Search },

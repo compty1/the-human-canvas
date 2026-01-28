@@ -1,227 +1,235 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
-import { ComicPanel, LikeButton } from "@/components/pop-art";
-import { Clock, Tag } from "lucide-react";
+import { ComicPanel, PopButton } from "@/components/pop-art";
+import { supabase } from "@/integrations/supabase/client";
+import { Calendar, Clock, ArrowRight } from "lucide-react";
+import { format } from "date-fns";
 
 type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research";
 
-interface Article {
-  id: string;
-  title: string;
-  excerpt: string;
-  category: WritingCategory;
-  readingTime: number;
-  tags: string[];
-  likes: number;
-  date: string;
-}
-
-const articlesData: Article[] = [
-  {
-    id: "1",
-    title: "The Metaphysics of Connection in a Digital Age",
-    excerpt: "Exploring how technology both bridges and fragments our fundamental human need for authentic connection. What does it mean to be 'present' when presence itself becomes virtual?",
-    category: "philosophy",
-    readingTime: 12,
-    tags: ["metaphysics", "technology", "connection"],
-    likes: 34,
-    date: "2024-01-15",
-  },
-  {
-    id: "2",
-    title: "Journey Through Diagnosis: A T1D Story",
-    excerpt: "A personal narrative about the day everything changed — and how transformation emerges from the moments we least expect. Living with Type 1 Diabetes taught me more about life than any book ever could.",
-    category: "narrative",
-    readingTime: 8,
-    tags: ["diabetes", "personal", "transformation"],
-    likes: 67,
-    date: "2024-01-10",
-  },
-  {
-    id: "3",
-    title: "Pop Art's Lasting Influence on Digital Design",
-    excerpt: "From Warhol to web design — tracing how the bold, democratic aesthetics of pop art continue to shape how we create and consume digital experiences today.",
-    category: "cultural",
-    readingTime: 10,
-    tags: ["art", "design", "culture"],
-    likes: 45,
-    date: "2024-01-05",
-  },
-  {
-    id: "4",
-    title: "UX Case Study: Why Notion Wins at Flexibility",
-    excerpt: "A deep dive into Notion's user experience philosophy. How does a tool that does everything manage to feel simple? Breaking down the design decisions that matter.",
-    category: "ux_review",
-    readingTime: 15,
-    tags: ["ux", "notion", "productivity"],
-    likes: 28,
-    date: "2023-12-28",
-  },
-  {
-    id: "5",
-    title: "Historical Patterns in Social Movements",
-    excerpt: "Comparing contemporary activism with historical movements reveals surprising patterns. What can today's change-makers learn from those who came before?",
-    category: "research",
-    readingTime: 18,
-    tags: ["history", "activism", "society"],
-    likes: 41,
-    date: "2023-12-20",
-  },
-  {
-    id: "6",
-    title: "The Art of Transformation Stories",
-    excerpt: "Why do we love stories about change? Examining the narrative structure of transformation tales and what they reveal about our deepest hopes.",
-    category: "narrative",
-    readingTime: 7,
-    tags: ["storytelling", "transformation", "narrative"],
-    likes: 52,
-    date: "2023-12-15",
-  },
-];
-
-const categories = [
-  { id: "all", label: "All Writing" },
-  { id: "philosophy", label: "Philosophy & Metaphysics" },
-  { id: "narrative", label: "Narrative Stories" },
-  { id: "cultural", label: "Cultural Commentary" },
-  { id: "ux_review", label: "UX Reviews" },
-  { id: "research", label: "Research & Informative" },
-];
+const categoryLabels: Record<WritingCategory, string> = {
+  philosophy: "Philosophy",
+  narrative: "Narrative",
+  cultural: "Cultural",
+  ux_review: "UX Review",
+  research: "Research",
+};
 
 const categoryColors: Record<WritingCategory, string> = {
   philosophy: "bg-pop-magenta",
   narrative: "bg-pop-cyan",
-  cultural: "bg-pop-yellow",
-  ux_review: "bg-pop-orange",
-  research: "bg-secondary",
+  cultural: "bg-pop-yellow text-foreground",
+  ux_review: "bg-secondary",
+  research: "bg-pop-orange",
 };
 
 const Writing = () => {
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
+  // Fetch recent updates
+  const { data: recentUpdates } = useQuery({
+    queryKey: ["recent-updates-hub"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("updates")
+        .select("*")
+        .eq("published", true)
+        .order("created_at", { ascending: false })
+        .limit(3);
 
-  const filteredArticles =
-    selectedCategory === "all"
-      ? articlesData
-      : articlesData.filter((a) => a.category === selectedCategory);
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const toggleLike = (id: string) => {
-    setLikedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
+  // Fetch featured articles
+  const { data: featuredArticles } = useQuery({
+    queryKey: ["featured-articles-hub"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("published", true)
+        .order("created_at", { ascending: false })
+        .limit(4);
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   return (
     <Layout>
       {/* Hero */}
       <section className="py-20 benday-dots">
         <div className="container mx-auto px-4">
-          <div className="caption-box inline-block mb-4">Content & Writing</div>
+          <div className="caption-box inline-block mb-4">Written Word</div>
           <h1 className="text-5xl md:text-7xl font-display gradient-text mb-6">
-            Writing & Content
+            Writing
           </h1>
           <p className="text-xl font-sans max-w-2xl text-muted-foreground">
-            Essays, stories, and explorations across philosophy, culture, UX, and
-            the human experience. Words that make you think.
+            From quick thoughts to deep dives — exploring philosophy, culture,
+            the human experience, and the artifacts we leave behind.
           </p>
         </div>
       </section>
 
-      {/* Filter */}
-      <section className="py-8 border-y-4 border-foreground bg-background sticky top-16 z-40">
+      {/* Quick Navigation */}
+      <section className="py-12 border-y-4 border-foreground bg-muted">
         <div className="container mx-auto px-4">
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 font-bold uppercase text-sm tracking-wide border-2 border-foreground transition-all ${
-                  selectedCategory === category.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                }`}
-              >
-                {category.label}
-              </button>
-            ))}
+          <div className="grid md:grid-cols-2 gap-6">
+            <Link to="/updates" className="block">
+              <ComicPanel className="p-8 h-full hover:translate-y-[-4px] transition-transform">
+                <div className="caption-box inline-block mb-4 bg-pop-cyan">
+                  Quick Notes
+                </div>
+                <h2 className="text-3xl font-display mb-4">Updates</h2>
+                <p className="text-muted-foreground mb-4">
+                  Short-form thoughts, observations, work-in-progress notes, and
+                  brief commentary on topics.
+                </p>
+                <span className="font-bold text-primary flex items-center gap-2">
+                  View Updates <ArrowRight className="w-4 h-4" />
+                </span>
+              </ComicPanel>
+            </Link>
+
+            <Link to="/articles" className="block">
+              <ComicPanel className="p-8 h-full hover:translate-y-[-4px] transition-transform">
+                <div className="caption-box inline-block mb-4 bg-pop-magenta">
+                  Deep Dives
+                </div>
+                <h2 className="text-3xl font-display mb-4">Articles</h2>
+                <p className="text-muted-foreground mb-4">
+                  Long-form essays on philosophy, cultural commentary, UX case
+                  studies, and narrative stories.
+                </p>
+                <span className="font-bold text-primary flex items-center gap-2">
+                  View Articles <ArrowRight className="w-4 h-4" />
+                </span>
+              </ComicPanel>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Articles Grid */}
+      {/* Recent Updates */}
       <section className="py-16 screen-print">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8">
-            {filteredArticles.map((article, index) => (
-              <ComicPanel
-                key={article.id}
-                className={`p-6 animate-fade-in stagger-${(index % 5) + 1}`}
-              >
-                {/* Category Badge */}
-                <div
-                  className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground mb-4 ${
-                    categoryColors[article.category]
-                  }`}
-                >
-                  {article.category.replace("_", " ")}
-                </div>
-
-                <h3 className="text-2xl font-display mb-3">{article.title}</h3>
-                <p className="text-sm font-sans text-muted-foreground mb-4">
-                  {article.excerpt}
-                </p>
-
-                {/* Meta */}
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" /> {article.readingTime} min read
-                  </span>
-                  <span>{new Date(article.date).toLocaleDateString()}</span>
-                </div>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {article.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 text-xs font-bold bg-muted border border-muted-foreground inline-flex items-center gap-1"
-                    >
-                      <Tag className="w-3 h-3" /> {tag}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-4 border-t-2 border-muted">
-                  <LikeButton
-                    count={article.likes + (likedItems.has(article.id) ? 1 : 0)}
-                    liked={likedItems.has(article.id)}
-                    onLike={() => toggleLike(article.id)}
-                  />
-                  <button className="pop-link text-sm font-bold">
-                    Read More →
-                  </button>
-                </div>
-              </ComicPanel>
-            ))}
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-display">Latest Updates</h2>
+            <Link to="/updates">
+              <PopButton size="sm" variant="secondary">
+                View All
+              </PopButton>
+            </Link>
           </div>
+
+          {recentUpdates && recentUpdates.length > 0 ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {recentUpdates.map((update, index) => (
+                <ComicPanel
+                  key={update.id}
+                  className={`p-6 animate-fade-in stagger-${index + 1}`}
+                >
+                  <Link to={`/updates/${update.slug}`}>
+                    <h3 className="text-xl font-display mb-2 hover:text-primary transition-colors">
+                      {update.title}
+                    </h3>
+                  </Link>
+                  <p className="text-sm text-muted-foreground mb-3 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {format(new Date(update.created_at), "MMM d, yyyy")}
+                  </p>
+                  {update.excerpt && (
+                    <p className="text-muted-foreground text-sm line-clamp-2">
+                      {update.excerpt}
+                    </p>
+                  )}
+                </ComicPanel>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No updates yet.</p>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Placeholder for full article */}
-      <section className="py-16 bg-muted">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-display mb-4">More Content Coming Soon</h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">
-            Full articles with complete content will be added as they're written.
-            Check back regularly for new essays and stories.
-          </p>
+      {/* Featured Articles */}
+      <section className="py-16 bg-foreground text-background">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-display text-pop-yellow">
+              Featured Articles
+            </h2>
+            <Link to="/articles">
+              <PopButton size="sm" variant="accent">
+                View All
+              </PopButton>
+            </Link>
+          </div>
+
+          {featuredArticles && featuredArticles.length > 0 ? (
+            <div className="grid md:grid-cols-2 gap-6">
+              {featuredArticles.map((article, index) => (
+                <Link
+                  key={article.id}
+                  to={`/articles/${article.slug}`}
+                  className={`block p-6 border-2 border-background hover:bg-background/10 transition-colors animate-fade-in stagger-${index + 1}`}
+                >
+                  <div
+                    className={`inline-block px-2 py-1 text-xs font-bold uppercase tracking-wide mb-3 ${
+                      categoryColors[article.category as WritingCategory]
+                    }`}
+                  >
+                    {categoryLabels[article.category as WritingCategory]}
+                  </div>
+                  <h3 className="text-xl font-display mb-2">{article.title}</h3>
+                  <div className="flex items-center gap-3 text-sm text-background/70 mb-3">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {format(new Date(article.created_at), "MMM d")}
+                    </span>
+                    {article.reading_time_minutes && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {article.reading_time_minutes} min
+                      </span>
+                    )}
+                  </div>
+                  {article.excerpt && (
+                    <p className="text-background/70 text-sm line-clamp-2">
+                      {article.excerpt}
+                    </p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-background/70">No articles yet.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Philosophy Statement */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-4xl font-display mb-8">Why I Write</h2>
+            <div className="speech-bubble text-left">
+              <p className="text-lg font-sans leading-relaxed">
+                "Writing is how I process the human experience. Every essay is
+                an artifact — a document of thought at a specific moment in
+                time. Future beings discovering these words would learn how we
+                grappled with existence, identity, and meaning. Philosophy,
+                narrative, cultural commentary — all channels for understanding
+                ourselves and the world we're creating."
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </Layout>
