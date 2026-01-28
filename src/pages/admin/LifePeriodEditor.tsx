@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -171,6 +172,17 @@ const LifePeriodEditor = () => {
             </h1>
           </div>
         </div>
+
+        {/* Bulk Text Importer */}
+        <BulkTextImporter
+          contentType="life_period"
+          onImport={(data) => {
+            if (data.title) setForm(prev => ({ ...prev, title: String(data.title) }));
+            if (data.description) setForm(prev => ({ ...prev, description: String(data.description) }));
+            if (data.detailed_content) setForm(prev => ({ ...prev, detailed_content: String(data.detailed_content) }));
+            if (data.themes) setForm(prev => ({ ...prev, themes: Array.isArray(data.themes) ? data.themes : [] }));
+          }}
+        />
 
         {/* Basic Info */}
         <ComicPanel className="p-6">
