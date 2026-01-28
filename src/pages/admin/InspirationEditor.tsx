@@ -88,10 +88,6 @@ const InspirationEditor = () => {
         influence_areas: form.influence_areas,
         order_index: form.order_index,
       };
-        related_links: form.related_links as unknown as Record<string, unknown>[],
-        influence_areas: form.influence_areas,
-        order_index: form.order_index,
-      };
 
       if (isEditing) {
         const { error } = await supabase
