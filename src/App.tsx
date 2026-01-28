@@ -46,14 +46,32 @@ import FuturePlansManager from "./pages/admin/FuturePlansManager";
 import SuppliesManager from "./pages/admin/SuppliesManager";
 import ArticlesManager from "./pages/admin/ArticlesManager";
 import UpdatesManager from "./pages/admin/UpdatesManager";
-
 import UpdateEditor from "./pages/admin/UpdateEditor";
 import ArticleEditor from "./pages/admin/ArticleEditor";
 import Dashboard from "./pages/admin/Dashboard";
 import Analytics from "./pages/admin/Analytics";
+import TimeTracker from "./pages/admin/TimeTracker";
+import SalesDataManager from "./pages/admin/SalesDataManager";
+import FundingCampaignsManager from "./pages/admin/FundingCampaignsManager";
+import ClientWorkManager from "./pages/admin/ClientWorkManager";
+import ClientProjectEditor from "./pages/admin/ClientProjectEditor";
+import FavoritesManager from "./pages/admin/FavoritesManager";
+import FavoriteEditor from "./pages/admin/FavoriteEditor";
+import InspirationsManager from "./pages/admin/InspirationsManager";
+import InspirationEditor from "./pages/admin/InspirationEditor";
+import LifePeriodsManager from "./pages/admin/LifePeriodsManager";
+import LifePeriodEditor from "./pages/admin/LifePeriodEditor";
 
 // Public pages
 import Supplies from "./pages/Supplies";
+import ClientWork from "./pages/ClientWork";
+import ClientProjectDetail from "./pages/ClientProjectDetail";
+import Favorites from "./pages/Favorites";
+import FavoriteDetail from "./pages/FavoriteDetail";
+import Inspirations from "./pages/Inspirations";
+import InspirationDetail from "./pages/InspirationDetail";
+import LifeTimeline from "./pages/LifeTimeline";
+import LifePeriodDetail from "./pages/LifePeriodDetail";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +107,14 @@ const App = () => (
               <Route path="/product-reviews" element={<ProductReviews />} />
               <Route path="/product-reviews/:slug" element={<ProductReviewDetail />} />
               <Route path="/supplies" element={<Supplies />} />
+              <Route path="/client-work" element={<ClientWork />} />
+              <Route path="/client-work/:slug" element={<ClientProjectDetail />} />
+              <Route path="/favorites" element={<Favorites />} />
+              <Route path="/favorites/:id" element={<FavoriteDetail />} />
+              <Route path="/inspirations" element={<Inspirations />} />
+              <Route path="/inspirations/:id" element={<InspirationDetail />} />
+              <Route path="/timeline" element={<LifeTimeline />} />
+              <Route path="/timeline/:id" element={<LifePeriodDetail />} />
               
               {/* Admin routes */}
               <Route path="/admin" element={<Dashboard />} />
@@ -121,6 +147,21 @@ const App = () => (
               <Route path="/admin/supplies" element={<SuppliesManager />} />
               <Route path="/admin/articles" element={<ArticlesManager />} />
               <Route path="/admin/updates" element={<UpdatesManager />} />
+              <Route path="/admin/time-tracker" element={<TimeTracker />} />
+              <Route path="/admin/sales" element={<SalesDataManager />} />
+              <Route path="/admin/funding-campaigns" element={<FundingCampaignsManager />} />
+              <Route path="/admin/client-work" element={<ClientWorkManager />} />
+              <Route path="/admin/client-work/new" element={<ClientProjectEditor />} />
+              <Route path="/admin/client-work/:id/edit" element={<ClientProjectEditor />} />
+              <Route path="/admin/favorites" element={<FavoritesManager />} />
+              <Route path="/admin/favorites/new" element={<FavoriteEditor />} />
+              <Route path="/admin/favorites/:id/edit" element={<FavoriteEditor />} />
+              <Route path="/admin/inspirations" element={<InspirationsManager />} />
+              <Route path="/admin/inspirations/new" element={<InspirationEditor />} />
+              <Route path="/admin/inspirations/:id/edit" element={<InspirationEditor />} />
+              <Route path="/admin/life-periods" element={<LifePeriodsManager />} />
+              <Route path="/admin/life-periods/new" element={<LifePeriodEditor />} />
+              <Route path="/admin/life-periods/:id/edit" element={<LifePeriodEditor />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

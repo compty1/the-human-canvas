@@ -181,6 +181,69 @@ export type Database = {
         }
         Relationships: []
       }
+      client_projects: {
+        Row: {
+          client_name: string
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          features: string[] | null
+          id: string
+          image_url: string | null
+          is_public: boolean | null
+          long_description: string | null
+          project_name: string
+          screenshots: string[] | null
+          slug: string
+          start_date: string | null
+          status: string
+          tech_stack: string[] | null
+          testimonial: string | null
+          testimonial_author: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_name: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          features?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_public?: boolean | null
+          long_description?: string | null
+          project_name: string
+          screenshots?: string[] | null
+          slug: string
+          start_date?: string | null
+          status?: string
+          tech_stack?: string[] | null
+          testimonial?: string | null
+          testimonial_author?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_name?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          features?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_public?: boolean | null
+          long_description?: string | null
+          project_name?: string
+          screenshots?: string[] | null
+          slug?: string
+          start_date?: string | null
+          status?: string
+          tech_stack?: string[] | null
+          testimonial?: string | null
+          testimonial_author?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       contributions: {
         Row: {
           amount: number
@@ -214,6 +277,57 @@ export type Database = {
           stripe_payment_id?: string | null
           target_id?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      favorites: {
+        Row: {
+          created_at: string | null
+          creator_location: string | null
+          creator_name: string | null
+          creator_url: string | null
+          description: string | null
+          discovered_date: string | null
+          id: string
+          image_url: string | null
+          impact_statement: string | null
+          is_current: boolean | null
+          source_url: string | null
+          tags: string[] | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          creator_location?: string | null
+          creator_name?: string | null
+          creator_url?: string | null
+          description?: string | null
+          discovered_date?: string | null
+          id?: string
+          image_url?: string | null
+          impact_statement?: string | null
+          is_current?: boolean | null
+          source_url?: string | null
+          tags?: string[] | null
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          creator_location?: string | null
+          creator_name?: string | null
+          creator_url?: string | null
+          description?: string | null
+          discovered_date?: string | null
+          id?: string
+          image_url?: string | null
+          impact_statement?: string | null
+          is_current?: boolean | null
+          source_url?: string | null
+          tags?: string[] | null
+          title?: string
+          type?: string
         }
         Relationships: []
       }
@@ -263,6 +377,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inspirations: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          detailed_content: string | null
+          id: string
+          image_url: string | null
+          influence_areas: string[] | null
+          order_index: number | null
+          related_links: Json | null
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          detailed_content?: string | null
+          id?: string
+          image_url?: string | null
+          influence_areas?: string[] | null
+          order_index?: number | null
+          related_links?: Json | null
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          detailed_content?: string | null
+          id?: string
+          image_url?: string | null
+          influence_areas?: string[] | null
+          order_index?: number | null
+          related_links?: Json | null
+          title?: string
+        }
+        Relationships: []
       }
       lead_searches: {
         Row: {
@@ -377,6 +530,51 @@ export type Database = {
           progress_percent?: number | null
           raised_amount?: number | null
           target_amount?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
+      life_periods: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          detailed_content: string | null
+          end_date: string | null
+          id: string
+          image_url: string | null
+          is_current: boolean | null
+          key_works: string[] | null
+          order_index: number | null
+          start_date: string
+          themes: string[] | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          detailed_content?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_current?: boolean | null
+          key_works?: string[] | null
+          order_index?: number | null
+          start_date: string
+          themes?: string[] | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          detailed_content?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_current?: boolean | null
+          key_works?: string[] | null
+          order_index?: number | null
+          start_date?: string
+          themes?: string[] | null
           title?: string
         }
         Relationships: []
@@ -592,6 +790,7 @@ export type Database = {
           architecture_notes: string | null
           case_study: string | null
           color_palette: string[] | null
+          cost_breakdown: Json | null
           created_at: string
           description: string | null
           draft_content: Json | null
@@ -605,6 +804,8 @@ export type Database = {
           image_url: string | null
           last_saved_draft: string | null
           long_description: string | null
+          money_needed: number | null
+          money_spent: number | null
           next_steps: string | null
           performance_notes: string | null
           problem_statement: string | null
@@ -623,6 +824,7 @@ export type Database = {
           architecture_notes?: string | null
           case_study?: string | null
           color_palette?: string[] | null
+          cost_breakdown?: Json | null
           created_at?: string
           description?: string | null
           draft_content?: Json | null
@@ -636,6 +838,8 @@ export type Database = {
           image_url?: string | null
           last_saved_draft?: string | null
           long_description?: string | null
+          money_needed?: number | null
+          money_spent?: number | null
           next_steps?: string | null
           performance_notes?: string | null
           problem_statement?: string | null
@@ -654,6 +858,7 @@ export type Database = {
           architecture_notes?: string | null
           case_study?: string | null
           color_palette?: string[] | null
+          cost_breakdown?: Json | null
           created_at?: string
           description?: string | null
           draft_content?: Json | null
@@ -667,6 +872,8 @@ export type Database = {
           image_url?: string | null
           last_saved_draft?: string | null
           long_description?: string | null
+          money_needed?: number | null
+          money_spent?: number | null
           next_steps?: string | null
           performance_notes?: string | null
           problem_statement?: string | null
@@ -678,6 +885,36 @@ export type Database = {
           tech_stack?: string[] | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_data: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          period: string
+          units_sold: number | null
+        }
+        Insert: {
+          amount?: number
+          category: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          period: string
+          units_sold?: number | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          period?: string
+          units_sold?: number | null
         }
         Relationships: []
       }
@@ -890,6 +1127,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      work_logs: {
+        Row: {
+          category: string
+          created_at: string | null
+          date: string
+          description: string | null
+          hours: number
+          id: string
+          project_id: string | null
+          week_number: number
+          year: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          date: string
+          description?: string | null
+          hours?: number
+          id?: string
+          project_id?: string | null
+          week_number: number
+          year: number
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          hours?: number
+          id?: string
+          project_id?: string | null
+          week_number?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -8,13 +8,13 @@ import { useAuth } from "@/hooks/useAuth";
 const navItems = [
   { label: "Art", href: "/art" },
   { label: "Projects", href: "/projects" },
+  { label: "Client Work", href: "/client-work" },
   { label: "UX Reviews", href: "/product-reviews" },
   { label: "Writing", href: "/writing" },
-  { label: "Updates", href: "/updates" },
-  { label: "Skills", href: "/skills" },
-  { label: "Future", href: "/future" },
+  { label: "Favorites", href: "/favorites" },
+  { label: "Inspirations", href: "/inspirations" },
+  { label: "Timeline", href: "/timeline" },
   { label: "Support", href: "/support" },
-  { label: "Supplies", href: "/supplies" },
   { label: "About", href: "/about" },
 ];
 
