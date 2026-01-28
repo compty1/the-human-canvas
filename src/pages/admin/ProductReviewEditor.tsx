@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { RichTextEditor } from "@/components/editor";
+import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ const ProductReviewEditor = () => {
     improvement_suggestions: [] as string[],
     future_recommendations: [] as string[],
     featured_image: "",
+    screenshots: [] as string[],
     published: false,
     admin_notes: "",
   });
@@ -83,6 +85,7 @@ const ProductReviewEditor = () => {
         improvement_suggestions: review.improvement_suggestions || [],
         future_recommendations: review.future_recommendations || [],
         featured_image: review.featured_image || "",
+        screenshots: review.screenshots || [],
         published: review.published || false,
         admin_notes: review.admin_notes || "",
       });
@@ -243,6 +246,23 @@ const ProductReviewEditor = () => {
                 placeholder="auto-generated-from-name"
               />
             </div>
+
+            {/* Featured Image */}
+            <ImageUploader
+              value={formData.featured_image}
+              onChange={(url) => setFormData({ ...formData, featured_image: url })}
+              label="Featured Image"
+              folder="product-reviews"
+            />
+
+            {/* Screenshots */}
+            <MultiImageUploader
+              value={formData.screenshots}
+              onChange={(urls) => setFormData({ ...formData, screenshots: urls })}
+              label="Screenshots"
+              folder="product-reviews/screenshots"
+              maxImages={10}
+            />
           </div>
         </ComicPanel>
 

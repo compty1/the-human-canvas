@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { forwardRef, ReactNode } from "react";
 
 interface ComicPanelProps {
   children: ReactNode;
@@ -9,38 +9,37 @@ interface ComicPanelProps {
   onClick?: () => void;
 }
 
-export const ComicPanel = ({
-  children,
-  className,
-  size = "md",
-  color = "default",
-  onClick,
-}: ComicPanelProps) => {
-  const sizeClasses = {
-    sm: "comic-panel-sm",
-    md: "comic-panel",
-    lg: "comic-panel-lg",
-  };
+export const ComicPanel = forwardRef<HTMLDivElement, ComicPanelProps>(
+  ({ children, className, size = "md", color = "default", onClick }, ref) => {
+    const sizeClasses = {
+      sm: "comic-panel-sm",
+      md: "comic-panel",
+      lg: "comic-panel-lg",
+    };
 
-  const colorClasses = {
-    default: "bg-card",
-    magenta: "bg-pop-magenta",
-    cyan: "bg-pop-cyan",
-    yellow: "bg-pop-yellow",
-  };
+    const colorClasses = {
+      default: "bg-card",
+      magenta: "bg-pop-magenta",
+      cyan: "bg-pop-cyan",
+      yellow: "bg-pop-yellow",
+    };
 
-  return (
-    <div
-      className={cn(
-        sizeClasses[size],
-        colorClasses[color],
-        "transition-transform hover:translate-x-1 hover:translate-y-1",
-        onClick && "cursor-pointer",
-        className
-      )}
-      onClick={onClick}
-    >
-      {children}
-    </div>
-  );
-};
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          sizeClasses[size],
+          colorClasses[color],
+          "transition-transform hover:translate-x-1 hover:translate-y-1",
+          onClick && "cursor-pointer",
+          className
+        )}
+        onClick={onClick}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+ComicPanel.displayName = "ComicPanel";

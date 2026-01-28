@@ -7,11 +7,12 @@ const corsHeaders = {
 };
 
 interface GenerateCopyRequest {
-  contentType: "project" | "article" | "update" | "artwork" | "about" | "general";
+  contentType?: string;
+  type?: string;
   context?: string;
   existingContent?: string;
-  tone?: "professional" | "creative" | "casual";
-  length?: "brief" | "standard" | "detailed";
+  tone?: "professional" | "creative" | "casual" | "technical";
+  length?: "brief" | "standard" | "detailed" | "short";
   variations?: number;
 }
 
@@ -21,31 +22,52 @@ serve(async (req) => {
   }
 
   try {
-    const { contentType, context, existingContent, tone = "professional", length = "standard", variations = 1 }: GenerateCopyRequest = await req.json();
+    const body: GenerateCopyRequest = await req.json();
+    const { 
+      contentType, 
+      type, 
+      context, 
+      existingContent, 
+      tone = "professional", 
+      length = "standard", 
+      variations = 1 
+    } = body;
+
+    // Support both 'contentType' and 'type' field names
+    const actualType = contentType || type || "general";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const lengthGuide = {
+    const lengthGuide: Record<string, string> = {
       brief: "Keep it concise, 1-2 sentences.",
+      short: "Keep it concise, 1-2 sentences.",
       standard: "Write 2-3 paragraphs.",
       detailed: "Write a comprehensive piece with 4-5 paragraphs.",
     };
 
-    const toneGuide = {
+    const toneGuide: Record<string, string> = {
       professional: "Use a professional, polished tone suitable for a portfolio.",
       creative: "Use a creative, artistic tone that shows personality.",
       casual: "Use a friendly, approachable casual tone.",
+      technical: "Use a technical, precise tone suitable for developers.",
     };
 
     const contentGuides: Record<string, string> = {
       project: "Write compelling copy for a portfolio project. Highlight the problem solved, technology used, and results achieved.",
+      project_description: "Write compelling copy for a portfolio project. Highlight the problem solved, technology used, and results achieved.",
       article: "Write engaging copy for a blog article or essay. Focus on the narrative and key insights.",
+      article_excerpt: "Write an engaging excerpt for a blog article. Hook the reader and summarize key points.",
       update: "Write a short, engaging update or quick note. Keep it personal and informative.",
+      update_post: "Write a short, engaging update or quick note. Keep it personal and informative.",
       artwork: "Write descriptive copy for artwork. Capture the emotion, technique, and story behind the piece.",
+      artwork_description: "Write descriptive copy for artwork. Capture the emotion, technique, and story behind the piece.",
       about: "Write biographical copy that showcases personality, skills, and passion.",
+      about_section: "Write biographical copy that showcases personality, skills, and passion.",
+      product_review: "Write a thoughtful product review. Cover strengths, weaknesses, and recommendations.",
+      custom: "Write copy that fits the context provided.",
       general: "Write copy that fits the context provided.",
     };
 
@@ -53,15 +75,15 @@ serve(async (req) => {
     
 The portfolio owner is interested in photography, digital art, pop art style, UX design, web development, and views culture as "future artifacts of humanity."
 
-${contentGuides[contentType]}
-${toneGuide[tone]}
-${lengthGuide[length]}
+${contentGuides[actualType] || contentGuides.general}
+${toneGuide[tone] || toneGuide.professional}
+${lengthGuide[length] || lengthGuide.standard}
 
 ${variations > 1 ? `Generate ${variations} different variations, separated by "---VARIATION---"` : ""}`;
 
     const userPrompt = existingContent 
       ? `Improve or rewrite this existing content:\n\n${existingContent}\n\n${context ? `Additional context: ${context}` : ""}`
-      : `Write ${contentType} copy. ${context ? `Context: ${context}` : "Generate fresh, engaging content."}`;
+      : `Write ${actualType} copy. ${context ? `Context: ${context}` : "Generate fresh, engaging content."}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -95,7 +117,11 @@ ${variations > 1 ? `Generate ${variations} different variations, separated by "-
     return new Response(
       JSON.stringify({ 
         success: true, 
+        // Return both 'results' and 'variations' for compatibility with different consumers
         results,
+        variations: results,
+        // Single content for simpler use cases
+        content: results[0],
         usage: data.usage 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

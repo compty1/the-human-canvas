@@ -39,6 +39,10 @@ import ActivityLog from "./pages/admin/ActivityLog";
 import Settings from "./pages/admin/Settings";
 import ProductReviewsManager from "./pages/admin/ProductReviewsManager";
 import ProductReviewEditor from "./pages/admin/ProductReviewEditor";
+import SiteContent from "./pages/admin/SiteContent";
+import HomeContent from "./pages/admin/HomeContent";
+import AboutContent from "./pages/admin/AboutContent";
+import FuturePlansManager from "./pages/admin/FuturePlansManager";
 
 import UpdateEditor from "./pages/admin/UpdateEditor";
 import ArticleEditor from "./pages/admin/ArticleEditor";
@@ -103,6 +107,10 @@ const App = () => (
               <Route path="/admin/product-reviews" element={<ProductReviewsManager />} />
               <Route path="/admin/product-reviews/new" element={<ProductReviewEditor />} />
               <Route path="/admin/product-reviews/:id/edit" element={<ProductReviewEditor />} />
+              <Route path="/admin/content/site" element={<SiteContent />} />
+              <Route path="/admin/content/home" element={<HomeContent />} />
+              <Route path="/admin/content/about" element={<AboutContent />} />
+              <Route path="/admin/future-plans" element={<FuturePlansManager />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
