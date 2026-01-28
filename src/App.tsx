@@ -72,6 +72,18 @@ import Inspirations from "./pages/Inspirations";
 import InspirationDetail from "./pages/InspirationDetail";
 import LifeTimeline from "./pages/LifeTimeline";
 import LifePeriodDetail from "./pages/LifePeriodDetail";
+import Profile from "./pages/Profile";
+import Experiments from "./pages/Experiments";
+import ExperimentDetail from "./pages/ExperimentDetail";
+import Store from "./pages/Store";
+import StoreProductDetail from "./pages/StoreProductDetail";
+
+// Additional Admin pages
+import ExperimentsManager from "./pages/admin/ExperimentsManager";
+import ExperimentEditor from "./pages/admin/ExperimentEditor";
+import ProductsManager from "./pages/admin/ProductsManager";
+import ProductEditor from "./pages/admin/ProductEditor";
+import ContributionsManager from "./pages/admin/ContributionsManager";
 
 const queryClient = new QueryClient();
 
@@ -115,7 +127,11 @@ const App = () => (
               <Route path="/inspirations/:id" element={<InspirationDetail />} />
               <Route path="/timeline" element={<LifeTimeline />} />
               <Route path="/timeline/:id" element={<LifePeriodDetail />} />
-              
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/experiments" element={<Experiments />} />
+              <Route path="/experiments/:slug" element={<ExperimentDetail />} />
+              <Route path="/store" element={<Store />} />
+              <Route path="/store/:slug" element={<StoreProductDetail />} />
               {/* Admin routes */}
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/analytics" element={<Analytics />} />
@@ -162,6 +178,13 @@ const App = () => (
               <Route path="/admin/life-periods" element={<LifePeriodsManager />} />
               <Route path="/admin/life-periods/new" element={<LifePeriodEditor />} />
               <Route path="/admin/life-periods/:id/edit" element={<LifePeriodEditor />} />
+              <Route path="/admin/experiments" element={<ExperimentsManager />} />
+              <Route path="/admin/experiments/new" element={<ExperimentEditor />} />
+              <Route path="/admin/experiments/:id/edit" element={<ExperimentEditor />} />
+              <Route path="/admin/products" element={<ProductsManager />} />
+              <Route path="/admin/products/new" element={<ProductEditor />} />
+              <Route path="/admin/products/:id/edit" element={<ProductEditor />} />
+              <Route path="/admin/contributions" element={<ContributionsManager />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

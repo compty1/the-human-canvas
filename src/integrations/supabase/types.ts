@@ -280,6 +280,99 @@ export type Database = {
         }
         Relationships: []
       }
+      experiments: {
+        Row: {
+          admin_notes: string | null
+          average_rating: number | null
+          cost_breakdown: Json | null
+          costs: number | null
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          image_url: string | null
+          lessons_learned: string[] | null
+          long_description: string | null
+          management_info: string | null
+          name: string
+          operation_details: string | null
+          platform: string
+          products_offered: string[] | null
+          products_sold: number | null
+          profit: number | null
+          revenue: number | null
+          review_count: number | null
+          sample_reviews: string[] | null
+          screenshots: string[] | null
+          skills_demonstrated: string[] | null
+          slug: string
+          start_date: string | null
+          status: string
+          total_orders: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          average_rating?: number | null
+          cost_breakdown?: Json | null
+          costs?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          lessons_learned?: string[] | null
+          long_description?: string | null
+          management_info?: string | null
+          name: string
+          operation_details?: string | null
+          platform: string
+          products_offered?: string[] | null
+          products_sold?: number | null
+          profit?: number | null
+          revenue?: number | null
+          review_count?: number | null
+          sample_reviews?: string[] | null
+          screenshots?: string[] | null
+          skills_demonstrated?: string[] | null
+          slug: string
+          start_date?: string | null
+          status?: string
+          total_orders?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          average_rating?: number | null
+          cost_breakdown?: Json | null
+          costs?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          lessons_learned?: string[] | null
+          long_description?: string | null
+          management_info?: string | null
+          name?: string
+          operation_details?: string | null
+          platform?: string
+          products_offered?: string[] | null
+          products_sold?: number | null
+          profit?: number | null
+          revenue?: number | null
+          review_count?: number | null
+          sample_reviews?: string[] | null
+          screenshots?: string[] | null
+          skills_demonstrated?: string[] | null
+          slug?: string
+          start_date?: string | null
+          status?: string
+          total_orders?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string | null
@@ -753,6 +846,63 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          category: string | null
+          compare_at_price: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          images: string[] | null
+          inventory_count: number | null
+          long_description: string | null
+          name: string
+          price: number
+          shopify_product_id: string | null
+          shopify_variant_id: string | null
+          slug: string
+          status: string | null
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          compare_at_price?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          inventory_count?: number | null
+          long_description?: string | null
+          name: string
+          price?: number
+          shopify_product_id?: string | null
+          shopify_variant_id?: string | null
+          slug: string
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          compare_at_price?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          inventory_count?: number | null
+          long_description?: string | null
+          name?: string
+          price?: number
+          shopify_product_id?: string | null
+          shopify_variant_id?: string | null
+          slug?: string
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -803,6 +953,7 @@ export type Database = {
           id: string
           image_url: string | null
           last_saved_draft: string | null
+          logo_url: string | null
           long_description: string | null
           money_needed: number | null
           money_spent: number | null
@@ -837,6 +988,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_saved_draft?: string | null
+          logo_url?: string | null
           long_description?: string | null
           money_needed?: number | null
           money_spent?: number | null
@@ -871,6 +1023,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_saved_draft?: string | null
+          logo_url?: string | null
           long_description?: string | null
           money_needed?: number | null
           money_spent?: number | null

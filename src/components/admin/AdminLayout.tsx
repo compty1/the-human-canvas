@@ -35,6 +35,9 @@ import {
   Home,
   Info,
   Star,
+  Beaker,
+  ShoppingBag,
+  Gift,
 } from "lucide-react";
 import { PopButton } from "@/components/pop-art";
 import { toast } from "@/hooks/use-toast";
@@ -70,6 +73,8 @@ const navGroups: NavGroup[] = [
       { label: "About Page", href: "/admin/content/about", icon: Info },
       { label: "Projects", href: "/admin/projects", icon: FolderKanban },
       { label: "Client Work", href: "/admin/client-work", icon: Briefcase },
+      { label: "Experiments", href: "/admin/experiments", icon: Beaker },
+      { label: "Products", href: "/admin/products", icon: ShoppingBag },
       { label: "Articles", href: "/admin/articles", icon: Newspaper },
       { label: "Updates", href: "/admin/updates", icon: MessageSquare },
       { label: "Product Reviews", href: "/admin/product-reviews", icon: Star },
@@ -89,6 +94,7 @@ const navGroups: NavGroup[] = [
       { label: "Time Tracker", href: "/admin/time-tracker", icon: Clock },
       { label: "Sales Data", href: "/admin/sales", icon: DollarSign },
       { label: "Funding Campaigns", href: "/admin/funding-campaigns", icon: TrendingUp },
+      { label: "Contributions", href: "/admin/contributions", icon: Gift },
       { label: "AI Copy Generator", href: "/admin/ai-writer", icon: Sparkles },
       { label: "Bulk Import", href: "/admin/import", icon: Upload },
       { label: "Lead Finder", href: "/admin/leads", icon: Users },

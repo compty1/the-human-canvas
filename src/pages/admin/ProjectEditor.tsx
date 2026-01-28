@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -342,6 +343,26 @@ const ProjectEditor = () => {
               </p>
             </div>
           </div>
+        </ComicPanel>
+
+        {/* Bulk Text Import */}
+        <ComicPanel className="p-6">
+          <h2 className="text-xl font-display mb-4">Bulk Text Import</h2>
+          <BulkTextImporter
+            contentType="project"
+            onImport={(data) => {
+              setForm(prev => ({
+                ...prev,
+                title: (data.title as string) || prev.title,
+                description: (data.description as string) || prev.description,
+                long_description: (data.long_description as string) || prev.long_description,
+                tech_stack: (data.tech_stack as string[]) || prev.tech_stack,
+                features: (data.features as string[]) || prev.features,
+                problem_statement: (data.problem_statement as string) || prev.problem_statement,
+                solution_summary: (data.solution_summary as string) || prev.solution_summary,
+              }));
+            }}
+          />
         </ComicPanel>
 
         {/* Basic Info */}
