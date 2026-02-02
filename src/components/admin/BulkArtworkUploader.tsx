@@ -69,21 +69,36 @@ export const BulkArtworkUploader = ({ onComplete, onCancel }: BulkArtworkUploade
       .join(" ");
   };
 
-  const handleFilesSelect = useCallback((selectedFiles: FileList | null) => {
-    if (!selectedFiles) return;
+  const isImageFile = (file: File): boolean => {
+    // Check MIME type first
+    if (file.type.startsWith("image/")) return true;
+    // Fallback to extension check for edge cases
+    return /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|heic|heif|tiff|tif)$/i.test(file.name);
+  };
 
+  const handleFilesSelect = useCallback((files: FileList | File[] | null) => {
+    if (!files || files.length === 0) {
+      console.log("No files selected");
+      return;
+    }
+
+    console.log(`Processing ${files.length} files`);
+    const fileArray = Array.from(files);
     const newImages: ImagePreview[] = [];
+    const skippedFiles: string[] = [];
 
-    for (const file of Array.from(selectedFiles)) {
-      // Only accept images
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} is not an image file`);
+    for (const file of fileArray) {
+      console.log(`File: ${file.name}, Type: ${file.type}, Size: ${file.size}`);
+      
+      // Accept image files
+      if (!isImageFile(file)) {
+        skippedFiles.push(`${file.name} (not an image)`);
         continue;
       }
 
       // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 10MB)`);
+        skippedFiles.push(`${file.name} (too large)`);
         continue;
       }
 
@@ -97,7 +112,14 @@ export const BulkArtworkUploader = ({ onComplete, onCancel }: BulkArtworkUploade
       });
     }
 
-    setImages(prev => [...prev, ...newImages]);
+    if (skippedFiles.length > 0) {
+      toast.error(`Skipped ${skippedFiles.length} file(s): ${skippedFiles.slice(0, 3).join(", ")}${skippedFiles.length > 3 ? "..." : ""}`);
+    }
+
+    if (newImages.length > 0) {
+      setImages(prev => [...prev, ...newImages]);
+      toast.success(`Added ${newImages.length} image(s)`);
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -268,14 +290,23 @@ export const BulkArtworkUploader = ({ onComplete, onCancel }: BulkArtworkUploade
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.heic,.heif,.tiff,.tif"
           multiple
-          onChange={(e) => handleFilesSelect(e.target.files)}
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+              // Copy files to array before resetting input
+              const fileArray = Array.from(files);
+              handleFilesSelect(fileArray);
+            }
+            // Reset input to allow re-selecting same files
+            e.target.value = "";
+          }}
           className="hidden"
         />
         <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-        <p className="font-bold">Drop images here or click to select</p>
-        <p className="text-sm text-muted-foreground">PNG, JPG, WEBP up to 10MB each</p>
+        <p className="font-bold">Drop images here or click to select multiple</p>
+        <p className="text-sm text-muted-foreground">Select multiple files at once (PNG, JPG, WEBP, HEIC up to 10MB each)</p>
       </div>
 
       {/* Image Previews */}
