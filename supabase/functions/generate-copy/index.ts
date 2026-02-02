@@ -14,7 +14,7 @@ interface GenerateCopyRequest {
   tone?: "professional" | "creative" | "casual" | "technical";
   length?: "brief" | "standard" | "detailed" | "short";
   variations?: number;
-  fields?: string[]; // For bulk import - fields to extract
+  fields?: string[];
 }
 
 serve(async (req) => {
@@ -35,24 +35,33 @@ serve(async (req) => {
       fields = []
     } = body;
 
-    // Support both 'contentType' and 'type' field names
     const actualType = contentType || type || "general";
 
-    // Handle bulk import specially
-    if (actualType === "bulk_import" && context && fields.length > 0) {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        throw new Error("LOVABLE_API_KEY is not configured");
-      }
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
 
-      const extractionPrompt = `Analyze the following text and extract information for these fields: ${fields.join(", ")}.
+    // Handle bulk import with enhanced extraction
+    if (actualType === "bulk_import" && context && fields.length > 0) {
+      console.log(`Bulk import: Processing ${context.length} characters for fields: ${fields.join(", ")}`);
+      
+      const extractionPrompt = `You are a data extraction expert. Analyze the following text and extract information for these specific fields: ${fields.join(", ")}.
 
 TEXT TO ANALYZE:
 ${context}
 
-Return a JSON object with the extracted values. For array fields (like tech_stack, features, tags, skills_demonstrated, lessons_learned, etc.), return arrays. For text fields, return strings. For number fields (like revenue, costs), return numbers. If a field cannot be determined from the text, omit it or return null.
+EXTRACTION RULES:
+1. For array fields (tech_stack, features, tags, skills_demonstrated, lessons_learned, products_offered, themes, influence_areas, etc.), return arrays of strings
+2. For text fields (title, description, long_description, content, case_study, etc.), return strings
+3. For number fields (revenue, costs, etc.), return numbers only (no currency symbols)
+4. If a field cannot be determined from the text, omit it entirely
+5. Be thorough - extract as much relevant information as possible
+6. For case_study field, create a comprehensive narrative if enough information is available
+7. For description fields, summarize the key points concisely
+8. For long_description or detailed_content, preserve more detail and structure
 
-IMPORTANT: Return ONLY valid JSON, no markdown formatting or explanation.`;
+Return ONLY valid JSON with the extracted values. No markdown, no explanations, just the JSON object.`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -63,39 +72,61 @@ IMPORTANT: Return ONLY valid JSON, no markdown formatting or explanation.`;
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: [
-            { role: "system", content: "You are a data extraction assistant. Extract structured information from text and return it as valid JSON only." },
+            { 
+              role: "system", 
+              content: "You are a precise data extraction assistant. Extract structured information from text and return it as valid JSON only. Never include markdown formatting or explanations." 
+            },
             { role: "user", content: extractionPrompt },
           ],
         }),
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        console.error("AI Gateway error:", error);
-        throw new Error(`AI Gateway error: ${response.status}`);
+        const status = response.status;
+        const errorText = await response.text();
+        console.error(`AI Gateway error ${status}:`, errorText);
+        
+        if (status === 429) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait and try again." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (status === 402) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Payment required. Please add credits." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        throw new Error(`AI Gateway error: ${status}`);
       }
 
       const data = await response.json();
       const extractedContent = data.choices?.[0]?.message?.content || "{}";
       
-      // Try to parse the JSON
       let extracted = {};
       try {
-        // Remove any markdown code blocks if present
+        // Clean up common JSON formatting issues
         const cleanedContent = extractedContent
           .replace(/```json\n?/g, "")
           .replace(/```\n?/g, "")
+          .replace(/^[\s\n]*/, "")
+          .replace(/[\s\n]*$/, "")
           .trim();
+        
         extracted = JSON.parse(cleanedContent);
+        console.log("Successfully extracted fields:", Object.keys(extracted));
       } catch (parseError) {
-        console.error("Failed to parse extraction result:", parseError);
-        // Try to find JSON in the response
+        console.error("Initial parse failed, attempting recovery:", parseError);
+        
+        // Try to find JSON object in response
         const jsonMatch = extractedContent.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
             extracted = JSON.parse(jsonMatch[0]);
+            console.log("Recovery parse successful, fields:", Object.keys(extracted));
           } catch {
-            console.error("Second parse attempt failed");
+            console.error("Recovery parse also failed");
           }
         }
       }
@@ -110,11 +141,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown formatting or explanation.`;
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
+    // Standard copy generation
     const lengthGuide: Record<string, string> = {
       brief: "Keep it concise, 1-2 sentences.",
       short: "Keep it concise, 1-2 sentences.",
@@ -143,7 +170,6 @@ IMPORTANT: Return ONLY valid JSON, no markdown formatting or explanation.`;
       product_review: "Write a thoughtful product review. Cover strengths, weaknesses, and recommendations.",
       custom: "Write copy that fits the context provided.",
       general: "Write copy that fits the context provided.",
-      bulk_import: "Analyze the provided text and extract structured information for content creation.",
     };
 
     const systemPrompt = `You are a skilled copywriter for a creative portfolio website. Your writing style is bold, engaging, and authentic. 
@@ -176,15 +202,28 @@ ${variations > 1 ? `Generate ${variations} different variations, separated by "-
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("AI Gateway error:", error);
-      throw new Error(`AI Gateway error: ${response.status}`);
+      const status = response.status;
+      const errorText = await response.text();
+      console.error(`AI Gateway error ${status}:`, errorText);
+      
+      if (status === 429) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Rate limit exceeded" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (status === 402) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Payment required" }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw new Error(`AI Gateway error: ${status}`);
     }
 
     const data = await response.json();
     const generatedContent = data.choices?.[0]?.message?.content || "";
 
-    // Split variations if requested
     const results = variations > 1 
       ? generatedContent.split("---VARIATION---").map((v: string) => v.trim()).filter(Boolean)
       : [generatedContent.trim()];
@@ -192,10 +231,8 @@ ${variations > 1 ? `Generate ${variations} different variations, separated by "-
     return new Response(
       JSON.stringify({ 
         success: true, 
-        // Return both 'results' and 'variations' for compatibility with different consumers
         results,
         variations: results,
-        // Single content for simpler use cases
         content: results[0],
         usage: data.usage 
       }),

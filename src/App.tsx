@@ -84,7 +84,8 @@ import ExperimentEditor from "./pages/admin/ExperimentEditor";
 import ProductsManager from "./pages/admin/ProductsManager";
 import ProductEditor from "./pages/admin/ProductEditor";
 import ContributionsManager from "./pages/admin/ContributionsManager";
-
+import ContentReviewManager from "./pages/admin/ContentReviewManager";
+import LeadDetail from "./pages/admin/LeadDetail";
 const queryClient = new QueryClient();
 
 // Analytics wrapper component
@@ -185,7 +186,8 @@ const App = () => (
               <Route path="/admin/products/new" element={<ProductEditor />} />
               <Route path="/admin/products/:id/edit" element={<ProductEditor />} />
               <Route path="/admin/contributions" element={<ContributionsManager />} />
-              
+              <Route path="/admin/content-review" element={<ContentReviewManager />} />
+              <Route path="/admin/leads/:id" element={<LeadDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
