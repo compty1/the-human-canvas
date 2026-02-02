@@ -46,6 +46,8 @@ const ProjectEditor = () => {
     admin_notes: "",
     architecture_notes: "",
     accessibility_notes: "",
+    start_date: "",
+    end_date: "",
   });
 
   const [newTech, setNewTech] = useState("");
@@ -90,6 +92,8 @@ const ProjectEditor = () => {
         admin_notes: project.admin_notes || "",
         architecture_notes: (project as Record<string, unknown>).architecture_notes as string || "",
         accessibility_notes: (project as Record<string, unknown>).accessibility_notes as string || "",
+        start_date: (project as Record<string, unknown>).start_date as string || "",
+        end_date: (project as Record<string, unknown>).end_date as string || "",
       });
     }
   }, [project]);
@@ -436,6 +440,30 @@ const ProjectEditor = () => {
                   value={form.funding_goal}
                   onChange={(e) => setForm(prev => ({ ...prev, funding_goal: e.target.value }))}
                 />
+              </div>
+            </div>
+
+            {/* Project Dates */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start_date">Start Date</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => setForm(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground mt-1">When did this project begin?</p>
+              </div>
+              <div>
+                <Label htmlFor="end_date">End/Launch Date</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => setForm(prev => ({ ...prev, end_date: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground mt-1">When was it completed or launched?</p>
               </div>
             </div>
 

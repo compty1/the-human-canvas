@@ -172,6 +172,17 @@ const ExperimentDetail = () => {
               </ComicPanel>
             )}
 
+            {/* Case Study */}
+            {experiment.case_study && (
+              <ComicPanel className="p-6">
+                <h2 className="text-2xl font-display mb-4">Case Study</h2>
+                <div 
+                  className="prose prose-lg max-w-none"
+                  dangerouslySetInnerHTML={{ __html: experiment.case_study }}
+                />
+              </ComicPanel>
+            )}
+
             {/* Screenshots */}
             {experiment.screenshots && experiment.screenshots.length > 0 && (
               <ComicPanel className="p-6">

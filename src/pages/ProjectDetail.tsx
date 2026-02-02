@@ -3,8 +3,27 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, LikeButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, ArrowLeft, Heart, Check, Target, Lightbulb } from "lucide-react";
+import { ExternalLink, ArrowLeft, Heart, Check, Target, Lightbulb, Calendar } from "lucide-react";
 import { useState } from "react";
+
+// Helper to format date range
+const formatDateRange = (startDate?: string | null, endDate?: string | null, status?: string) => {
+  if (!startDate) return null;
+  const start = new Date(startDate);
+  const startStr = start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
+  if (status === "in_progress") {
+    return `Started ${startStr}`;
+  }
+  
+  if (endDate) {
+    const end = new Date(endDate);
+    const endStr = end.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return `${startStr} - ${endStr}`;
+  }
+  
+  return startStr;
+};
 
 const ProjectDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -110,6 +129,20 @@ const ProjectDetail = () => {
               </PopButton>
             </Link>
           </div>
+
+          {/* Project Timeline */}
+          {((project as Record<string, unknown>).start_date || (project as Record<string, unknown>).end_date) && (
+            <div className="flex items-center gap-2 text-muted-foreground mt-4">
+              <Calendar className="w-5 h-5" />
+              <span className="font-sans">
+                {formatDateRange(
+                  (project as Record<string, unknown>).start_date as string,
+                  (project as Record<string, unknown>).end_date as string,
+                  project.status
+                )}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 

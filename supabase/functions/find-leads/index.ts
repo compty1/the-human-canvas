@@ -8,12 +8,20 @@ const corsHeaders = {
 };
 
 interface FindLeadsRequest {
+  query?: string;
+  skills?: string[];
+  searchTerms?: string[];
   industry?: string;
   location?: string;
   companySize?: string;
   keywords?: string[];
   leadType?: "work" | "partnership" | "organization";
   limit?: number;
+  filters?: {
+    industry?: string;
+    location?: string;
+    company_size?: string;
+  };
 }
 
 serve(async (req) => {
@@ -60,7 +68,33 @@ serve(async (req) => {
       });
     }
 
-    const { industry, location, companySize, keywords, leadType = "work", limit = 20 }: FindLeadsRequest = await req.json();
+    const requestBody = await req.json();
+    const { 
+      query, 
+      skills = [], 
+      searchTerms = [],
+      industry, 
+      location, 
+      companySize, 
+      keywords, 
+      leadType = "work", 
+      limit = 20,
+      filters = {}
+    }: FindLeadsRequest = requestBody;
+
+    // Merge filters with top-level props
+    const effectiveIndustry = filters.industry || industry;
+    const effectiveLocation = filters.location || location;
+    const effectiveCompanySize = filters.company_size || companySize;
+
+    // If no skills provided, fetch from database
+    let effectiveSkills = skills;
+    if (skills.length === 0) {
+      const { data: dbSkills } = await supabase
+        .from("skills")
+        .select("name");
+      effectiveSkills = dbSkills?.map((s: { name: string }) => s.name) || [];
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -88,17 +122,21 @@ serve(async (req) => {
     const leadPrompt = `${leadTypePrompts[leadType] || leadTypePrompts.work}
 
 Portfolio owner skills:
-- Web Development (React, TypeScript, UX Design)
+${effectiveSkills.length > 0 ? effectiveSkills.map((s: string) => `- ${s}`).join("\n") : `- Web Development (React, TypeScript, UX Design)
 - Digital Art & Illustration
 - Photography
-- Graphic Design (product design, stickers)
-- Content Writing & Journalism
-- Type 1 Diabetes advocacy
+- Graphic Design
+- Content Writing`}
+
+${searchTerms.length > 0 ? `Special interests/search terms:
+${searchTerms.map((t: string) => `- ${t}`).join("\n")}` : ""}
+
+${query ? `Additional context: ${query}` : ""}
 
 Search criteria:
-${industry ? `- Industry: ${industry}` : "- Industries: Tech startups, Creative agencies, Health/Wellness, Small businesses"}
-${location ? `- Location: ${location}` : "- Location: Remote-friendly, US-based preferred"}
-${companySize ? `- Company size: ${companySize}` : "- Company size: 1-50 employees (small businesses, startups)"}
+${effectiveIndustry ? `- Industry: ${effectiveIndustry}` : "- Industries: Tech startups, Creative agencies, Health/Wellness, Small businesses"}
+${effectiveLocation ? `- Location: ${effectiveLocation}` : "- Location: Remote-friendly, US-based preferred"}
+${effectiveCompanySize ? `- Company size: ${effectiveCompanySize}` : "- Company size: 1-50 employees (small businesses, startups)"}
 ${keywords?.length ? `- Keywords: ${keywords.join(", ")}` : ""}
 
 For each lead, provide:
