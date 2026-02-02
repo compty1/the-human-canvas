@@ -408,6 +408,8 @@ export type Database = {
       }
       favorites: {
         Row: {
+          album_name: string | null
+          artist_name: string | null
           created_at: string | null
           creator_location: string | null
           creator_name: string | null
@@ -418,12 +420,18 @@ export type Database = {
           image_url: string | null
           impact_statement: string | null
           is_current: boolean | null
+          media_subtype: string | null
+          release_year: number | null
+          season_count: number | null
           source_url: string | null
+          streaming_links: Json | null
           tags: string[] | null
           title: string
           type: string
         }
         Insert: {
+          album_name?: string | null
+          artist_name?: string | null
           created_at?: string | null
           creator_location?: string | null
           creator_name?: string | null
@@ -434,12 +442,18 @@ export type Database = {
           image_url?: string | null
           impact_statement?: string | null
           is_current?: boolean | null
+          media_subtype?: string | null
+          release_year?: number | null
+          season_count?: number | null
           source_url?: string | null
+          streaming_links?: Json | null
           tags?: string[] | null
           title: string
           type: string
         }
         Update: {
+          album_name?: string | null
+          artist_name?: string | null
           created_at?: string | null
           creator_location?: string | null
           creator_name?: string | null
@@ -450,7 +464,11 @@ export type Database = {
           image_url?: string | null
           impact_statement?: string | null
           is_current?: boolean | null
+          media_subtype?: string | null
+          release_year?: number | null
+          season_count?: number | null
           source_url?: string | null
+          streaming_links?: Json | null
           tags?: string[] | null
           title?: string
           type?: string

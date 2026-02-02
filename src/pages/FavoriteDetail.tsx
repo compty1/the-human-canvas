@@ -3,8 +3,31 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, ExternalLink, MapPin, Calendar, Heart, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPin, Calendar, Heart, Loader2, Music, Film } from "lucide-react";
 import { format } from "date-fns";
+import { streamingPlatforms, getAvailableStreamingLinks } from "@/lib/streamingPlatforms";
+
+interface Favorite {
+  id: string;
+  title: string;
+  type: string;
+  source_url: string | null;
+  image_url: string | null;
+  creator_name: string | null;
+  creator_url: string | null;
+  creator_location: string | null;
+  description: string | null;
+  impact_statement: string | null;
+  is_current: boolean;
+  tags: string[] | null;
+  discovered_date: string | null;
+  streaming_links: Record<string, string> | null;
+  media_subtype: string | null;
+  release_year: number | null;
+  season_count: number | null;
+  album_name: string | null;
+  artist_name: string | null;
+}
 
 const FavoriteDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,7 +42,7 @@ const FavoriteDetail = () => {
         .maybeSingle();
       
       if (error) throw error;
-      return data;
+      return data as Favorite | null;
     },
     enabled: !!id,
   });
@@ -49,6 +72,11 @@ const FavoriteDetail = () => {
     );
   }
 
+  const streamingLinks = getAvailableStreamingLinks(favorite.streaming_links);
+  const isMusicType = favorite.type === 'music';
+  const isVideoType = favorite.type === 'movie' || favorite.type === 'show';
+  const hasStreamingLinks = streamingLinks.length > 0;
+
   return (
     <Layout>
       {/* Hero */}
@@ -62,6 +90,16 @@ const FavoriteDetail = () => {
             <span className="px-3 py-1 text-sm font-bold uppercase bg-primary text-primary-foreground">
               {favorite.type}
             </span>
+            {favorite.media_subtype && (
+              <span className="px-3 py-1 text-sm font-bold uppercase bg-muted capitalize">
+                {favorite.media_subtype}
+              </span>
+            )}
+            {favorite.release_year && (
+              <span className="px-3 py-1 text-sm font-bold bg-muted flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> {favorite.release_year}
+              </span>
+            )}
             {favorite.is_current && (
               <span className="px-3 py-1 text-sm font-bold bg-pop-yellow">
                 Currently Enjoying
@@ -73,15 +111,27 @@ const FavoriteDetail = () => {
             {favorite.title}
           </h1>
           
-          {favorite.creator_name && (
+          {(favorite.artist_name || favorite.creator_name) && (
             <p className="text-xl text-muted-foreground mb-2">
-              by {favorite.creator_name}
+              by {favorite.artist_name || favorite.creator_name}
               {favorite.creator_location && (
                 <span className="inline-flex items-center gap-1 ml-2">
                   <MapPin className="w-4 h-4" />
                   {favorite.creator_location}
                 </span>
               )}
+            </p>
+          )}
+
+          {favorite.album_name && (
+            <p className="text-lg text-muted-foreground mb-2">
+              from the album <span className="font-bold">{favorite.album_name}</span>
+            </p>
+          )}
+
+          {favorite.season_count && (
+            <p className="text-lg text-muted-foreground mb-2">
+              {favorite.season_count} {favorite.season_count === 1 ? 'Season' : 'Seasons'}
             </p>
           )}
 
@@ -105,6 +155,49 @@ const FavoriteDetail = () => {
                 className="w-full h-auto"
               />
             </ComicPanel>
+          </div>
+        </section>
+      )}
+
+      {/* Where to Watch/Listen */}
+      {hasStreamingLinks && (
+        <section className="py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto">
+              <ComicPanel className="p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  {isMusicType ? (
+                    <Music className="w-6 h-6 text-primary" />
+                  ) : (
+                    <Film className="w-6 h-6 text-primary" />
+                  )}
+                  <h2 className="text-2xl font-display">
+                    {isMusicType ? 'Listen On' : 'Where to Watch'}
+                  </h2>
+                </div>
+                <div className="grid gap-3">
+                  {streamingLinks.map(({ key, url, platform }) => (
+                    <a
+                      key={key}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-4 p-4 border-2 border-foreground hover:bg-muted transition-colors group"
+                      style={{ borderLeftColor: platform.color, borderLeftWidth: '4px' }}
+                    >
+                      <span className="text-2xl">{platform.icon}</span>
+                      <div className="flex-1">
+                        <span className="font-bold">{platform.name}</span>
+                        <p className="text-sm text-muted-foreground truncate max-w-md">
+                          {url}
+                        </p>
+                      </div>
+                      <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </a>
+                  ))}
+                </div>
+              </ComicPanel>
+            </div>
           </div>
         </section>
       )}
