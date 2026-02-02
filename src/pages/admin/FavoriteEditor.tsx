@@ -9,19 +9,33 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Loader2, Link as LinkIcon, Plus, X } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Save, ArrowLeft, Loader2, Link as LinkIcon, Plus, X, Music, Film, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  streamingPlatforms, 
+  musicPlatforms, 
+  videoPlatforms,
+  musicSubtypes,
+  videoSubtypes 
+} from "@/lib/streamingPlatforms";
 
 const types = [
   { value: "art", label: "Art" },
   { value: "music", label: "Music" },
   { value: "movie", label: "Movie" },
+  { value: "show", label: "TV Show" },
   { value: "book", label: "Book" },
   { value: "article", label: "Article" },
   { value: "research", label: "Research" },
+  { value: "podcast", label: "Podcast" },
   { value: "creator", label: "Creator" },
   { value: "other", label: "Other" },
 ];
+
+interface StreamingLinks {
+  [key: string]: string;
+}
 
 const FavoriteEditor = () => {
   const { id } = useParams();
@@ -42,10 +56,18 @@ const FavoriteEditor = () => {
     is_current: false,
     discovered_date: "",
     tags: [] as string[],
+    // New fields
+    streaming_links: {} as StreamingLinks,
+    media_subtype: "",
+    release_year: null as number | null,
+    season_count: null as number | null,
+    album_name: "",
+    artist_name: "",
   });
 
   const [newTag, setNewTag] = useState("");
   const [importing, setImporting] = useState(false);
+  const [streamingOpen, setStreamingOpen] = useState(true);
 
   const { data: favorite, isLoading } = useQuery({
     queryKey: ["favorite-edit", id],
@@ -77,6 +99,12 @@ const FavoriteEditor = () => {
         is_current: favorite.is_current || false,
         discovered_date: favorite.discovered_date || "",
         tags: favorite.tags || [],
+        streaming_links: (favorite.streaming_links as StreamingLinks) || {},
+        media_subtype: favorite.media_subtype || "",
+        release_year: favorite.release_year || null,
+        season_count: favorite.season_count || null,
+        album_name: favorite.album_name || "",
+        artist_name: favorite.artist_name || "",
       });
     }
   }, [favorite]);
@@ -93,6 +121,12 @@ const FavoriteEditor = () => {
         description: form.description || null,
         impact_statement: form.impact_statement || null,
         discovered_date: form.discovered_date || null,
+        streaming_links: Object.keys(form.streaming_links).length > 0 ? form.streaming_links : null,
+        media_subtype: form.media_subtype || null,
+        release_year: form.release_year || null,
+        season_count: form.season_count || null,
+        album_name: form.album_name || null,
+        artist_name: form.artist_name || null,
       };
 
       if (isEditing) {
@@ -125,7 +159,6 @@ const FavoriteEditor = () => {
 
     setImporting(true);
     try {
-      // Use analyze-site function to fetch metadata
       const { data, error } = await supabase.functions.invoke("analyze-site", {
         body: { url: form.source_url },
       });
@@ -155,6 +188,20 @@ const FavoriteEditor = () => {
       setNewTag("");
     }
   };
+
+  const updateStreamingLink = (platform: string, url: string) => {
+    setForm(prev => ({
+      ...prev,
+      streaming_links: {
+        ...prev.streaming_links,
+        [platform]: url
+      }
+    }));
+  };
+
+  const isMediaType = form.type === "music" || form.type === "movie" || form.type === "show" || form.type === "podcast";
+  const isMusicType = form.type === "music";
+  const isVideoType = form.type === "movie" || form.type === "show";
 
   if (isLoading) {
     return (
@@ -231,7 +278,7 @@ const FavoriteEditor = () => {
                 <select
                   id="type"
                   value={form.type}
-                  onChange={(e) => setForm(prev => ({ ...prev, type: e.target.value }))}
+                  onChange={(e) => setForm(prev => ({ ...prev, type: e.target.value, media_subtype: "" }))}
                   className="w-full h-10 px-3 border-2 border-input bg-background"
                 >
                   {types.map((t) => (
@@ -291,6 +338,141 @@ const FavoriteEditor = () => {
             </div>
           </div>
         </ComicPanel>
+
+        {/* Streaming Links - Show for music, movies, shows */}
+        {isMediaType && (
+          <Collapsible open={streamingOpen} onOpenChange={setStreamingOpen}>
+            <ComicPanel className="p-6">
+              <CollapsibleTrigger className="flex items-center justify-between w-full">
+                <h2 className="text-xl font-display flex items-center gap-2">
+                  {isMusicType ? <Music className="w-5 h-5" /> : <Film className="w-5 h-5" />}
+                  {isMusicType ? "Music Streaming Links" : "Where to Watch"}
+                </h2>
+                <ChevronDown className={`w-5 h-5 transition-transform ${streamingOpen ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <div className="grid gap-4">
+                  {/* Media Subtype */}
+                  <div>
+                    <Label>Subtype</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(isMusicType ? musicSubtypes : videoSubtypes).map((subtype) => (
+                        <button
+                          key={subtype}
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, media_subtype: subtype }))}
+                          className={`px-3 py-1 border-2 font-bold text-sm capitalize ${
+                            form.media_subtype === subtype
+                              ? 'bg-foreground text-background border-foreground'
+                              : 'border-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {subtype}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Music-specific fields */}
+                  {isMusicType && (
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="artist_name">Artist Name</Label>
+                        <Input
+                          id="artist_name"
+                          value={form.artist_name}
+                          onChange={(e) => setForm(prev => ({ ...prev, artist_name: e.target.value }))}
+                          placeholder="e.g., Daft Punk"
+                        />
+                      </div>
+                      {form.media_subtype === 'song' && (
+                        <div>
+                          <Label htmlFor="album_name">Album Name</Label>
+                          <Input
+                            id="album_name"
+                            value={form.album_name}
+                            onChange={(e) => setForm(prev => ({ ...prev, album_name: e.target.value }))}
+                            placeholder="e.g., Random Access Memories"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Release Year and Season Count */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="release_year">Release Year</Label>
+                      <Input
+                        id="release_year"
+                        type="number"
+                        min="1900"
+                        max="2099"
+                        value={form.release_year || ""}
+                        onChange={(e) => setForm(prev => ({ 
+                          ...prev, 
+                          release_year: e.target.value ? parseInt(e.target.value) : null 
+                        }))}
+                        placeholder="e.g., 2024"
+                      />
+                    </div>
+                    {(form.type === 'show' || form.media_subtype === 'series') && (
+                      <div>
+                        <Label htmlFor="season_count">Number of Seasons</Label>
+                        <Input
+                          id="season_count"
+                          type="number"
+                          min="1"
+                          value={form.season_count || ""}
+                          onChange={(e) => setForm(prev => ({ 
+                            ...prev, 
+                            season_count: e.target.value ? parseInt(e.target.value) : null 
+                          }))}
+                          placeholder="e.g., 2"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Platform Links */}
+                  <div className="space-y-3 mt-2">
+                    <Label>Streaming Platform Links</Label>
+                    {(isMusicType ? musicPlatforms : videoPlatforms).map((platformKey) => {
+                      const platform = streamingPlatforms[platformKey];
+                      return (
+                        <div key={platformKey} className="flex items-center gap-3">
+                          <div 
+                            className="w-10 h-10 flex items-center justify-center text-xl rounded border-2"
+                            style={{ borderColor: platform.color }}
+                          >
+                            {platform.icon}
+                          </div>
+                          <div className="flex-1">
+                            <Input
+                              value={form.streaming_links[platformKey] || ""}
+                              onChange={(e) => updateStreamingLink(platformKey, e.target.value)}
+                              placeholder={`${platform.urlPrefix}...`}
+                            />
+                          </div>
+                          {form.streaming_links[platformKey] && (
+                            <a 
+                              href={form.streaming_links[platformKey]} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 hover:bg-muted rounded"
+                            >
+                              <LinkIcon className="w-4 h-4" />
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </ComicPanel>
+          </Collapsible>
+        )}
 
         {/* Creator Info */}
         <ComicPanel className="p-6">
