@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
+import { ExperimentProductEditor } from "@/components/admin/ExperimentProductEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -477,6 +478,11 @@ const ExperimentEditor = () => {
             ))}
           </div>
         </ComicPanel>
+
+        {/* Product Catalog - Only show when editing existing experiment */}
+        {isEditing && id && (
+          <ExperimentProductEditor experimentId={id} />
+        )}
 
         {/* Skills Demonstrated */}
         <ComicPanel className="p-6">
