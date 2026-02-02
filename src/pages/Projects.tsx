@@ -116,14 +116,14 @@ const Projects = () => {
                       {project.status === "live" ? "Live" : project.status === "in_progress" ? "In Progress" : "Planned"}
                     </div>
                     {/* Date Display */}
-                    {(project as Record<string, unknown>).start_date && (
+                    {project.start_date && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Calendar className="w-3 h-3" />
                         {project.status === "in_progress" 
-                          ? `Started ${new Date((project as Record<string, unknown>).start_date as string).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
-                          : project.status === "live" && (project as Record<string, unknown>).end_date
-                          ? `Launched ${new Date((project as Record<string, unknown>).end_date as string).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
-                          : new Date((project as Record<string, unknown>).start_date as string).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                          ? `Started ${new Date(project.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+                          : project.status === "live" && project.end_date
+                          ? `Launched ${new Date(project.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+                          : new Date(project.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                       </span>
                     )}
                   </div>

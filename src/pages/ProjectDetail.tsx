@@ -131,15 +131,11 @@ const ProjectDetail = () => {
           </div>
 
           {/* Project Timeline */}
-          {((project as Record<string, unknown>).start_date || (project as Record<string, unknown>).end_date) && (
+          {(project.start_date || project.end_date) && (
             <div className="flex items-center gap-2 text-muted-foreground mt-4">
               <Calendar className="w-5 h-5" />
               <span className="font-sans">
-                {formatDateRange(
-                  (project as Record<string, unknown>).start_date as string,
-                  (project as Record<string, unknown>).end_date as string,
-                  project.status
-                )}
+                {formatDateRange(project.start_date, project.end_date, project.status)}
               </span>
             </div>
           )}

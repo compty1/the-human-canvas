@@ -105,6 +105,16 @@ const ClientWork = () => {
                         }`}>
                           {project.status === "completed" ? "Completed" : "In Progress"}
                         </span>
+                        {project.start_date && (
+                          <span className="text-xs text-muted-foreground">
+                            {project.status === "in_progress" 
+                              ? `Started ${new Date(project.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+                              : project.end_date 
+                                ? `${new Date(project.start_date).getFullYear()} - ${new Date(project.end_date).getFullYear()}`
+                                : new Date(project.start_date).getFullYear()
+                            }
+                          </span>
+                        )}
                       </div>
                       
                       <h3 className="text-2xl font-display mb-1">{project.project_name}</h3>
