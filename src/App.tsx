@@ -86,6 +86,16 @@ import ProductEditor from "./pages/admin/ProductEditor";
 import ContributionsManager from "./pages/admin/ContributionsManager";
 import ContentReviewManager from "./pages/admin/ContentReviewManager";
 import LeadDetail from "./pages/admin/LeadDetail";
+import ExperiencesManager from "./pages/admin/ExperiencesManager";
+import ExperienceEditorPage from "./pages/admin/ExperienceEditor";
+import CertificationsManager from "./pages/admin/CertificationsManager";
+import CertificationEditor from "./pages/admin/CertificationEditor";
+import ContentLibrary from "./pages/admin/ContentLibrary";
+
+// Additional Public pages
+import ExperiencesPage from "./pages/Experiences";
+import ExperienceDetailPage from "./pages/ExperienceDetail";
+import CertificationsPage from "./pages/Certifications";
 const queryClient = new QueryClient();
 
 // Analytics wrapper component
@@ -133,6 +143,9 @@ const App = () => (
               <Route path="/experiments/:slug" element={<ExperimentDetail />} />
               <Route path="/store" element={<Store />} />
               <Route path="/store/:slug" element={<StoreProductDetail />} />
+              <Route path="/experiences" element={<ExperiencesPage />} />
+              <Route path="/experiences/:slug" element={<ExperienceDetailPage />} />
+              <Route path="/certifications" element={<CertificationsPage />} />
               {/* Admin routes */}
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/analytics" element={<Analytics />} />
@@ -188,6 +201,13 @@ const App = () => (
               <Route path="/admin/contributions" element={<ContributionsManager />} />
               <Route path="/admin/content-review" element={<ContentReviewManager />} />
               <Route path="/admin/leads/:id" element={<LeadDetail />} />
+              <Route path="/admin/experiences" element={<ExperiencesManager />} />
+              <Route path="/admin/experiences/new" element={<ExperienceEditorPage />} />
+              <Route path="/admin/experiences/:id/edit" element={<ExperienceEditorPage />} />
+              <Route path="/admin/certifications" element={<CertificationsManager />} />
+              <Route path="/admin/certifications/new" element={<CertificationEditor />} />
+              <Route path="/admin/certifications/:id/edit" element={<CertificationEditor />} />
+              <Route path="/admin/content-library" element={<ContentLibrary />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

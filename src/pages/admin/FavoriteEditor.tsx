@@ -60,13 +60,17 @@ const FavoriteEditor = () => {
     is_current: false,
     discovered_date: "",
     tags: [] as string[],
-    // New fields
+    // Streaming fields
     streaming_links: {} as StreamingLinks,
     media_subtype: "",
     release_year: null as number | null,
     season_count: null as number | null,
     album_name: "",
     artist_name: "",
+    // Childhood roots fields
+    is_childhood_root: false,
+    childhood_age_range: "",
+    childhood_impact: "",
   });
 
   const [newTag, setNewTag] = useState("");
@@ -109,6 +113,9 @@ const FavoriteEditor = () => {
         season_count: favorite.season_count || null,
         album_name: favorite.album_name || "",
         artist_name: favorite.artist_name || "",
+        is_childhood_root: (favorite as Record<string, unknown>).is_childhood_root as boolean || false,
+        childhood_age_range: (favorite as Record<string, unknown>).childhood_age_range as string || "",
+        childhood_impact: (favorite as Record<string, unknown>).childhood_impact as string || "",
       });
     }
   }, [favorite]);
@@ -131,6 +138,8 @@ const FavoriteEditor = () => {
         season_count: form.season_count || null,
         album_name: form.album_name || null,
         artist_name: form.artist_name || null,
+        childhood_age_range: form.childhood_age_range || null,
+        childhood_impact: form.childhood_impact || null,
       };
 
       if (isEditing) {

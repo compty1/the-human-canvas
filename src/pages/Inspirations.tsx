@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, User, Lightbulb, Compass, Heart, ArrowRight, Loader2 } from "lucide-react";
+import { Sparkles, User, Lightbulb, Compass, Heart, ArrowRight, Loader2, TreeDeciduous } from "lucide-react";
 
 interface Inspiration {
   id: string;
@@ -45,6 +45,20 @@ const Inspirations = () => {
         .order("order_index", { ascending: true });
       if (error) throw error;
       return data as Inspiration[];
+    },
+  });
+
+  // Fetch childhood roots from favorites
+  const { data: childhoodRoots = [] } = useQuery({
+    queryKey: ["childhood-roots"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("favorites")
+        .select("*")
+        .eq("is_childhood_root", true)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -179,6 +193,47 @@ const Inspirations = () => {
           )}
         </div>
       </section>
+
+      {/* Roots Section - Childhood Favorites */}
+      {childhoodRoots.length > 0 && (
+        <section className="py-16 bg-muted">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-foreground text-background font-bold mb-4">
+                <TreeDeciduous className="w-5 h-5" />
+                Roots
+              </div>
+              <h2 className="text-4xl font-display mb-4">Formative Influences</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                The media, stories, and experiences from childhood that shaped who I am today.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {childhoodRoots.map((root) => (
+                <Link key={root.id} to={`/favorites/${root.id}`}>
+                  <ComicPanel className="h-full hover:-translate-y-1 transition-transform p-0 overflow-hidden">
+                    {root.image_url && (
+                      <div className="aspect-video overflow-hidden border-b-4 border-foreground">
+                        <img src={root.image_url} alt={root.title} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">{root.type}</span>
+                      {root.childhood_age_range && (
+                        <span className="text-xs font-bold text-pop-magenta ml-2">Age {root.childhood_age_range}</span>
+                      )}
+                      <h3 className="text-xl font-display mt-1">{root.title}</h3>
+                      {root.childhood_impact && (
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{root.childhood_impact}</p>
+                      )}
+                    </div>
+                  </ComicPanel>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </Layout>
   );
 };
