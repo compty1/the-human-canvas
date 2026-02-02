@@ -44,6 +44,7 @@ const ExperimentEditor = () => {
     management_info: "",
     operation_details: "",
     admin_notes: "",
+    case_study: "",
   });
 
   const [newReview, setNewReview] = useState("");
@@ -94,6 +95,7 @@ const ExperimentEditor = () => {
         management_info: experiment.management_info || "",
         operation_details: experiment.operation_details || "",
         admin_notes: experiment.admin_notes || "",
+        case_study: experiment.case_study || "",
       });
     }
   }, [experiment]);
@@ -143,6 +145,7 @@ const ExperimentEditor = () => {
         management_info: form.management_info || null,
         operation_details: form.operation_details || null,
         admin_notes: form.admin_notes || null,
+        case_study: form.case_study || null,
       };
 
       if (isEditing) {
@@ -560,6 +563,20 @@ const ExperimentEditor = () => {
               />
             </div>
           </div>
+        </ComicPanel>
+
+        {/* Case Study */}
+        <ComicPanel className="p-6">
+          <h2 className="text-xl font-display mb-4">Case Study</h2>
+          <Textarea
+            value={form.case_study}
+            onChange={(e) => setForm((prev) => ({ ...prev, case_study: e.target.value }))}
+            rows={8}
+            placeholder="Write a detailed case study about this experiment..."
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Include background, challenges, solutions, and outcomes
+          </p>
         </ComicPanel>
 
         {/* Admin Notes */}

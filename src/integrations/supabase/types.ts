@@ -596,6 +596,36 @@ export type Database = {
           },
         ]
       }
+      lead_search_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          industries: string[] | null
+          is_default: boolean | null
+          name: string
+          skills: string[] | null
+          terms: string[] | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          industries?: string[] | null
+          is_default?: boolean | null
+          name: string
+          skills?: string[] | null
+          terms?: string[] | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          industries?: string[] | null
+          is_default?: boolean | null
+          name?: string
+          skills?: string[] | null
+          terms?: string[] | null
+        }
+        Relationships: []
+      }
       lead_searches: {
         Row: {
           executed_at: string
@@ -1072,6 +1102,7 @@ export type Database = {
           created_at: string
           description: string | null
           draft_content: Json | null
+          end_date: string | null
           external_url: string | null
           features: string[] | null
           funding_goal: number | null
@@ -1097,6 +1128,7 @@ export type Database = {
           screenshots: string[] | null
           slug: string
           solution_summary: string | null
+          start_date: string | null
           status: Database["public"]["Enums"]["project_status"]
           tech_stack: string[] | null
           title: string
@@ -1112,6 +1144,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           draft_content?: Json | null
+          end_date?: string | null
           external_url?: string | null
           features?: string[] | null
           funding_goal?: number | null
@@ -1137,6 +1170,7 @@ export type Database = {
           screenshots?: string[] | null
           slug: string
           solution_summary?: string | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           tech_stack?: string[] | null
           title: string
@@ -1152,6 +1186,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           draft_content?: Json | null
+          end_date?: string | null
           external_url?: string | null
           features?: string[] | null
           funding_goal?: number | null
@@ -1177,6 +1212,7 @@ export type Database = {
           screenshots?: string[] | null
           slug?: string
           solution_summary?: string | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           tech_stack?: string[] | null
           title?: string

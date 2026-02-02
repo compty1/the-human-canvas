@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, LikeButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, ArrowRight, Heart, Loader2 } from "lucide-react";
+import { ExternalLink, ArrowRight, Heart, Loader2, Calendar } from "lucide-react";
 
 const Projects = () => {
   const [filter, setFilter] = useState<"all" | "live" | "in_progress" | "planned">("all");
@@ -102,17 +102,30 @@ const Projects = () => {
                     </Link>
                   )}
 
-                  {/* Status Badge */}
-                  <div
-                    className={`inline-block self-start px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground mb-4 ${
-                      project.status === "live"
-                        ? "bg-pop-cyan"
-                        : project.status === "in_progress"
-                        ? "bg-pop-yellow"
-                        : "bg-muted"
-                    }`}
-                  >
-                    {project.status === "live" ? "Live" : project.status === "in_progress" ? "In Progress" : "Planned"}
+                  {/* Status Badge + Date */}
+                  <div className="flex items-center gap-2 mb-4 flex-wrap">
+                    <div
+                      className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground ${
+                        project.status === "live"
+                          ? "bg-pop-cyan"
+                          : project.status === "in_progress"
+                          ? "bg-pop-yellow"
+                          : "bg-muted"
+                      }`}
+                    >
+                      {project.status === "live" ? "Live" : project.status === "in_progress" ? "In Progress" : "Planned"}
+                    </div>
+                    {/* Date Display */}
+                    {(project as Record<string, unknown>).start_date && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        {project.status === "in_progress" 
+                          ? `Started ${new Date((project as Record<string, unknown>).start_date as string).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+                          : project.status === "live" && (project as Record<string, unknown>).end_date
+                          ? `Launched ${new Date((project as Record<string, unknown>).end_date as string).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+                          : new Date((project as Record<string, unknown>).start_date as string).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
                   </div>
 
                   <Link to={`/projects/${project.slug}`}>
