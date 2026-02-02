@@ -1,318 +1,242 @@
 
-# Enhanced Media Favorites with Streaming Platform Links
+
+# Experiments Enhancement: Product Catalog & GlucoHaus Business Experiment
 
 ## Overview
-Add support for multiple streaming platform links per favorite, allowing you to add music (Spotify, Apple Music, YouTube Music, SoundCloud), movies/shows (Netflix, Hulu, Amazon Prime, Disney+, HBO Max, Apple TV+), and other media with direct links to each platform where available.
+
+This plan adds detailed product tracking for experiments and creates a comprehensive GlucoHaus plant business experiment. Since the Etsy listings file contains only headers (no product data), I'll enhance the system to support manually adding detailed products and create rich business documentation for both experiments.
+
+## Important Note About Etsy File
+
+The uploaded Excel file `EtsyListingsDownload.xlsx` contains only column headers with no actual product data rows. The headers show the expected format:
+- TITLE, DESCRIPTION, PRICE, QUANTITY, TAGS, MATERIALS, IMAGE1-10, VARIATIONS, SKU
+
+You may need to re-export the data from Etsy or manually add the products.
 
 ## Database Changes
 
-### Add New Columns to `favorites` Table
+### 1. Create `experiment_products` Table
+
 ```sql
-ALTER TABLE favorites ADD COLUMN streaming_links JSONB DEFAULT '{}';
-ALTER TABLE favorites ADD COLUMN media_subtype TEXT;
-ALTER TABLE favorites ADD COLUMN release_year INTEGER;
-ALTER TABLE favorites ADD COLUMN season_count INTEGER;
-ALTER TABLE favorites ADD COLUMN album_name TEXT;
-ALTER TABLE favorites ADD COLUMN artist_name TEXT;
+CREATE TABLE experiment_products (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  experiment_id UUID REFERENCES experiments(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC(10,2),
+  original_price NUMERIC(10,2),
+  currency TEXT DEFAULT 'USD',
+  quantity_sold INTEGER DEFAULT 0,
+  quantity_available INTEGER DEFAULT 0,
+  category TEXT,
+  tags TEXT[],
+  materials TEXT[],
+  images TEXT[],
+  variations JSONB DEFAULT '{}',
+  sku TEXT,
+  status TEXT DEFAULT 'active',
+  etsy_listing_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE experiment_products ENABLE ROW LEVEL SECURITY;
+
+-- Public read policy
+CREATE POLICY "Public can read experiment products"
+  ON experiment_products FOR SELECT
+  USING (true);
+
+-- Admin write policy
+CREATE POLICY "Admins can manage experiment products"
+  ON experiment_products FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.email = 'shanealecompte@gmail.com'
+    )
+  );
 ```
 
-**Column Details:**
-- `streaming_links`: JSONB object storing platform-specific URLs:
-  ```json
-  {
-    "spotify": "https://open.spotify.com/...",
-    "apple_music": "https://music.apple.com/...",
-    "youtube_music": "https://music.youtube.com/...",
-    "soundcloud": "https://soundcloud.com/...",
-    "netflix": "https://www.netflix.com/title/...",
-    "hulu": "https://www.hulu.com/...",
-    "amazon_prime": "https://www.amazon.com/...",
-    "disney_plus": "https://www.disneyplus.com/...",
-    "hbo_max": "https://www.max.com/...",
-    "apple_tv": "https://tv.apple.com/..."
-  }
-  ```
-- `media_subtype`: For more specific categorization (e.g., "album", "song", "playlist" for music; "movie", "series", "documentary" for film)
-- `release_year`: When the media was released
-- `season_count`: For TV shows
-- `album_name`: For songs (to link back to album)
-- `artist_name`: Alternative to creator_name, specific to music
+### 2. Data Insertions
 
-## New Types
-Update the type list to include:
-- `show` (TV Shows - new)
-- `podcast` (new)
-- `music` (already exists)
-- `movie` (already exists)
+**GlucoHaus Experiment:**
+```sql
+INSERT INTO experiments (
+  name, slug, platform, description, long_description,
+  status, start_date, end_date, revenue, costs, profit,
+  products_sold, total_orders,
+  products_offered, skills_demonstrated, lessons_learned,
+  management_info, operation_details, case_study
+) VALUES (
+  'GlucoHaus',
+  'glucohaus',
+  'Independent / Research',
+  'An eco-conscious plant delivery experiment exploring biodegradable packaging and sustainable shipping for live plants.',
+  'GlucoHaus was a conceptual business experiment...',
+  'closed',
+  '2023-05-01',
+  '2023-08-01',
+  0, -- No revenue (planning only)
+  150, -- Research/material costs
+  -150,
+  0, 0,
+  ARRAY['Sunflower Seedlings', 'Herb Starter Kits', ...],
+  ARRAY['Business Planning', 'Logistics', 'Sustainability', ...],
+  ARRAY['Live plant shipping requires careful timing', ...],
+  'Full business planning documentation...',
+  'Operational workflow and shipping research...',
+  'Detailed case study of the planning process...'
+);
+```
 
-## UI Changes
+## File Changes
 
-### 1. Update FavoriteEditor.tsx (Admin)
+### 1. Upload Plant Images to Storage
 
-#### Add Streaming Links Section
-New collapsible section that shows relevant platform inputs based on type:
+Upload the 6 plant images to the `content-images` bucket under `experiments/glucohaus/`:
+- `seedling-1.jpg` through `seedling-6.jpg`
 
-**For Music (`type === "music"`):**
+These will be used as:
+- Main experiment image
+- Product showcase screenshots
+- Gallery images
+
+### 2. Create Admin Product Editor Component
+
+**New file: `src/components/admin/ExperimentProductEditor.tsx`**
+
+A reusable component for managing experiment products:
+- Add/edit/delete products linked to an experiment
+- Multi-image upload per product
+- Price and inventory tracking
+- Tags and materials arrays
+- Variation support (size, color, etc.)
+
+### 3. Update ExperimentEditor.tsx
+
+Add a new section after "Products Offered" to manage detailed products:
+
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ 🎵 Music Streaming Links                                  │
+│ Products Catalog                                          │
 ├──────────────────────────────────────────────────────────┤
-│ Subtype: (•) Album  ( ) Song  ( ) Playlist               │
+│ [+ Add Product]                                          │
 │                                                           │
-│ Artist Name: [________________________]                   │
-│ Album Name:  [________________________] (if song)        │
-│ Release Year: [____]                                      │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ [Image] Sunflower Seedling Kit                      │ │
+│ │         $12.99 • 25 sold • In Stock                 │ │
+│ │         [Edit] [Delete]                             │ │
+│ └─────────────────────────────────────────────────────┘ │
 │                                                           │
-│ [Spotify Icon] Spotify                                   │
-│ [https://open.spotify.com/album/...            ]         │
-│                                                           │
-│ [Apple Icon] Apple Music                                 │
-│ [https://music.apple.com/album/...             ]         │
-│                                                           │
-│ [YouTube Icon] YouTube Music                             │
-│ [https://music.youtube.com/playlist/...        ]         │
-│                                                           │
-│ [SoundCloud Icon] SoundCloud                             │
-│ [https://soundcloud.com/...                    ]         │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ [Image] Herb Starter Collection                     │ │
+│ │         $18.99 • 12 sold • Out of Stock             │ │
+│ │         [Edit] [Delete]                             │ │
+│ └─────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────┘
 ```
 
-**For Movies/Shows (`type === "movie"` or `type === "show"`):**
+### 4. Update ExperimentDetail.tsx (Public)
+
+Add a "Product Gallery" section to display products with images, prices, and details:
+
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ 🎬 Watch On                                               │
+│ Products Sold                                             │
 ├──────────────────────────────────────────────────────────┤
-│ Subtype: (•) Movie  ( ) Series  ( ) Documentary          │
-│                                                           │
-│ Release Year: [____]    Seasons: [__] (if series)        │
-│                                                           │
-│ [Netflix Icon] Netflix                                   │
-│ [https://www.netflix.com/title/...             ]         │
-│                                                           │
-│ [Hulu Icon] Hulu                                         │
-│ [https://www.hulu.com/...                      ]         │
-│                                                           │
-│ [Prime Icon] Amazon Prime Video                          │
-│ [https://www.amazon.com/gp/video/...           ]         │
-│                                                           │
-│ [Disney Icon] Disney+                                    │
-│ [https://www.disneyplus.com/...                ]         │
-│                                                           │
-│ [HBO Icon] Max (HBO)                                     │
-│ [https://www.max.com/...                       ]         │
-│                                                           │
-│ [Apple Icon] Apple TV+                                   │
-│ [https://tv.apple.com/...                      ]         │
+│ ┌──────────┐  ┌──────────┐  ┌──────────┐                │
+│ │ [Image]  │  │ [Image]  │  │ [Image]  │                │
+│ │ Product  │  │ Product  │  │ Product  │                │
+│ │ $12.99   │  │ $18.99   │  │ $24.99   │                │
+│ │ 25 sold  │  │ 12 sold  │  │ 8 sold   │                │
+│ └──────────┘  └──────────┘  └──────────┘                │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### 2. Update Favorites.tsx (Public Listing)
-- Add streaming platform icons below each card
-- Clicking icon opens the respective platform link
-- Only show icons for platforms that have URLs
+## GlucoHaus Experiment Content
 
-```
-┌────────────────────────────────────┐
-│ [Album Cover Image]                │
-│────────────────────────────────────│
-│ 🎵 MUSIC                           │
-│ Album Title                        │
-│ by Artist Name • 2024              │
-│ "Why I love this album..."         │
-│                                    │
-│ Listen on:                         │
-│ [🟢Spotify] [🍎Apple] [▶️YT]       │
-└────────────────────────────────────┘
-```
+### Description
+GlucoHaus was an eco-conscious plant delivery concept exploring sustainable packaging for live plant shipping. Using biodegradable pots and eco-friendly materials, the experiment researched how to ship live seedlings while minimizing environmental impact.
 
-### 3. Update FavoriteDetail.tsx (Detail Page)
-- Add prominent "Where to Watch/Listen" section
-- Display all available platform links as branded buttons
-- Add media-specific metadata (release year, seasons, etc.)
+### Business Planning Details
 
-```
-┌──────────────────────────────────────────────────────────┐
-│ [Back to Favorites]                                       │
-│                                                           │
-│ 🎬 MOVIE • 2024                                          │
-│ ═══════════════════════════════════════════════════      │
-│ Movie Title                                               │
-│ Directed by Director Name                                 │
-│                                                           │
-│ [Large Movie Poster]                                      │
-│                                                           │
-│ ┌────────────────────────────────────────────────────┐   │
-│ │ 📺 Where to Watch                                   │   │
-│ │                                                      │   │
-│ │ [Netflix Logo - Watch on Netflix      →]            │   │
-│ │ [Prime Logo - Watch on Prime Video    →]            │   │
-│ │ [Hulu Logo - Watch on Hulu            →]            │   │
-│ └────────────────────────────────────────────────────┘   │
-│                                                           │
-│ About                                                     │
-│ Description text...                                       │
-│                                                           │
-│ How It Affected Me                                        │
-│ Impact statement...                                       │
-└──────────────────────────────────────────────────────────┘
-```
+**Market Research:**
+- Target market: Eco-conscious urban gardeners
+- Competitive analysis of plant subscription services
+- Pricing strategy for sustainable premium
 
-## Platform Icons & Branding
+**Financial Planning:**
+- Startup costs: ~$500-1000
+- Material costs per unit: $3-5
+- Shipping costs: $8-15 depending on zone
+- Target margin: 40-50%
 
-Create a helper for platform metadata:
-```typescript
-const streamingPlatforms = {
-  // Music
-  spotify: { 
-    name: "Spotify", 
-    icon: "🟢", // or custom SVG
-    color: "#1DB954",
-    urlPrefix: "https://open.spotify.com/"
-  },
-  apple_music: { 
-    name: "Apple Music", 
-    icon: "🍎",
-    color: "#FA243C",
-    urlPrefix: "https://music.apple.com/"
-  },
-  youtube_music: { 
-    name: "YouTube Music", 
-    icon: "▶️",
-    color: "#FF0000",
-    urlPrefix: "https://music.youtube.com/"
-  },
-  soundcloud: { 
-    name: "SoundCloud", 
-    icon: "☁️",
-    color: "#FF5500",
-    urlPrefix: "https://soundcloud.com/"
-  },
-  // Video
-  netflix: { 
-    name: "Netflix", 
-    icon: "🎬",
-    color: "#E50914",
-    urlPrefix: "https://www.netflix.com/"
-  },
-  hulu: { 
-    name: "Hulu", 
-    icon: "📺",
-    color: "#1CE783",
-    urlPrefix: "https://www.hulu.com/"
-  },
-  amazon_prime: { 
-    name: "Prime Video", 
-    icon: "📦",
-    color: "#00A8E1",
-    urlPrefix: "https://www.amazon.com/"
-  },
-  disney_plus: { 
-    name: "Disney+", 
-    icon: "✨",
-    color: "#113CCF",
-    urlPrefix: "https://www.disneyplus.com/"
-  },
-  hbo_max: { 
-    name: "Max", 
-    icon: "🎭",
-    color: "#002BE7",
-    urlPrefix: "https://www.max.com/"
-  },
-  apple_tv: { 
-    name: "Apple TV+", 
-    icon: "📱",
-    color: "#000000",
-    urlPrefix: "https://tv.apple.com/"
-  }
-};
-```
+**Product Line:**
+- Sunflower Seedlings in Biodegradable Cups
+- Herb Starter Kits (Basil, Cilantro, Mint)
+- Vegetable Seedling Bundles
+- Seasonal Flower Collections
 
-## Validation
-- Validate URLs match expected platform format
-- Warn if URL doesn't match platform prefix (but still allow saving)
-- Auto-detect platform from pasted URL and populate correct field
+**Shipping Plan:**
+- Zone-based shipping rates
+- 2-day priority for live plants
+- Climate-controlled packaging research
+- Seasonal shipping restrictions
 
-## Files to Modify
+**Operational Workflow:**
+1. Seed germination timeline (7-14 days)
+2. Growth monitoring and quality control
+3. Order processing and packaging
+4. Carrier selection and tracking
+5. Customer communication and care instructions
 
-### Database
-1. **New migration**: Add columns to `favorites` table
+### Skills Demonstrated
+- Business Planning & Strategy
+- Supply Chain Logistics
+- Sustainability Research
+- Product Photography
+- E-commerce Operations
+- Cost Analysis & Pricing
+- Packaging Design
 
-### Frontend
-2. **`src/pages/admin/FavoriteEditor.tsx`**:
-   - Add streaming links section with platform-specific inputs
-   - Add media_subtype radio buttons
-   - Add release_year, season_count, artist_name, album_name fields
-   - Conditionally show fields based on type
-
-3. **`src/pages/Favorites.tsx`**:
-   - Add streaming platform icons to cards
-   - Show release year and subtype in card metadata
-   - Update type filters to include "show" and "podcast"
-
-4. **`src/pages/FavoriteDetail.tsx`**:
-   - Add "Where to Watch/Listen" section with branded buttons
-   - Display additional metadata (year, seasons, artist)
-
-### Shared
-5. **Create `src/lib/streamingPlatforms.ts`**:
-   - Export platform configuration object
-   - Helper function to get platform info from key
-   - Helper to validate/detect platform URLs
-
-## Types Update
-Update `src/integrations/supabase/types.ts` will auto-update after migration.
-
-Update local interfaces in components to include:
-```typescript
-interface Favorite {
-  // ...existing fields
-  streaming_links: Record<string, string> | null;
-  media_subtype: string | null;
-  release_year: number | null;
-  season_count: number | null;
-  album_name: string | null;
-  artist_name: string | null;
-}
-```
-
-## Example Data
-After implementation, you could add:
-
-**Music Example:**
-- Title: "Random Access Memories"
-- Type: music
-- Subtype: album
-- Artist: Daft Punk
-- Release Year: 2013
-- Streaming Links:
-  - Spotify: https://open.spotify.com/album/4m2880jivSbbyEGAKfITCa
-  - Apple Music: https://music.apple.com/album/random-access-memories/617154241
-
-**Movie Example:**
-- Title: "Dune: Part Two"
-- Type: movie
-- Subtype: movie
-- Creator: Denis Villeneuve
-- Release Year: 2024
-- Streaming Links:
-  - Netflix: https://www.netflix.com/title/81714934
-  - Prime: https://www.amazon.com/gp/video/detail/B0CV4HVJXY
-
-**TV Show Example:**
-- Title: "Severance"
-- Type: show
-- Subtype: series
-- Creator: Dan Erickson
-- Release Year: 2022
-- Season Count: 2
-- Streaming Links:
-  - Apple TV: https://tv.apple.com/show/severance/umc.cmc.1srk2goyh2q2zdxcx605w8vtx
+### Lessons Learned
+- Live plant shipping requires careful timing and climate consideration
+- Biodegradable materials need moisture protection
+- Customer education is critical for plant care success
+- Seasonal timing affects both plant availability and shipping viability
+- Local fulfillment may be more practical than national shipping
 
 ## Implementation Order
 
-1. Create database migration (add new columns)
-2. Create `streamingPlatforms.ts` helper
-3. Update `FavoriteEditor.tsx` with streaming links UI
-4. Update `Favorites.tsx` with platform icons
-5. Update `FavoriteDetail.tsx` with "Where to Watch/Listen" section
-6. Add "show" and "podcast" to type options
+1. **Database Migration** - Create `experiment_products` table
+2. **Upload Images** - Store plant photos in content-images bucket
+3. **Create GlucoHaus** - Insert experiment with full business documentation
+4. **Admin Components** - Build ExperimentProductEditor component
+5. **Update ExperimentEditor** - Add products management section
+6. **Update ExperimentDetail** - Display product gallery on public page
+7. **Add Sample Products** - Create product entries for both experiments
+
+## Files to Modify/Create
+
+| File | Action |
+|------|--------|
+| `supabase/migrations/[timestamp]_experiment_products.sql` | Create new migration |
+| `src/components/admin/ExperimentProductEditor.tsx` | New component |
+| `src/pages/admin/ExperimentEditor.tsx` | Add products section |
+| `src/pages/ExperimentDetail.tsx` | Add product gallery |
+| `src/integrations/supabase/types.ts` | Auto-updates |
+
+## Sample CompteHaus Products (Manual Entry)
+
+Since the Etsy export was empty, you can manually add products like:
+- Vintage Leather Jacket - $45
+- Antique Brass Candlestick Set - $28
+- Retro Pyrex Mixing Bowl - $22
+- Mid-Century Modern Lamp - $65
+- Vintage Band T-Shirt Collection - $15-25
+
+These can be added through the admin interface once built, or I can insert them via SQL if you provide the product details.
+
