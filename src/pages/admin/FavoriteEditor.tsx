@@ -16,8 +16,12 @@ import {
   streamingPlatforms, 
   musicPlatforms, 
   videoPlatforms,
+  podcastPlatforms,
   musicSubtypes,
-  videoSubtypes 
+  videoSubtypes,
+  podcastSubtypes,
+  detectPlatformFromUrl,
+  getPlatformsForType
 } from "@/lib/streamingPlatforms";
 
 const types = [
@@ -199,9 +203,40 @@ const FavoriteEditor = () => {
     }));
   };
 
+  // Auto-detect platform and populate field when URL is pasted
+  const handleUrlPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedUrl = e.clipboardData.getData('text');
+    const detectedPlatform = detectPlatformFromUrl(pastedUrl);
+    
+    if (detectedPlatform) {
+      // Check if this platform is relevant to the current media type
+      const relevantPlatforms = getPlatformsForType(form.type);
+      if (relevantPlatforms.includes(detectedPlatform)) {
+        e.preventDefault();
+        updateStreamingLink(detectedPlatform, pastedUrl);
+        toast.success(`Detected ${streamingPlatforms[detectedPlatform].name} link`);
+      }
+    }
+  };
+
   const isMediaType = form.type === "music" || form.type === "movie" || form.type === "show" || form.type === "podcast";
   const isMusicType = form.type === "music";
   const isVideoType = form.type === "movie" || form.type === "show";
+  const isPodcastType = form.type === "podcast";
+
+  const getCurrentSubtypes = () => {
+    if (isMusicType) return musicSubtypes;
+    if (isVideoType) return videoSubtypes;
+    if (isPodcastType) return podcastSubtypes;
+    return [];
+  };
+
+  const getCurrentPlatforms = () => {
+    if (isMusicType) return musicPlatforms;
+    if (isVideoType) return videoPlatforms;
+    if (isPodcastType) return podcastPlatforms;
+    return [];
+  };
 
   if (isLoading) {
     return (
@@ -346,17 +381,27 @@ const FavoriteEditor = () => {
               <CollapsibleTrigger className="flex items-center justify-between w-full">
                 <h2 className="text-xl font-display flex items-center gap-2">
                   {isMusicType ? <Music className="w-5 h-5" /> : <Film className="w-5 h-5" />}
-                  {isMusicType ? "Music Streaming Links" : "Where to Watch"}
+                  {isMusicType ? "Music Streaming Links" : isPodcastType ? "Podcast Platforms" : "Where to Watch"}
                 </h2>
                 <ChevronDown className={`w-5 h-5 transition-transform ${streamingOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4">
                 <div className="grid gap-4">
+                  {/* Auto-detect URL input */}
+                  <div className="p-3 bg-muted/50 rounded border-2 border-dashed">
+                    <Label className="text-sm text-muted-foreground">Paste any streaming URL to auto-detect platform</Label>
+                    <Input
+                      placeholder="Paste Spotify, Netflix, Apple Podcasts URL..."
+                      className="mt-2"
+                      onPaste={handleUrlPaste}
+                    />
+                  </div>
+
                   {/* Media Subtype */}
                   <div>
                     <Label>Subtype</Label>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {(isMusicType ? musicSubtypes : videoSubtypes).map((subtype) => (
+                      {getCurrentSubtypes().map((subtype) => (
                         <button
                           key={subtype}
                           type="button"
@@ -416,9 +461,9 @@ const FavoriteEditor = () => {
                         placeholder="e.g., 2024"
                       />
                     </div>
-                    {(form.type === 'show' || form.media_subtype === 'series') && (
+                    {(form.type === 'show' || form.media_subtype === 'series' || isPodcastType) && (
                       <div>
-                        <Label htmlFor="season_count">Number of Seasons</Label>
+                        <Label htmlFor="season_count">{isPodcastType ? "Number of Episodes" : "Number of Seasons"}</Label>
                         <Input
                           id="season_count"
                           type="number"
@@ -428,7 +473,7 @@ const FavoriteEditor = () => {
                             ...prev, 
                             season_count: e.target.value ? parseInt(e.target.value) : null 
                           }))}
-                          placeholder="e.g., 2"
+                          placeholder={isPodcastType ? "e.g., 50" : "e.g., 2"}
                         />
                       </div>
                     )}
@@ -437,7 +482,7 @@ const FavoriteEditor = () => {
                   {/* Platform Links */}
                   <div className="space-y-3 mt-2">
                     <Label>Streaming Platform Links</Label>
-                    {(isMusicType ? musicPlatforms : videoPlatforms).map((platformKey) => {
+                    {getCurrentPlatforms().map((platformKey) => {
                       const platform = streamingPlatforms[platformKey];
                       return (
                         <div key={platformKey} className="flex items-center gap-3">
