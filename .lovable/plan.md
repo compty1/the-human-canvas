@@ -1,223 +1,366 @@
 
 
-# Fix Bulk Import Issues & Add Bulk Artwork Image Upload
+# Comprehensive Feature Enhancement Plan
 
 ## Overview
 
-This plan addresses three critical issues with the bulk import system:
-1. Single file selection only (no multi-select capability)
-2. Incorrect item count (showing 2223 items when selecting one file)
-3. Missing bulk image upload feature for artwork (mentioned in system memory but not implemented)
+This plan addresses 8 major feature requests requiring new database tables, admin management pages, public pages, and data imports. Due to the scope, I'll organize this into logical implementation phases.
 
 ---
 
-## Problems Identified
+## Phase 1: Product Data Import
 
-### Issue 1: No Multi-File Selection
-The current `BulkImport.tsx` file input lacks the `multiple` attribute, preventing users from selecting multiple files at once.
+### 1.1 Import CompteHaus Products from Etsy PDF
 
-### Issue 2: Incorrect Row Count (2223 Items)
-The CSV parser is treating content incorrectly. When a file is selected, the parser may be:
-- Splitting on individual characters instead of proper CSV delimiters
-- Not handling Excel-exported CSV files with different encodings or line endings
-- Mishandling files without proper CSV structure
+The uploaded PDF `EtsyListingsDownload_1.pdf` needs to be parsed for product data. I'll extract the product information and add it to:
 
-This happens because the parser does a naive `split("\n")` which can fail with:
-- Windows line endings (`\r\n`)
-- Single-line files with many commas
-- Binary file detection issues (XLSX files being read as text)
+**A) experiment_products table (linked to CompteHaus experiment)**
+- Products with full details (name, price, description, images, SKU, etc.)
+- Link to experiment_id for CompteHaus (`cfee45f2-9977-4d54-8e6a-7412d8fa4371`)
 
-### Issue 3: Missing Bulk Image Upload for Artwork
-The memory indicates this feature should exist, but currently the only bulk import is for CSV/JSON data, not for actual image files.
+**B) products table (Store)**
+- Replace current store products with the CompteHaus inventory
+- Status set to active for store display
+
+### 1.2 GlucoHaus Clarification
+
+Update the GlucoHaus experiment record to clearly indicate it was pre-planning only:
+- Update description to emphasize "Concept & Pre-Planning Phase - No Launch"
+- Update status field and add banner indicator
+- Add note about no branding/no actual products sold
 
 ---
 
-## Solution
+## Phase 2: Content Library with Publishing Workflow
 
-### 1. Fix CSV Parser in BulkImport.tsx
+### 2.1 Database Changes
 
-**Changes:**
-- Add robust line ending handling (support `\r\n`, `\r`, and `\n`)
-- Add better XLSX file detection (reject or parse properly)
-- Add validation before showing parsed data count
-- Clear input file value to allow re-selecting the same file
+The existing content review system supports scheduling. Add a unified content library view.
+
+**Enhance existing tables:**
+- articles, updates already have `scheduled_at`, `review_status`, `published` fields
+- Add a unified dashboard to manage all content types
+
+### 2.2 New Admin Page: Content Library
+
+**File: `src/pages/admin/ContentLibrary.tsx`**
+
+Features:
+- Combined view of all content types (articles, updates, experiments, projects)
+- Filter by content type, status, scheduled date
+- Actions: Edit, Schedule Publish, Publish Now, Unpublish, Delete
+- Quick status indicators (Draft, Scheduled, Published)
+- Calendar view for scheduled content
 
 ```
-// Before (line 65)
-const lines = text.split("\n").filter(line => line.trim());
-
-// After - Handle all line endings
-const lines = text.split(/\r?\n|\r/).filter(line => line.trim());
++------------------------------------------------------------------+
+| Content Library                                                    |
++------------------------------------------------------------------+
+| [+ New Article] [+ New Update] [+ New Project]                    |
+|                                                                    |
+| Filter: [All Types ▼] [All Status ▼] [Date Range]                 |
+|                                                                    |
+| +------------------+----------+----------+------------+--------+  |
+| | Title            | Type     | Status   | Scheduled  | Actions|  |
+| +------------------+----------+----------+------------+--------+  |
+| | My New Article   | Article  | Draft    | --         | [...]  |  |
+| | Weekly Update    | Update   | Scheduled| Feb 10     | [...]  |  |
+| | Project Launch   | Project  | Published| --         | [...]  |  |
+| +------------------+----------+----------+------------+--------+  |
++------------------------------------------------------------------+
 ```
 
-### 2. Add Multi-File Selection Support
+### 2.3 Route Addition
 
-Add the `multiple` attribute to allow batch file selection for bulk data import:
-
-```
-<input
-  type="file"
-  accept=".csv,.json"
-  multiple  // ADD THIS
-  onChange={handleFileChange}
-/>
-```
-
-Modify `handleFileChange` to process multiple files and merge their data.
-
-### 3. Create Bulk Artwork Image Uploader
-
-Add a new section to the Artwork Manager or a new dedicated page that allows:
-- Selecting multiple images at once
-- Automatically creating artwork database records from filenames
-- Uploading all images to storage in parallel
-- Showing upload progress
-
-**New Component: `BulkArtworkUploader.tsx`**
-
-```text
-+-----------------------------------------------------------------+
-| Bulk Artwork Upload                                              |
-+-----------------------------------------------------------------+
-| [Drop images here or click to select]                           |
-|                                                                  |
-| Category: [Dropdown: portrait | landscape | photography | ...]  |
-|                                                                  |
-| Preview:                                                         |
-| +-------+  +-------+  +-------+  +-------+                      |
-| | img1  |  | img2  |  | img3  |  | img4  |                      |
-| | title |  | title |  | title |  | title |                      |
-| +-------+  +-------+  +-------+  +-------+                      |
-|                                                                  |
-| [Upload 4 Images]                                                |
-+-----------------------------------------------------------------+
+Add to App.tsx:
+```typescript
+<Route path="/admin/content-library" element={<ContentLibrary />} />
 ```
 
 ---
 
-## Technical Implementation
+## Phase 3: Experience Section (Past Experiences)
 
-### File Changes
+### 3.1 Database: Create `experiences` Table
 
-| File | Changes |
-|------|---------|
-| `src/pages/admin/BulkImport.tsx` | Fix CSV parser, add multi-file support, add file type validation |
-| `src/components/admin/BulkArtworkUploader.tsx` | New component for bulk image uploads |
-| `src/pages/admin/ArtworkManager.tsx` | Add bulk upload button/section |
-
-### 1. BulkImport.tsx Fixes
-
-**Fix 1: Robust Line Parsing**
-```typescript
-// Replace line 65
-const lines = text.split(/\r?\n|\r/).filter(line => line.trim());
-```
-
-**Fix 2: Better File Type Validation**
-```typescript
-// After line 49, before reading file
-if (selectedFile.name.endsWith(".xlsx") || selectedFile.name.endsWith(".xls")) {
-  setErrors(["Excel files (.xlsx/.xls) are not supported. Please export as CSV first."]);
-  return;
-}
-```
-
-**Fix 3: CSV Field Count Validation**
-```typescript
-// After parsing, validate the data makes sense
-if (data.length > 1000) {
-  setErrors(["Too many rows detected. Please check the file format."]);
-  return;
-}
-
-// Validate that rows have reasonable field counts
-const expectedFieldCount = headers.length;
-const validData = data.filter(row => 
-  Object.keys(row).length === expectedFieldCount
+```sql
+CREATE TABLE experiences (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  category TEXT NOT NULL, -- 'creative', 'business', 'technical', 'service'
+  subcategory TEXT, -- more specific categorization
+  description TEXT,
+  long_description TEXT,
+  image_url TEXT,
+  screenshots TEXT[] DEFAULT '{}',
+  
+  -- Time period
+  start_date DATE,
+  end_date DATE,
+  is_ongoing BOOLEAN DEFAULT false,
+  
+  -- Skills and tools
+  skills_used TEXT[] DEFAULT '{}',
+  tools_used TEXT[] DEFAULT '{}',
+  
+  -- Outcomes
+  key_achievements TEXT[] DEFAULT '{}',
+  lessons_learned TEXT[] DEFAULT '{}',
+  challenges_overcome TEXT[] DEFAULT '{}',
+  
+  -- Metrics (when applicable)
+  clients_served INTEGER,
+  revenue_generated NUMERIC(10,2),
+  projects_completed INTEGER,
+  
+  -- Admin
+  admin_notes TEXT,
+  order_index INTEGER DEFAULT 0,
+  published BOOLEAN DEFAULT true,
+  
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-**Fix 4: Multi-File Support**
-```typescript
-// Change file input
-<input
-  type="file"
-  accept=".csv,.json"
-  multiple
-  onChange={handleFilesChange}
-/>
+### 3.2 Sample Experience Categories
 
-// Process multiple files, merging their parsed data
-const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
-  
-  // Merge data from all files
-  const allData: ImportRow[] = [];
-  for (const file of Array.from(files)) {
-    // Parse each file and combine
-  }
-};
-```
+Based on your request, here are the experience entries to create:
 
-### 2. BulkArtworkUploader.tsx (New Component)
+| Category | Subcategory | Experiences |
+|----------|-------------|-------------|
+| Creative | Visual Art | Acrylic painting, Pencil/sketch, Clay/sculpture, Ceramics, Image/print transfer |
+| Creative | Design | Graphic design, Product design, Logo design |
+| Creative | Writing | Non-fiction, Fiction, Children's literature, Editorial |
+| Business | E-commerce | Etsy, Shopify, eBay (antique furniture), Independent shops |
+| Business | Operations | Inventory management, Shipping/delivery, Cost/profit analysis, Accounting |
+| Business | Marketing | Google Ads, Google Analytics, Content production |
+| Technical | Web Dev | Wix, Lovable, Python, Stripe integration |
+| Technical | Analysis | SWOT analysis, UX/product analysis, Customer experience |
+| Service | Tutoring | High school/middle school tutoring |
+| Service | Notary | Independent notary services |
+| Service | Health | T1D advocacy, Mentoring/support |
+| Other | Horticulture | Planting, growing, plant care |
+| Other | Restoration | Antique furniture refinishing |
+| Other | Research | Deep research and analysis |
 
-Features:
-- Multi-image drag & drop zone
-- File preview grid with titles derived from filenames
-- Category selector (portrait, landscape, photography, etc.)
-- Parallel upload with progress indicator
-- Auto-creates artwork database records
+### 3.3 Admin Pages
 
-**Database workflow:**
-1. User selects multiple images
-2. Component shows previews with editable titles (defaults to filename without extension)
-3. User selects category
-4. On "Upload All":
-   - Upload each image to Supabase storage
-   - Create artwork record with title, image_url, and category
-   - Show progress bar
-   - Report success/failure count
+**Files to create:**
+- `src/pages/admin/ExperiencesManager.tsx` - List and manage experiences
+- `src/pages/admin/ExperienceEditor.tsx` - Add/edit experience
 
-### 3. ArtworkManager.tsx Updates
+### 3.4 Public Page
 
-Add a "Bulk Upload" button next to "Add Artwork":
+**File: `src/pages/Experiences.tsx`**
 
-```typescript
-<div className="flex gap-3">
-  <Link to="/admin/artwork/new">
-    <PopButton>
-      <Plus className="w-4 h-4 mr-2" /> Add Artwork
-    </PopButton>
-  </Link>
-  <PopButton variant="secondary" onClick={() => setShowBulkUpload(true)}>
-    <Upload className="w-4 h-4 mr-2" /> Bulk Upload
-  </PopButton>
-</div>
-
-{showBulkUpload && (
-  <BulkArtworkUploader 
-    onComplete={() => {
-      setShowBulkUpload(false);
-      queryClient.invalidateQueries({ queryKey: ["admin-artwork"] });
-    }}
-    onCancel={() => setShowBulkUpload(false)}
-  />
-)}
-```
+Layout similar to FuturePlans but for past experiences:
+- Category filters (Creative, Business, Technical, Service)
+- Timeline/card view of experiences
+- Detail pages showing full information
 
 ---
 
-## Summary
+## Phase 4: Certifications Section
 
-| Issue | Solution |
-|-------|----------|
-| Can't select multiple files | Add `multiple` attribute to file input |
-| Shows 2223 items | Fix CSV parser to handle line endings properly and validate data |
-| No bulk image upload | Create new BulkArtworkUploader component |
+### 4.1 Database: Create `certifications` Table
 
-These changes will:
-1. Fix the broken CSV parsing that shows incorrect item counts
-2. Enable multi-file selection for data imports
-3. Add dedicated bulk image upload for artwork with automatic database record creation
+```sql
+CREATE TABLE certifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  issuer TEXT NOT NULL, -- "Google", "AWS", "Coursera"
+  category TEXT, -- 'technical', 'creative', 'business', 'health'
+  description TEXT,
+  image_url TEXT, -- certificate image or issuer logo
+  
+  -- Status
+  status TEXT DEFAULT 'planned', -- 'earned', 'in_progress', 'planned', 'wanted'
+  earned_date DATE,
+  expiration_date DATE,
+  credential_url TEXT, -- link to verify
+  credential_id TEXT,
+  
+  -- Funding (for sponsorship)
+  estimated_cost NUMERIC(10,2),
+  funded_amount NUMERIC(10,2) DEFAULT 0,
+  funding_enabled BOOLEAN DEFAULT true,
+  
+  -- Skills covered
+  skills TEXT[] DEFAULT '{}',
+  
+  -- Admin
+  admin_notes TEXT,
+  order_index INTEGER DEFAULT 0,
+  
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### 4.2 Admin Pages
+
+**Files:**
+- `src/pages/admin/CertificationsManager.tsx`
+- `src/pages/admin/CertificationEditor.tsx`
+
+### 4.3 Public Page
+
+**File: `src/pages/Certifications.tsx`**
+
+Layout:
+- Earned certifications (badges/cards)
+- In Progress section with progress bars
+- Planned/Wanted section with sponsorship option
+- "Sponsor This Certification" button linking to Support page
+
+---
+
+## Phase 5: Project Financial Tracking
+
+### 5.1 Database: Enhance `projects` Table
+
+The table already has `money_spent`, `money_needed`, `funding_goal`, `funding_raised`. Add:
+
+```sql
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS 
+  expenses JSONB DEFAULT '[]', -- Array of {category, description, amount, date}
+  income_data JSONB DEFAULT '{}', -- {revenue: 0, sources: [], user_count: 0}
+  analytics_notes TEXT;
+```
+
+### 5.2 Update ProjectEditor.tsx
+
+Add new sections:
+- **Expenses Tracking**: Add/edit/remove expense items with category, description, amount
+- **Income Data**: Revenue, payment sources, user metrics
+- **Financial Summary**: Auto-calculated totals
+
+### 5.3 Update ProjectDetail.tsx
+
+Add financial transparency section:
+- Display expenses breakdown
+- Show income if available
+- Total investment vs. returns
+
+---
+
+## Phase 6: Inspirations - Roots Section
+
+### 6.1 Database: Add `is_childhood_root` to favorites
+
+```sql
+ALTER TABLE favorites ADD COLUMN IF NOT EXISTS 
+  is_childhood_root BOOLEAN DEFAULT false,
+  childhood_age_range TEXT, -- "5-8", "9-12", etc.
+  childhood_impact TEXT; -- What it instilled
+```
+
+### 6.2 Update Inspirations.tsx
+
+Add "Roots" section before or after main inspirations:
+- Query favorites where `is_childhood_root = true`
+- Display with special styling indicating childhood/formative influence
+- Show "What it instilled in me" content
+
+### 6.3 Update FavoriteEditor.tsx
+
+Add checkbox and fields for childhood favorites:
+- Is this a childhood/formative favorite?
+- Age range when discovered
+- What it instilled
+
+---
+
+## File Summary
+
+### New Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/admin/ContentLibrary.tsx` | Unified content management |
+| `src/pages/admin/ExperiencesManager.tsx` | Manage experiences |
+| `src/pages/admin/ExperienceEditor.tsx` | Add/edit experience |
+| `src/pages/Experiences.tsx` | Public experiences page |
+| `src/pages/ExperienceDetail.tsx` | Experience detail page |
+| `src/pages/admin/CertificationsManager.tsx` | Manage certifications |
+| `src/pages/admin/CertificationEditor.tsx` | Add/edit certification |
+| `src/pages/Certifications.tsx` | Public certifications page |
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add new routes for experiences, certifications, content library |
+| `src/pages/Inspirations.tsx` | Add Roots section |
+| `src/pages/admin/FavoriteEditor.tsx` | Add childhood favorite fields |
+| `src/pages/admin/ProjectEditor.tsx` | Add financial tracking sections |
+| `src/pages/ProjectDetail.tsx` | Display financial breakdown |
+| `src/integrations/supabase/types.ts` | Auto-updates with schema changes |
+
+### Database Migrations
+
+| Table | Action |
+|-------|--------|
+| `experiences` | Create new table |
+| `certifications` | Create new table |
+| `favorites` | Add childhood root columns |
+| `projects` | Add expenses/income JSONB columns |
+
+### Data Inserts
+
+1. Parse Etsy PDF and insert products into `experiment_products` and `products`
+2. Update GlucoHaus experiment with clarification text
+3. Sample experiences based on listed skills
+4. Childhood roots favorites (if provided)
+
+---
+
+## Implementation Order
+
+1. **Database migrations** - Create new tables and alter existing
+2. **Parse Etsy PDF** - Extract and import product data
+3. **Update GlucoHaus** - Clarify pre-planning status
+4. **Content Library** - Build unified content management
+5. **Experiences** - Create admin and public pages
+6. **Certifications** - Create admin and public pages with funding
+7. **Project Financials** - Enhance editor and detail pages
+8. **Inspirations Roots** - Add childhood favorites section
+
+---
+
+## Technical Notes
+
+### RLS Policies
+
+All new tables will have:
+- Public read access for published content
+- Admin-only write access via `has_role(auth.uid(), 'admin')`
+
+### Navigation Updates
+
+Add to admin sidebar and public header:
+- Experiences link
+- Certifications link
+- Content Library (admin only)
+
+### Routing
+
+New routes to add to App.tsx:
+```typescript
+// Public
+<Route path="/experiences" element={<Experiences />} />
+<Route path="/experiences/:slug" element={<ExperienceDetail />} />
+<Route path="/certifications" element={<Certifications />} />
+
+// Admin
+<Route path="/admin/content-library" element={<ContentLibrary />} />
+<Route path="/admin/experiences" element={<ExperiencesManager />} />
+<Route path="/admin/experiences/new" element={<ExperienceEditor />} />
+<Route path="/admin/experiences/:id/edit" element={<ExperienceEditor />} />
+<Route path="/admin/certifications" element={<CertificationsManager />} />
+<Route path="/admin/certifications/new" element={<CertificationEditor />} />
+<Route path="/admin/certifications/:id/edit" element={<CertificationEditor />} />
+```
 
