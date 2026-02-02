@@ -11,7 +11,7 @@
     /* Core Pop Art Palette */
     --pop-magenta: 328 100% 54%;
     --pop-cyan: 188 100% 50%;
-    --pop-yellow: 50 100% 50%;
+    --pop-yellow: 50 99% 49%;
     --pop-orange: 25 100% 55%;
     --pop-black: 0 0% 5%;
     --pop-white: 0 0% 98%;
@@ -26,14 +26,14 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 5%;
     
-    --primary: 328 100% 54%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 50 99% 49%;
+    --primary-foreground: 0 0% 5%;
     
     --secondary: 188 100% 50%;
     --secondary-foreground: 0 0% 5%;
     
-    --accent: 50 100% 50%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 328 100% 54%;
+    --accent-foreground: 0 0% 98%;
     
     --muted: 0 0% 90%;
     --muted-foreground: 0 0% 40%;
@@ -43,18 +43,18 @@
     
     --border: 0 0% 10%;
     --input: 0 0% 90%;
-    --ring: 328 100% 54%;
+    --ring: 50 99% 49%;
     
     --radius: 0px;
     
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 5%;
-    --sidebar-primary: 328 100% 54%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 50 100% 50%;
-    --sidebar-accent-foreground: 0 0% 5%;
+    --sidebar-primary: 50 99% 49%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 328 100% 54%;
+    --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 328 100% 54%;
+    --sidebar-ring: 50 99% 49%;
   }
 
   .dark {
@@ -67,14 +67,14 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 98%;
     
-    --primary: 328 100% 60%;
+    --primary: 50 99% 55%;
     --primary-foreground: 0 0% 5%;
     
     --secondary: 188 100% 55%;
     --secondary-foreground: 0 0% 5%;
     
-    --accent: 50 100% 55%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 328 100% 60%;
+    --accent-foreground: 0 0% 98%;
     
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 60%;
@@ -274,9 +274,9 @@
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(
       135deg,
-      hsl(var(--pop-magenta)) 0%,
+      hsl(var(--pop-yellow)) 0%,
       hsl(var(--pop-cyan)) 50%,
-      hsl(var(--pop-yellow)) 100%
+      hsl(var(--pop-magenta)) 100%
     );
   }
 }
