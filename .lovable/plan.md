@@ -1,197 +1,350 @@
 
-# Content Expansion Plan
 
-## Overview
-This plan addresses the user's request to add comprehensive content across multiple sections of the portfolio site that currently show empty states or minimal content. The approach will use database migrations to insert rich sample content that makes the site feel complete and functional.
+# Comprehensive Build Analysis & Feature Implementation Plan
 
-## Current Content State
+## Executive Summary
 
-| Section | Current Count | Target | Status |
-|---------|---------------|--------|--------|
-| Inspirations | 3 (no images) | 6-8 with images | Needs expansion |
-| Life Periods (Timeline) | 0 | 4-5 periods | Empty |
-| Products (Store) | 0 | 4-6 sample products | Empty |
-| Learning Goals | 0 | 4 goals | Empty |
-| Future Plans | 0 (hardcoded in FuturePlans.tsx) | 6 plans | Uses hardcoded data |
-| Favorites | 0 | 6-8 items | Empty |
-| Projects | 13 (no logos, minimal descriptions) | Enhance existing | Needs expansion |
-| Articles | 0 | 2-3 starter articles | Empty |
+This plan addresses the user's request to analyze the entire build, identify all errors and unfinished features, and implement several major new capabilities including case studies for experiments, enhanced AI content creation with file uploads, a comprehensive leads system, content review/approval workflow, and scheduled publishing.
 
 ---
 
-## Phase 1: Enhanced Inspirations Content
+## Part 1: Current Build Issues Identified
 
-Add images and detailed content to existing inspirations, plus add 3-4 new inspirations:
+### Issue 1: Console Warnings - forwardRef Missing
+**Status**: Partially Fixed
+**Problem**: HalftoneImage and Ticker components still trigger console warnings about function components not accepting refs.
+**Files**: `src/components/pop-art/HalftoneImage.tsx`, `src/components/pop-art/Ticker.tsx`
+**Fix**: Add forwardRef wrapper to both components.
 
-**Update existing 3 inspirations with images and detailed content:**
-1. **Brett Helquist** - Add image URL, detailed_content about his gothic illustration style, influence on childhood aesthetics
-2. **Society & Struggle** - Add conceptual image, philosophical detailed_content about themes of resistance and human experience
-3. **Pop Art Movement** - Add iconic pop art image, detailed_content about Lichtenstein, Warhol, and democratized art
+### Issue 2: Ticker Items Not Database-Driven
+**Status**: Broken
+**Problem**: The Index.tsx page uses hardcoded `currentProjects` array instead of fetching from `site_content` table. The `ticker_items` row doesn't exist in site_content.
+**Evidence**: Query showed empty results for `ticker_items` in site_content table.
+**File**: `src/pages/Index.tsx`
+**Fix**: Fetch ticker items from database like HomeContent.tsx stores them.
 
-**Add new inspirations:**
-4. **The Human Experience** (concept) - Exploration of what connects us all, influence on art and technology
-5. **Type 1 Diabetes Community** (experience) - Personal journey and inspiration for T1D Compass project
-6. **California Landscape** (experience) - Visual influence of Southern California on color palette and aesthetic
+### Issue 3: Artwork Images Not Displaying in Admin
+**Status**: Partial Issue
+**Problem**: Artwork with local asset paths (e.g., `/src/assets/artwork/golden-hour.png`) stored in database works on ArtGallery.tsx due to `resolveImageUrl` helper, but ArtworkManager.tsx displays raw URLs without resolution.
+**Evidence**: Database shows mixed URLs - some Supabase storage URLs work, local paths don't render in admin.
+**File**: `src/pages/admin/ArtworkManager.tsx`
+**Fix**: Add the same `resolveImageUrl` helper to ArtworkManager.
 
----
+### Issue 4: BulkTextImporter May Fail on Large Text (30k words)
+**Status**: Potential Issue
+**Problem**: The edge function may timeout or fail with very large payloads. The AI gateway has token limits and the current implementation doesn't chunk large text.
+**Files**: `src/components/admin/BulkTextImporter.tsx`, `supabase/functions/generate-copy/index.ts`
+**Fixes Needed**:
+1. Add text chunking for very large inputs
+2. Add better error handling for timeout/rate limit errors
+3. Surface 429/402 errors properly to users
 
-## Phase 2: Life Timeline Events
+### Issue 5: Index.tsx Uses Hardcoded Projects Instead of Database
+**Status**: Incomplete
+**Problem**: Featured projects section shows hardcoded Notardex, Solutiodex, Zodaci instead of fetching from database using `featured_project_ids` from site_content.
+**File**: `src/pages/Index.tsx`
+**Fix**: Fetch featured projects from database based on configured IDs.
 
-Add 4-5 significant life periods representing artistic and personal evolution:
+### Issue 6: Lead Finder Missing Critical Features
+**Status**: Incomplete
+**Problem**: Current lead finder generates AI leads but lacks:
+- Full lead detail pages with company info, costs/pay, work required
+- AI chat for discussing plans
+- Ability to accept leads and create project plans
+- Timeline and next steps tracking
+- Partnership/organization leads (not just work leads)
+**Files**: `src/pages/admin/LeadFinder.tsx`, `supabase/functions/find-leads/index.ts`
 
-1. **Early Discoveries (2010-2014)** - Childhood artistic awakening, first encounters with illustration, discovering Brett Helquist
-   - Themes: curiosity, imagination, foundation
-   - Mark as not current
+### Issue 7: No Content Review/Approval Workflow
+**Status**: Missing
+**Problem**: No central UI to review, approve, or schedule all pending content before publishing. Content is either draft or published with no review stage.
+**Evidence**: Articles have `published` boolean and `draft_content` but no review workflow.
 
-2. **The Learning Years (2015-2018)** - High school, deepening interest in technology and art
-   - Themes: education, exploration, identity
-   - Mark as not current
+### Issue 8: No Scheduled Publishing
+**Status**: Missing
+**Problem**: No `scheduled_at` or `publish_at` fields exist in content tables. No mechanism to auto-publish at a specific time.
+**Evidence**: Search for "scheduled" returned no results. Database schema confirms no scheduling columns.
 
-3. **Creative Awakening (2019-2021)** - College, discovering pop art, starting first projects
-   - Themes: expression, experimentation, growth
-   - Mark as not current
-
-4. **The Building Phase (2022-2024)** - Major project development, CompteHaus experiment, portfolio building
-   - Themes: creation, entrepreneurship, purpose
-   - Mark as not current
-
-5. **Present Evolution (2024-Present)** - Current creative period, integrating art with technology
-   - Themes: synthesis, impact, community
-   - Mark as current (is_current = true)
-
----
-
-## Phase 3: Store Products
-
-Add 4-6 sample products ready for Shopify sync:
-
-1. **Art Print: Golden Hour** - Limited edition print, $45, category: Prints, status: active
-2. **Art Print: Venice Palms** - Signed print, $35, category: Prints, status: active
-3. **T1D Compass Sticker Pack** - Awareness stickers, $8, category: Merchandise, status: active
-4. **Digital Art Bundle** - Downloadable wallpapers, $15, category: Digital, status: active
-5. **Original Sketch: Sailboat** - One-of-a-kind, $150, category: Originals, status: draft (preview only)
-6. **Pop Art Poster Set** - 3-poster collection, $55, category: Prints, status: active
-
----
-
-## Phase 4: Learning Goals
-
-Add 4 learning goals with progress tracking:
-
-1. **Advanced AI/ML Course** - Deep learning fundamentals, target: $500, raised: $125, progress: 25%
-2. **UX Research Certification** - Professional certification, target: $800, raised: $320, progress: 40%
-3. **3D Modeling & Animation** - Expand into 3D art, target: $400, raised: $60, progress: 15%
-4. **Data Visualization Mastery** - Advanced data viz techniques, target: $300, raised: $180, progress: 60%
+### Issue 9: Experiments Missing Case Study Section
+**Status**: Incomplete
+**Problem**: Projects table has `case_study` field but Experiments doesn't. No dedicated case study section in experiment editor or public view.
+**Evidence**: Types.ts shows experiments table lacks case_study field.
 
 ---
 
-## Phase 5: Future Plans (Database Integration)
+## Part 2: Implementation Plan
 
-The FuturePlans.tsx currently uses hardcoded arrays. We'll migrate this to use the `site_content` table (which the admin already uses):
+### Phase 1: Fix Existing Issues (Priority: High)
 
-Insert 6 future plans into `site_content` table as JSON:
+#### 1.1 Fix Console Warnings
+Add forwardRef to HalftoneImage and Ticker components.
 
-1. **T1D Compass Mobile App** - Q2 2024, category: project
-2. **Philosophy Podcast** - Q3 2024, category: exploration
-3. **Community Art Installation** - Q4 2024, category: project
-4. **Learn Rust Programming** - Ongoing, category: skill
-5. **Documentary Project** - 2025, category: exploration
-6. **Open Source Contributions** - Ongoing, category: project
+#### 1.2 Fix Artwork Display in Admin
+Add `resolveImageUrl` helper to ArtworkManager.tsx identical to ArtGallery.tsx.
 
-Then update `FuturePlans.tsx` to fetch from database instead of using hardcoded content.
-
----
-
-## Phase 6: Favorites Content
-
-Add 6-8 favorite items across different types:
-
-1. **"A Series of Unfortunate Events" books** - type: book, creator: Lemony Snicket
-2. **Roy Lichtenstein's "Whaam!"** - type: art, impact statement about influence
-3. **"Her" (2013 film)** - type: movie, creator: Spike Jonze
-4. **Cal Newport** - type: creator, focus on deep work philosophy
-5. **"The Last of Us" soundtrack** - type: music, creator: Gustavo Santaolalla
-6. **"Atomic Habits" by James Clear** - type: book, practical philosophy
-7. **CGP Grey** - type: creator, educational content
-8. **Research: "The Psychology of Color"** - type: research, influence on art
+#### 1.3 Make Index.tsx Database-Driven
+- Fetch `ticker_items` from site_content
+- Fetch featured projects using `featured_project_ids`
+- Replace hardcoded arrays with database queries
 
 ---
 
-## Phase 7: Expand Existing Project Content
+### Phase 2: Enhanced BulkTextImporter for 30k Words
 
-Update 5 key projects with richer descriptions and logo URLs:
+#### 2.1 Update BulkTextImporter Component
+- Increase maxLength to 150,000 characters (~30,000 words)
+- Add progress indicator for large text
+- Add chunking logic for texts over 10,000 characters
+- Add file upload capability (paste text OR upload .txt/.md/.docx files)
+- Better error handling for timeouts and rate limits
 
-1. **T1D Compass** - Add comprehensive long_description, features, tech details
-2. **Pulse Network** - Add activism platform details, social impact focus
-3. **Notardex** - Add productivity tool features, use cases
-4. **Zodaci** - Add astrology platform details
-5. **Solutiodex** - Add community search engine details
+#### 2.2 Update generate-copy Edge Function
+- Add chunking support for large texts
+- Process in batches and merge results
+- Add timeout handling
+- Return partial results if interrupted
+- Handle 429/402 errors gracefully
+
+#### 2.3 Add File Upload Capability
+- Allow uploading text files for analysis
+- Parse uploaded files and extract text
+- Support .txt, .md, .docx formats
 
 ---
 
-## Phase 8: Starter Articles
+### Phase 3: Add Case Studies to Experiments
 
-Add 2-3 sample articles to demonstrate the writing section:
+#### 3.1 Database Migration
+Add `case_study` column to experiments table:
+```sql
+ALTER TABLE experiments ADD COLUMN case_study TEXT;
+```
 
-1. **"Why I Create: The Philosophy Behind the Work"** - Personal essay, published
-2. **"Designing for the Human Experience"** - UX/design thinking piece, published
-3. **"Living with Type 1 Diabetes: Art as Expression"** - Personal journey, published
+#### 3.2 Update ExperimentEditor
+Add case study rich text editor section similar to projects.
+
+#### 3.3 Update ExperimentDetail Public Page
+Display case study section with proper formatting.
 
 ---
 
-## Technical Implementation
+### Phase 4: AI Chat for Content Creation
 
-### Database Migrations
-All content will be added via SQL INSERT statements:
-- Use proper UUIDs for all records
-- Set appropriate timestamps
-- Ensure foreign key references are valid
-- Use realistic placeholder image URLs (will use placeholder.svg for images that don't exist)
+#### 4.1 Create AI Chat Component
+Build reusable `AIChatAssistant` component that can:
+- Discuss content ideas
+- Suggest improvements
+- Help develop plans
+- Generate content snippets
 
-### Code Updates Required
-1. **FuturePlans.tsx** - Refactor to fetch from `site_content` table instead of hardcoded arrays
-2. Ensure all public pages properly handle the new database content
+#### 4.2 Add to Content Editors
+Integrate AI chat sidebar to:
+- ArticleEditor
+- UpdateEditor
+- ProjectEditor
+- ExperimentEditor
+- All other content editors
+
+#### 4.3 Create Edge Function for Chat
+Build `ai-assistant` edge function for conversational content help.
+
+---
+
+### Phase 5: Content Review & Approval System
+
+#### 5.1 Database Updates
+Add status workflow fields to content tables:
+```sql
+-- Add review_status enum
+CREATE TYPE content_review_status AS ENUM ('draft', 'pending_review', 'approved', 'published', 'rejected');
+
+-- Add columns to articles, updates, projects, etc.
+ALTER TABLE articles ADD COLUMN review_status content_review_status DEFAULT 'draft';
+ALTER TABLE articles ADD COLUMN scheduled_at TIMESTAMPTZ;
+ALTER TABLE articles ADD COLUMN reviewer_notes TEXT;
+```
+
+Apply similar to: updates, projects, experiments, product_reviews, favorites, inspirations, life_periods
+
+#### 5.2 Create ContentReviewManager Admin Page
+New admin page showing:
+- All content pending review across all types
+- Filter by content type, status, date
+- Approve, reject, request changes, schedule actions
+- Preview content before publishing
+- Bulk actions for multiple items
+
+#### 5.3 Update Content Editors
+Add review workflow controls:
+- "Submit for Review" button
+- "Approve & Publish" button (for admin)
+- "Schedule" date picker
+- Review notes section
+
+---
+
+### Phase 6: Scheduled Publishing
+
+#### 6.1 Database Migration
+Add scheduling columns (covered in Phase 5):
+- `scheduled_at TIMESTAMPTZ`
+- `review_status` includes 'scheduled' state
+
+#### 6.2 Create Scheduled Publisher Edge Function
+Edge function that runs periodically to:
+- Check for content where `scheduled_at <= NOW()` and `review_status = 'approved'`
+- Set `published = true` and `review_status = 'published'`
+- Log activity
+
+#### 6.3 Add Scheduling UI
+Add to all content editors:
+- "Schedule for Later" option
+- Date/time picker
+- Show scheduled items in review queue
+
+---
+
+### Phase 7: Enhanced Lead Finder System
+
+#### 7.1 Database Updates
+Expand leads table:
+```sql
+ALTER TABLE leads ADD COLUMN lead_type TEXT DEFAULT 'work'; -- 'work', 'partnership', 'organization'
+ALTER TABLE leads ADD COLUMN estimated_pay NUMERIC;
+ALTER TABLE leads ADD COLUMN work_description TEXT;
+ALTER TABLE leads ADD COLUMN benefits TEXT[];
+ALTER TABLE leads ADD COLUMN contact_person TEXT;
+ALTER TABLE leads ADD COLUMN contact_title TEXT;
+ALTER TABLE leads ADD COLUMN is_accepted BOOLEAN DEFAULT FALSE;
+ALTER TABLE leads ADD COLUMN accepted_at TIMESTAMPTZ;
+```
+
+Create lead_plans table:
+```sql
+CREATE TABLE lead_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  timeline TEXT,
+  steps JSONB DEFAULT '[]',
+  ai_suggestions JSONB DEFAULT '[]',
+  status TEXT DEFAULT 'draft',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### 7.2 Create LeadDetail Page
+New admin page `/admin/leads/:id` with:
+- Full company/individual details
+- Estimated pay/costs
+- Work required description
+- AI chat to discuss opportunity
+- Accept/reject actions
+- Plan creation form
+
+#### 7.3 Create LeadPlanEditor
+New component for creating/editing plans for accepted leads:
+- Project timeline
+- Step-by-step tasks
+- AI-suggested next steps
+- Benefits tracking
+
+#### 7.4 Update find-leads Edge Function
+Enhance to:
+- Search for different lead types (work, partnerships, organizations)
+- Include pay estimates
+- Generate more detailed company info
+- Suggest benefits for partnerships
+
+#### 7.5 Update LeadFinder UI
+- Add tabs for lead types (Work, Partnerships, Organizations)
+- Click lead to open detail page
+- Show accepted leads with their plans
+- AI chat integrated for discussing leads
+
+---
+
+### Phase 8: Add AI Chat to Lead Plans
+
+#### 8.1 Create AI Lead Advisor Edge Function
+`ai-lead-advisor` that can:
+- Analyze lead opportunities
+- Suggest pricing/negotiation strategies
+- Generate plan steps
+- Recommend next actions
+
+#### 8.2 Integrate into Lead Detail Page
+Add chat interface that:
+- Discusses specific lead opportunity
+- Helps create plans
+- Suggests topics to address
+- Auto-populates plan fields from chat
+
+---
+
+## File Changes Summary
+
+### New Files to Create
+1. `src/components/admin/AIChatAssistant.tsx` - Reusable AI chat component
+2. `src/components/admin/ContentReviewCard.tsx` - Review item card
+3. `src/pages/admin/ContentReviewManager.tsx` - Central review dashboard
+4. `src/pages/admin/LeadDetail.tsx` - Full lead detail page
+5. `src/components/admin/LeadPlanEditor.tsx` - Plan editor component
+6. `supabase/functions/ai-assistant/index.ts` - Content AI chat
+7. `supabase/functions/ai-lead-advisor/index.ts` - Lead-specific AI
+8. `supabase/functions/scheduled-publisher/index.ts` - Auto-publish cron
 
 ### Files to Modify
-1. `src/pages/FuturePlans.tsx` - Database integration for plans and learning goals
+1. `src/components/pop-art/HalftoneImage.tsx` - Add forwardRef
+2. `src/components/pop-art/Ticker.tsx` - Add forwardRef
+3. `src/pages/Index.tsx` - Database-driven content
+4. `src/pages/admin/ArtworkManager.tsx` - Fix image resolution
+5. `src/components/admin/BulkTextImporter.tsx` - Large text + file upload
+6. `supabase/functions/generate-copy/index.ts` - Chunking support
+7. `src/pages/admin/ExperimentEditor.tsx` - Add case study section
+8. `src/pages/ExperimentDetail.tsx` - Display case study
+9. `src/pages/admin/LeadFinder.tsx` - Enhanced UI with tabs
+10. `supabase/functions/find-leads/index.ts` - More lead types
+11. `src/pages/admin/ArticleEditor.tsx` - Review workflow + AI chat
+12. `src/pages/admin/UpdateEditor.tsx` - Review workflow + AI chat
+13. `src/pages/admin/ProjectEditor.tsx` - Review workflow + AI chat
+14. `src/components/admin/AdminLayout.tsx` - Add Content Review nav item
+15. `src/App.tsx` - Add new routes
+
+### Database Migrations
+1. Add `case_study` to experiments
+2. Add `review_status`, `scheduled_at`, `reviewer_notes` to content tables
+3. Add lead enhancement columns
+4. Create `lead_plans` table
+5. Create `content_review_status` enum
 
 ---
 
-## Content Philosophy
+## Implementation Order
 
-All sample content will reflect the user's documented interests:
-- The human experience and Type 1 Diabetes
-- Art culture, pop art, and visual storytelling
-- Philosophy and metaphysics
-- Technology and social change
-- Historical comparison and narrative
-- User experience and product design
-
-The content will present each piece as a "future artifact of humanity" as the user envisions their work.
-
----
-
-## Execution Order
-
-1. **Database Migration 1**: Add inspirations images + detailed content + new inspirations
-2. **Database Migration 2**: Add life periods timeline
-3. **Database Migration 3**: Add store products
-4. **Database Migration 4**: Add learning goals
-5. **Database Migration 5**: Add future plans to site_content + favorites
-6. **Database Migration 6**: Expand project descriptions
-7. **Database Migration 7**: Add sample articles
-8. **Code Update**: Update FuturePlans.tsx to use database
+1. **Phase 1**: Fix existing bugs (console warnings, artwork display, Index.tsx)
+2. **Phase 3**: Add case studies to experiments (simple addition)
+3. **Phase 2**: Enhance BulkTextImporter for large text + file uploads
+4. **Phase 5**: Content review system (database + UI)
+5. **Phase 6**: Scheduled publishing (builds on Phase 5)
+6. **Phase 4**: AI chat for content creation
+7. **Phase 7**: Enhanced leads system
+8. **Phase 8**: AI chat for leads
 
 ---
 
-## Expected Outcome
+## Estimated Complexity
 
-After implementation:
-- Inspirations page shows 6 inspirations with images and rich detail
-- Life Timeline shows 5 periods with the current era highlighted
-- Store displays 5-6 products ready for purchase
-- Future Plans shows database-driven goals and plans
-- Favorites displays 8 curated items across categories
-- Projects have comprehensive descriptions
-- Writing section has 3 published articles
-- All content is manageable via the admin dashboard
+| Phase | Complexity | Reason |
+|-------|------------|--------|
+| Phase 1 | Low | Bug fixes only |
+| Phase 2 | Medium | Edge function + chunking logic |
+| Phase 3 | Low | Simple field addition |
+| Phase 4 | Medium | Reusable AI chat component |
+| Phase 5 | High | New workflow system across tables |
+| Phase 6 | Medium | Cron function + UI |
+| Phase 7 | High | Major lead system overhaul |
+| Phase 8 | Medium | AI integration for leads |
+
