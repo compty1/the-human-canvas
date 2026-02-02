@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface HalftoneImageProps {
@@ -7,27 +8,26 @@ interface HalftoneImageProps {
   frameColor?: "magenta" | "cyan" | "yellow";
 }
 
-export const HalftoneImage = ({
-  src,
-  alt,
-  className,
-  frameColor = "cyan",
-}: HalftoneImageProps) => {
-  const frameClasses = {
-    magenta: "pop-frame-magenta",
-    cyan: "pop-frame",
-    yellow: "pop-frame-yellow",
-  };
+export const HalftoneImage = forwardRef<HTMLDivElement, HalftoneImageProps>(
+  ({ src, alt, className, frameColor = "cyan" }, ref) => {
+    const frameClasses = {
+      magenta: "pop-frame-magenta",
+      cyan: "pop-frame",
+      yellow: "pop-frame-yellow",
+    };
 
-  return (
-    <div className={cn("pop-frame", frameClasses[frameColor], className)}>
-      <div className="halftone-overlay overflow-hidden border-4 border-foreground">
-        <img
-          src={src}
-          alt={alt}
-          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-        />
+    return (
+      <div ref={ref} className={cn("pop-frame", frameClasses[frameColor], className)}>
+        <div className="halftone-overlay overflow-hidden border-4 border-foreground">
+          <img
+            src={src}
+            alt={alt}
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          />
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+HalftoneImage.displayName = "HalftoneImage";

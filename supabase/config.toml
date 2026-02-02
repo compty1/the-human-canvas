@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.capture-screenshots]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.ai-lead-advisor]
+verify_jwt = false
+
+[functions.scheduled-publisher]
+verify_jwt = false

@@ -8,6 +8,51 @@ import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Search, Image } from "lucide-react";
 import { toast } from "sonner";
 
+// Local asset imports for resolving paths
+import moodboard1 from "@/assets/artwork/moodboard-1.png";
+import moodboard2 from "@/assets/artwork/moodboard-2.png";
+import nancySinatra from "@/assets/artwork/nancy-sinatra.png";
+import zacPortrait from "@/assets/artwork/zac-portrait.png";
+import piece55 from "@/assets/artwork/piece-55.png";
+import piece56 from "@/assets/artwork/piece-56.png";
+import piece57 from "@/assets/artwork/piece-57.png";
+import goldenHour from "@/assets/artwork/golden-hour.png";
+import sailboat from "@/assets/artwork/sailboat.png";
+import redBrick from "@/assets/artwork/red-brick.png";
+import venicePalms from "@/assets/artwork/venice-palms.png";
+import cemeteryStone from "@/assets/artwork/cemetery-stone.png";
+import victorianMansion from "@/assets/artwork/victorian-mansion.png";
+import hollywoodScene from "@/assets/artwork/hollywood-scene.png";
+import anarchist from "@/assets/artwork/anarchist.png";
+import harlequin from "@/assets/artwork/harlequin.png";
+import bandagedPortrait from "@/assets/artwork/bandaged-portrait.png";
+
+// Map local paths to resolved imports
+const localAssetMap: Record<string, string> = {
+  "/src/assets/artwork/moodboard-1.png": moodboard1,
+  "/src/assets/artwork/moodboard-2.png": moodboard2,
+  "/src/assets/artwork/nancy-sinatra.png": nancySinatra,
+  "/src/assets/artwork/zac-portrait.png": zacPortrait,
+  "/src/assets/artwork/piece-55.png": piece55,
+  "/src/assets/artwork/piece-56.png": piece56,
+  "/src/assets/artwork/piece-57.png": piece57,
+  "/src/assets/artwork/golden-hour.png": goldenHour,
+  "/src/assets/artwork/sailboat.png": sailboat,
+  "/src/assets/artwork/red-brick.png": redBrick,
+  "/src/assets/artwork/venice-palms.png": venicePalms,
+  "/src/assets/artwork/cemetery-stone.png": cemeteryStone,
+  "/src/assets/artwork/victorian-mansion.png": victorianMansion,
+  "/src/assets/artwork/hollywood-scene.png": hollywoodScene,
+  "/src/assets/artwork/anarchist.png": anarchist,
+  "/src/assets/artwork/harlequin.png": harlequin,
+  "/src/assets/artwork/bandaged-portrait.png": bandagedPortrait,
+};
+
+// Resolve image URL - converts local asset paths to imported modules
+const resolveImageUrl = (url: string): string => {
+  return localAssetMap[url] || url;
+};
+
 const ArtworkManager = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -107,7 +152,7 @@ const ArtworkManager = () => {
             {filteredArtwork.map((art) => (
               <ComicPanel key={art.id} className="group relative overflow-hidden">
                 <img 
-                  src={art.image_url} 
+                  src={resolveImageUrl(art.image_url)} 
                   alt={art.title}
                   className="w-full aspect-square object-cover"
                 />

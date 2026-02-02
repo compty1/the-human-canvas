@@ -91,6 +91,7 @@ const navGroups: NavGroup[] = [
   {
     title: "Tools",
     items: [
+      { label: "Content Review", href: "/admin/content-review", icon: FileText },
       { label: "Time Tracker", href: "/admin/time-tracker", icon: Clock },
       { label: "Sales Data", href: "/admin/sales", icon: DollarSign },
       { label: "Funding Campaigns", href: "/admin/funding-campaigns", icon: TrendingUp },

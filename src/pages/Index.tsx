@@ -1,18 +1,13 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Palette, Code, PenTool, Heart } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, Ticker, HalftoneImage } from "@/components/pop-art";
+import { supabase } from "@/integrations/supabase/client";
 
 import moodboard1 from "@/assets/artwork/moodboard-1.png";
 import moodboard2 from "@/assets/artwork/moodboard-2.png";
 import nancySinatra from "@/assets/artwork/nancy-sinatra.png";
-
-const currentProjects = [
-  "T1D Compass - Building",
-  "Pulse Network - Designing",
-  "UX Lens - Researching",
-  "New Art Series - Creating",
-];
 
 const navPanels = [
   {
@@ -46,6 +41,75 @@ const navPanels = [
 ];
 
 const Index = () => {
+  // Fetch ticker items from site_content
+  const { data: tickerContent } = useQuery({
+    queryKey: ["site-content-ticker"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_content")
+        .select("content_value")
+        .eq("section_key", "ticker_items")
+        .single();
+      if (error) return null;
+      return data?.content_value;
+    },
+  });
+
+  // Fetch featured project IDs from site_content
+  const { data: featuredProjectIds } = useQuery({
+    queryKey: ["site-content-featured-projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_content")
+        .select("content_value")
+        .eq("section_key", "featured_project_ids")
+        .single();
+      if (error) return null;
+      try {
+        return JSON.parse(data?.content_value || "[]");
+      } catch {
+        return [];
+      }
+    },
+  });
+
+  // Fetch featured projects from database
+  const { data: featuredProjects } = useQuery({
+    queryKey: ["featured-projects", featuredProjectIds],
+    queryFn: async () => {
+      if (!featuredProjectIds || featuredProjectIds.length === 0) {
+        // Fallback to live projects
+        const { data, error } = await supabase
+          .from("projects")
+          .select("id, title, description, slug, external_url")
+          .eq("status", "live")
+          .limit(3);
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, description, slug, external_url")
+        .in("id", featuredProjectIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: featuredProjectIds !== undefined,
+  });
+
+  // Parse ticker items - try JSON first, then comma-separated
+  const tickerItems = (() => {
+    if (!tickerContent) {
+      return ["T1D Compass - Building", "Pulse Network - Designing", "UX Lens - Researching", "New Art Series - Creating"];
+    }
+    try {
+      const parsed = JSON.parse(tickerContent);
+      return Array.isArray(parsed) ? parsed : [tickerContent];
+    } catch {
+      return tickerContent.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+  })();
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -110,7 +174,7 @@ const Index = () => {
       </section>
 
       {/* Currently Working On Ticker */}
-      <Ticker items={currentProjects} />
+      <Ticker items={tickerItems} />
 
       {/* Navigation Panels */}
       <section className="py-20 screen-print">
@@ -173,39 +237,32 @@ const Index = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Notardex",
-                description: "Virtual notebook platform with powerful features for organizing your thoughts",
-                url: "https://notardex.com",
-              },
-              {
-                title: "Solutiodex",
-                description: "Community-driven search engine providing social solutions from public sources",
-                url: "https://solutiodex.com",
-              },
-              {
-                title: "Zodaci",
-                description: "Birth chart and astrology site exploring cosmic connections",
-                url: "https://zodaci.com",
-              },
-            ].map((project, index) => (
+            {(featuredProjects || []).map((project, index) => (
               <ComicPanel
-                key={project.title}
+                key={project.id}
                 className={`p-6 animate-fade-in stagger-${index + 1}`}
               >
                 <h3 className="text-2xl font-display mb-3">{project.title}</h3>
                 <p className="text-sm font-sans text-muted-foreground mb-4">
                   {project.description}
                 </p>
-                <a
-                  href={project.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="pop-link text-sm font-bold inline-flex items-center gap-1"
-                >
-                  Visit Site <ArrowRight className="w-4 h-4" />
-                </a>
+                {project.external_url ? (
+                  <a
+                    href={project.external_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pop-link text-sm font-bold inline-flex items-center gap-1"
+                  >
+                    Visit Site <ArrowRight className="w-4 h-4" />
+                  </a>
+                ) : (
+                  <Link
+                    to={`/projects/${project.slug}`}
+                    className="pop-link text-sm font-bold inline-flex items-center gap-1"
+                  >
+                    View Details <ArrowRight className="w-4 h-4" />
+                  </Link>
+                )}
               </ComicPanel>
             ))}
           </div>

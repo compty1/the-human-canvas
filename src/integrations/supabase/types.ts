@@ -105,6 +105,11 @@ export type Database = {
           next_steps: string | null
           published: boolean | null
           reading_time_minutes: number | null
+          review_status:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes: string | null
+          scheduled_at: string | null
           slug: string
           tags: string[] | null
           title: string
@@ -123,6 +128,11 @@ export type Database = {
           next_steps?: string | null
           published?: boolean | null
           reading_time_minutes?: number | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           slug: string
           tags?: string[] | null
           title: string
@@ -141,6 +151,11 @@ export type Database = {
           next_steps?: string | null
           published?: boolean | null
           reading_time_minutes?: number | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           slug?: string
           tags?: string[] | null
           title?: string
@@ -284,6 +299,7 @@ export type Database = {
         Row: {
           admin_notes: string | null
           average_rating: number | null
+          case_study: string | null
           cost_breakdown: Json | null
           costs: number | null
           created_at: string | null
@@ -302,7 +318,12 @@ export type Database = {
           profit: number | null
           revenue: number | null
           review_count: number | null
+          review_status:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes: string | null
           sample_reviews: string[] | null
+          scheduled_at: string | null
           screenshots: string[] | null
           skills_demonstrated: string[] | null
           slug: string
@@ -314,6 +335,7 @@ export type Database = {
         Insert: {
           admin_notes?: string | null
           average_rating?: number | null
+          case_study?: string | null
           cost_breakdown?: Json | null
           costs?: number | null
           created_at?: string | null
@@ -332,7 +354,12 @@ export type Database = {
           profit?: number | null
           revenue?: number | null
           review_count?: number | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
           sample_reviews?: string[] | null
+          scheduled_at?: string | null
           screenshots?: string[] | null
           skills_demonstrated?: string[] | null
           slug: string
@@ -344,6 +371,7 @@ export type Database = {
         Update: {
           admin_notes?: string | null
           average_rating?: number | null
+          case_study?: string | null
           cost_breakdown?: Json | null
           costs?: number | null
           created_at?: string | null
@@ -362,7 +390,12 @@ export type Database = {
           profit?: number | null
           revenue?: number | null
           review_count?: number | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
           sample_reviews?: string[] | null
+          scheduled_at?: string | null
           screenshots?: string[] | null
           skills_demonstrated?: string[] | null
           slug?: string
@@ -510,6 +543,59 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_plans: {
+        Row: {
+          ai_suggestions: Json | null
+          created_at: string | null
+          description: string | null
+          estimated_cost: number | null
+          estimated_hours: number | null
+          id: string
+          lead_id: string | null
+          status: string | null
+          steps: Json | null
+          timeline: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_suggestions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          estimated_cost?: number | null
+          estimated_hours?: number | null
+          id?: string
+          lead_id?: string | null
+          status?: string | null
+          steps?: Json | null
+          timeline?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_suggestions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          estimated_cost?: number | null
+          estimated_hours?: number | null
+          id?: string
+          lead_id?: string | null
+          status?: string | null
+          steps?: Json | null
+          timeline?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_plans_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_searches: {
         Row: {
           executed_at: string
@@ -539,13 +625,20 @@ export type Database = {
       }
       leads: {
         Row: {
+          accepted_at: string | null
+          benefits: string[] | null
           company: string | null
           company_size: string | null
+          contact_person: string | null
+          contact_title: string | null
           created_at: string
           email: string | null
+          estimated_pay: number | null
           id: string
           industry: string | null
+          is_accepted: boolean | null
           last_contacted: string | null
+          lead_type: string | null
           linkedin: string | null
           location: string | null
           match_reasons: string[] | null
@@ -554,17 +647,26 @@ export type Database = {
           notes: string | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"] | null
+          suggested_services: string[] | null
           updated_at: string
           website: string | null
+          work_description: string | null
         }
         Insert: {
+          accepted_at?: string | null
+          benefits?: string[] | null
           company?: string | null
           company_size?: string | null
+          contact_person?: string | null
+          contact_title?: string | null
           created_at?: string
           email?: string | null
+          estimated_pay?: number | null
           id?: string
           industry?: string | null
+          is_accepted?: boolean | null
           last_contacted?: string | null
+          lead_type?: string | null
           linkedin?: string | null
           location?: string | null
           match_reasons?: string[] | null
@@ -573,17 +675,26 @@ export type Database = {
           notes?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
+          suggested_services?: string[] | null
           updated_at?: string
           website?: string | null
+          work_description?: string | null
         }
         Update: {
+          accepted_at?: string | null
+          benefits?: string[] | null
           company?: string | null
           company_size?: string | null
+          contact_person?: string | null
+          contact_title?: string | null
           created_at?: string
           email?: string | null
+          estimated_pay?: number | null
           id?: string
           industry?: string | null
+          is_accepted?: boolean | null
           last_contacted?: string | null
+          lead_type?: string | null
           linkedin?: string | null
           location?: string | null
           match_reasons?: string[] | null
@@ -592,8 +703,10 @@ export type Database = {
           notes?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
+          suggested_services?: string[] | null
           updated_at?: string
           website?: string | null
+          work_description?: string | null
         }
         Relationships: []
       }
@@ -787,6 +900,11 @@ export type Database = {
           pain_points: string[] | null
           product_name: string
           published: boolean | null
+          review_status:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes: string | null
+          scheduled_at: string | null
           screenshots: string[] | null
           slug: string
           strengths: string[] | null
@@ -811,6 +929,11 @@ export type Database = {
           pain_points?: string[] | null
           product_name: string
           published?: boolean | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           screenshots?: string[] | null
           slug: string
           strengths?: string[] | null
@@ -835,6 +958,11 @@ export type Database = {
           pain_points?: string[] | null
           product_name?: string
           published?: boolean | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           screenshots?: string[] | null
           slug?: string
           strengths?: string[] | null
@@ -961,6 +1089,11 @@ export type Database = {
           performance_notes: string | null
           problem_statement: string | null
           results_metrics: Json | null
+          review_status:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes: string | null
+          scheduled_at: string | null
           screenshots: string[] | null
           slug: string
           solution_summary: string | null
@@ -996,6 +1129,11 @@ export type Database = {
           performance_notes?: string | null
           problem_statement?: string | null
           results_metrics?: Json | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           screenshots?: string[] | null
           slug: string
           solution_summary?: string | null
@@ -1031,6 +1169,11 @@ export type Database = {
           performance_notes?: string | null
           problem_statement?: string | null
           results_metrics?: Json | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           screenshots?: string[] | null
           slug?: string
           solution_summary?: string | null
@@ -1223,6 +1366,11 @@ export type Database = {
           last_saved_draft: string | null
           next_steps: string | null
           published: boolean | null
+          review_status:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes: string | null
+          scheduled_at: string | null
           slug: string
           tags: string[] | null
           title: string
@@ -1238,6 +1386,11 @@ export type Database = {
           last_saved_draft?: string | null
           next_steps?: string | null
           published?: boolean | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           slug: string
           tags?: string[] | null
           title: string
@@ -1253,6 +1406,11 @@ export type Database = {
           last_saved_draft?: string | null
           next_steps?: string | null
           published?: boolean | null
+          review_status?:
+            | Database["public"]["Enums"]["content_review_status"]
+            | null
+          reviewer_notes?: string | null
+          scheduled_at?: string | null
           slug?: string
           tags?: string[] | null
           title?: string
@@ -1344,6 +1502,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      content_review_status:
+        | "draft"
+        | "pending_review"
+        | "approved"
+        | "scheduled"
+        | "published"
+        | "rejected"
       content_type: "text" | "rich_text" | "image" | "json"
       lead_status: "new" | "contacted" | "responded" | "converted" | "archived"
       note_category: "brand" | "marketing" | "content" | "traffic" | "ideas"
@@ -1484,6 +1649,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      content_review_status: [
+        "draft",
+        "pending_review",
+        "approved",
+        "scheduled",
+        "published",
+        "rejected",
+      ],
       content_type: ["text", "rich_text", "image", "json"],
       lead_status: ["new", "contacted", "responded", "converted", "archived"],
       note_category: ["brand", "marketing", "content", "traffic", "ideas"],
