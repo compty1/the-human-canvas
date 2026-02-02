@@ -196,6 +196,72 @@ export type Database = {
         }
         Relationships: []
       }
+      certifications: {
+        Row: {
+          admin_notes: string | null
+          category: string | null
+          created_at: string | null
+          credential_id: string | null
+          credential_url: string | null
+          description: string | null
+          earned_date: string | null
+          estimated_cost: number | null
+          expiration_date: string | null
+          funded_amount: number | null
+          funding_enabled: boolean | null
+          id: string
+          image_url: string | null
+          issuer: string
+          name: string
+          order_index: number | null
+          skills: string[] | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: string | null
+          created_at?: string | null
+          credential_id?: string | null
+          credential_url?: string | null
+          description?: string | null
+          earned_date?: string | null
+          estimated_cost?: number | null
+          expiration_date?: string | null
+          funded_amount?: number | null
+          funding_enabled?: boolean | null
+          id?: string
+          image_url?: string | null
+          issuer: string
+          name: string
+          order_index?: number | null
+          skills?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string | null
+          created_at?: string | null
+          credential_id?: string | null
+          credential_url?: string | null
+          description?: string | null
+          earned_date?: string | null
+          estimated_cost?: number | null
+          expiration_date?: string | null
+          funded_amount?: number | null
+          funding_enabled?: boolean | null
+          id?: string
+          image_url?: string | null
+          issuer?: string
+          name?: string
+          order_index?: number | null
+          skills?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       client_projects: {
         Row: {
           client_name: string
@@ -292,6 +358,90 @@ export type Database = {
           stripe_payment_id?: string | null
           target_id?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      experiences: {
+        Row: {
+          admin_notes: string | null
+          category: string
+          challenges_overcome: string[] | null
+          clients_served: number | null
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          image_url: string | null
+          is_ongoing: boolean | null
+          key_achievements: string[] | null
+          lessons_learned: string[] | null
+          long_description: string | null
+          order_index: number | null
+          projects_completed: number | null
+          published: boolean | null
+          revenue_generated: number | null
+          screenshots: string[] | null
+          skills_used: string[] | null
+          slug: string
+          start_date: string | null
+          subcategory: string | null
+          title: string
+          tools_used: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          category: string
+          challenges_overcome?: string[] | null
+          clients_served?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_ongoing?: boolean | null
+          key_achievements?: string[] | null
+          lessons_learned?: string[] | null
+          long_description?: string | null
+          order_index?: number | null
+          projects_completed?: number | null
+          published?: boolean | null
+          revenue_generated?: number | null
+          screenshots?: string[] | null
+          skills_used?: string[] | null
+          slug: string
+          start_date?: string | null
+          subcategory?: string | null
+          title: string
+          tools_used?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string
+          challenges_overcome?: string[] | null
+          clients_served?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_ongoing?: boolean | null
+          key_achievements?: string[] | null
+          lessons_learned?: string[] | null
+          long_description?: string | null
+          order_index?: number | null
+          projects_completed?: number | null
+          published?: boolean | null
+          revenue_generated?: number | null
+          screenshots?: string[] | null
+          skills_used?: string[] | null
+          slug?: string
+          start_date?: string | null
+          subcategory?: string | null
+          title?: string
+          tools_used?: string[] | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -484,6 +634,8 @@ export type Database = {
         Row: {
           album_name: string | null
           artist_name: string | null
+          childhood_age_range: string | null
+          childhood_impact: string | null
           created_at: string | null
           creator_location: string | null
           creator_name: string | null
@@ -493,6 +645,7 @@ export type Database = {
           id: string
           image_url: string | null
           impact_statement: string | null
+          is_childhood_root: boolean | null
           is_current: boolean | null
           media_subtype: string | null
           release_year: number | null
@@ -506,6 +659,8 @@ export type Database = {
         Insert: {
           album_name?: string | null
           artist_name?: string | null
+          childhood_age_range?: string | null
+          childhood_impact?: string | null
           created_at?: string | null
           creator_location?: string | null
           creator_name?: string | null
@@ -515,6 +670,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           impact_statement?: string | null
+          is_childhood_root?: boolean | null
           is_current?: boolean | null
           media_subtype?: string | null
           release_year?: number | null
@@ -528,6 +684,8 @@ export type Database = {
         Update: {
           album_name?: string | null
           artist_name?: string | null
+          childhood_age_range?: string | null
+          childhood_impact?: string | null
           created_at?: string | null
           creator_location?: string | null
           creator_name?: string | null
@@ -537,6 +695,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           impact_statement?: string | null
+          is_childhood_root?: boolean | null
           is_current?: boolean | null
           media_subtype?: string | null
           release_year?: number | null
@@ -1187,6 +1346,7 @@ export type Database = {
         Row: {
           accessibility_notes: string | null
           admin_notes: string | null
+          analytics_notes: string | null
           architecture_notes: string | null
           case_study: string | null
           color_palette: string[] | null
@@ -1195,6 +1355,7 @@ export type Database = {
           description: string | null
           draft_content: Json | null
           end_date: string | null
+          expenses: Json | null
           external_url: string | null
           features: string[] | null
           funding_goal: number | null
@@ -1203,6 +1364,7 @@ export type Database = {
           github_url: string | null
           id: string
           image_url: string | null
+          income_data: Json | null
           last_saved_draft: string | null
           logo_url: string | null
           long_description: string | null
@@ -1229,6 +1391,7 @@ export type Database = {
         Insert: {
           accessibility_notes?: string | null
           admin_notes?: string | null
+          analytics_notes?: string | null
           architecture_notes?: string | null
           case_study?: string | null
           color_palette?: string[] | null
@@ -1237,6 +1400,7 @@ export type Database = {
           description?: string | null
           draft_content?: Json | null
           end_date?: string | null
+          expenses?: Json | null
           external_url?: string | null
           features?: string[] | null
           funding_goal?: number | null
@@ -1245,6 +1409,7 @@ export type Database = {
           github_url?: string | null
           id?: string
           image_url?: string | null
+          income_data?: Json | null
           last_saved_draft?: string | null
           logo_url?: string | null
           long_description?: string | null
@@ -1271,6 +1436,7 @@ export type Database = {
         Update: {
           accessibility_notes?: string | null
           admin_notes?: string | null
+          analytics_notes?: string | null
           architecture_notes?: string | null
           case_study?: string | null
           color_palette?: string[] | null
@@ -1279,6 +1445,7 @@ export type Database = {
           description?: string | null
           draft_content?: Json | null
           end_date?: string | null
+          expenses?: Json | null
           external_url?: string | null
           features?: string[] | null
           funding_goal?: number | null
@@ -1287,6 +1454,7 @@ export type Database = {
           github_url?: string | null
           id?: string
           image_url?: string | null
+          income_data?: Json | null
           last_saved_draft?: string | null
           logo_url?: string | null
           long_description?: string | null

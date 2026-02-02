@@ -86,11 +86,14 @@ const navGroups: NavGroup[] = [
       { label: "Learning Goals", href: "/admin/learning-goals", icon: Target },
       { label: "Future Plans", href: "/admin/future-plans", icon: Rocket },
       { label: "Supplies", href: "/admin/supplies", icon: Lightbulb },
+      { label: "Experiences", href: "/admin/experiences", icon: Briefcase },
+      { label: "Certifications", href: "/admin/certifications", icon: Target },
     ],
   },
   {
     title: "Tools",
     items: [
+      { label: "Content Library", href: "/admin/content-library", icon: FileText },
       { label: "Content Review", href: "/admin/content-review", icon: FileText },
       { label: "Time Tracker", href: "/admin/time-tracker", icon: Clock },
       { label: "Sales Data", href: "/admin/sales", icon: DollarSign },
