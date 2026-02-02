@@ -1,20 +1,27 @@
 import { useState, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, Check, AlertCircle, Download, Loader2 } from "lucide-react";
+import { Upload, Check, AlertCircle, Download, Loader2, FileWarning } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 interface ImportRow {
   [key: string]: string;
 }
 
+interface ParsedFile {
+  name: string;
+  data: ImportRow[];
+  error?: string;
+}
+
 const BulkImport = () => {
   const [contentType, setContentType] = useState<"artwork" | "articles" | "projects" | "updates">("artwork");
-  const [file, setFile] = useState<File | null>(null);
-  const [parsedData, setParsedData] = useState<ImportRow[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
@@ -44,48 +51,147 @@ const BulkImport = () => {
     },
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+  const parseCSV = (text: string, fileName: string): ParsedFile => {
+    try {
+      // Handle all line endings: Windows (\r\n), old Mac (\r), Unix (\n)
+      const lines = text.split(/\r?\n|\r/).filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        return { name: fileName, data: [], error: "File must have header row and at least one data row" };
+      }
 
-    setFile(selectedFile);
-    setErrors([]);
-    setParsedData([]);
+      // Parse header row - handle quoted values
+      const headers = parseCSVLine(lines[0]);
+      
+      if (headers.length === 0) {
+        return { name: fileName, data: [], error: "Could not parse header row" };
+      }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
+      // Parse data rows
+      const data: ImportRow[] = [];
+      const parseErrors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
         
-        if (selectedFile.name.endsWith(".json")) {
-          const json = JSON.parse(text);
-          setParsedData(Array.isArray(json) ? json : [json]);
-        } else {
-          // Parse CSV
-          const lines = text.split("\n").filter(line => line.trim());
-          if (lines.length < 2) {
-            setErrors(["File must have header row and at least one data row"]);
-            return;
+        // Skip empty rows
+        if (values.length === 0 || (values.length === 1 && !values[0])) {
+          continue;
+        }
+
+        // Validate field count
+        if (values.length !== headers.length) {
+          parseErrors.push(`Row ${i + 1}: Expected ${headers.length} fields, got ${values.length}`);
+          continue;
+        }
+
+        const row: ImportRow = {};
+        headers.forEach((header, j) => {
+          row[header] = values[j] || "";
+        });
+        data.push(row);
+      }
+
+      // Validate reasonable data count
+      if (data.length > 1000) {
+        return { name: fileName, data: [], error: "Too many rows (max 1000). Please split into multiple files." };
+      }
+
+      if (parseErrors.length > 0 && data.length === 0) {
+        return { name: fileName, data: [], error: parseErrors.join("; ") };
+      }
+
+      return { name: fileName, data };
+    } catch (error) {
+      return { name: fileName, data: [], error: "Failed to parse CSV file" };
+    }
+  };
+
+  // Proper CSV line parser that handles quoted fields with commas
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"' && inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++; // Skip next quote
+      } else if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  };
+
+  const handleFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    const fileArray = Array.from(selectedFiles);
+    setFiles(fileArray);
+    setErrors([]);
+    setParsedFiles([]);
+
+    const newParsedFiles: ParsedFile[] = [];
+    const newErrors: string[] = [];
+
+    for (const file of fileArray) {
+      // Check for Excel files
+      if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+        newErrors.push(`${file.name}: Excel files (.xlsx/.xls) are not supported. Please export as CSV first.`);
+        continue;
+      }
+
+      try {
+        const text = await file.text();
+
+        if (file.name.endsWith(".json")) {
+          try {
+            const json = JSON.parse(text);
+            const data = Array.isArray(json) ? json : [json];
+            
+            if (data.length > 1000) {
+              newErrors.push(`${file.name}: Too many items (max 1000)`);
+              continue;
+            }
+            
+            newParsedFiles.push({ name: file.name, data });
+          } catch {
+            newErrors.push(`${file.name}: Invalid JSON format`);
           }
-
-          const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
-          const data = lines.slice(1).map(line => {
-            const values = line.match(/("([^"]*)"|[^,]+)/g) || [];
-            const row: ImportRow = {};
-            headers.forEach((header, i) => {
-              row[header] = values[i]?.replace(/^"|"$/g, "").trim() || "";
-            });
-            return row;
-          });
-
-          setParsedData(data);
+        } else {
+          // Parse as CSV
+          const parsed = parseCSV(text, file.name);
+          if (parsed.error) {
+            newErrors.push(`${file.name}: ${parsed.error}`);
+          } else if (parsed.data.length > 0) {
+            newParsedFiles.push(parsed);
+          }
         }
       } catch (error) {
-        setErrors(["Failed to parse file. Please check the format."]);
+        newErrors.push(`${file.name}: Failed to read file`);
       }
-    };
+    }
 
-    reader.readAsText(selectedFile);
+    setParsedFiles(newParsedFiles);
+    setErrors(newErrors);
+
+    // Reset file input to allow re-selecting same files
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const downloadTemplate = () => {
@@ -99,8 +205,13 @@ const BulkImport = () => {
     URL.revokeObjectURL(url);
   };
 
+  const getTotalRows = () => {
+    return parsedFiles.reduce((sum, file) => sum + file.data.length, 0);
+  };
+
   const handleImport = async () => {
-    if (parsedData.length === 0) {
+    const totalRows = getTotalRows();
+    if (totalRows === 0) {
       toast.error("No data to import");
       return;
     }
@@ -111,9 +222,13 @@ const BulkImport = () => {
 
     const newErrors: string[] = [];
     let successCount = 0;
+    let processedCount = 0;
 
-    for (let i = 0; i < parsedData.length; i++) {
-      const row = parsedData[i];
+    // Flatten all data from all files
+    const allData: ImportRow[] = parsedFiles.flatMap(f => f.data);
+
+    for (let i = 0; i < allData.length; i++) {
+      const row = allData[i];
       
       try {
         let insertData: Record<string, unknown> = {};
@@ -161,7 +276,8 @@ const BulkImport = () => {
         newErrors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
 
-      setImportProgress(Math.round(((i + 1) / parsedData.length) * 100));
+      processedCount++;
+      setImportProgress(Math.round((processedCount / allData.length) * 100));
     }
 
     setImporting(false);
@@ -170,10 +286,21 @@ const BulkImport = () => {
     if (successCount > 0) {
       toast.success(`Successfully imported ${successCount} items`);
       queryClient.invalidateQueries({ queryKey: [`admin-${contentType}`] });
+      setParsedFiles([]);
+      setFiles([]);
     }
 
     if (newErrors.length > 0) {
       toast.error(`${newErrors.length} items failed to import`);
+    }
+  };
+
+  const clearFiles = () => {
+    setFiles([]);
+    setParsedFiles([]);
+    setErrors([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -195,9 +322,7 @@ const BulkImport = () => {
                 key={type}
                 onClick={() => {
                   setContentType(type);
-                  setParsedData([]);
-                  setFile(null);
-                  setErrors([]);
+                  clearFiles();
                 }}
                 className={`px-4 py-2 font-bold uppercase border-2 border-foreground transition-colors ${
                   contentType === type
@@ -225,7 +350,7 @@ const BulkImport = () => {
 
         {/* File Upload */}
         <ComicPanel className="p-6">
-          <Label className="mb-4 block text-lg font-display">2. Upload File</Label>
+          <Label className="mb-4 block text-lg font-display">2. Upload Files</Label>
           <div
             onClick={() => fileInputRef.current?.click()}
             className="border-2 border-dashed border-foreground p-8 text-center cursor-pointer hover:bg-muted/50 transition-colors"
@@ -234,57 +359,78 @@ const BulkImport = () => {
               ref={fileInputRef}
               type="file"
               accept=".csv,.json"
-              onChange={handleFileChange}
+              multiple
+              onChange={handleFilesChange}
               className="hidden"
             />
             <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            {file ? (
+            {files.length > 0 ? (
               <div>
-                <p className="font-bold">{file.name}</p>
-                <p className="text-sm text-muted-foreground">{parsedData.length} rows detected</p>
+                <p className="font-bold">{files.length} file{files.length > 1 ? "s" : ""} selected</p>
+                <p className="text-sm text-muted-foreground">{getTotalRows()} total rows detected</p>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); clearFiles(); }}
+                  className="mt-2 text-sm text-destructive hover:underline"
+                >
+                  Clear selection
+                </button>
               </div>
             ) : (
               <div>
-                <p className="font-bold">Click to upload CSV or JSON</p>
-                <p className="text-sm text-muted-foreground">or drag and drop</p>
+                <p className="font-bold">Click to upload CSV or JSON files</p>
+                <p className="text-sm text-muted-foreground">Select multiple files at once</p>
               </div>
             )}
           </div>
         </ComicPanel>
 
-        {/* Preview */}
-        {parsedData.length > 0 && (
+        {/* Parsed Files Summary */}
+        {parsedFiles.length > 0 && (
           <ComicPanel className="p-6">
-            <Label className="mb-4 block text-lg font-display">3. Preview Data</Label>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b-2 border-foreground">
-                    {Object.keys(parsedData[0]).map((key) => (
-                      <th key={key} className="text-left p-2 font-bold uppercase">
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedData.slice(0, 5).map((row, i) => (
-                    <tr key={i} className="border-b border-muted">
-                      {Object.values(row).map((value, j) => (
-                        <td key={j} className="p-2 max-w-xs truncate">
-                          {String(value)}
-                        </td>
+            <Label className="mb-4 block text-lg font-display">3. Files Ready to Import</Label>
+            <div className="space-y-2 mb-4">
+              {parsedFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <Check className="w-4 h-4 text-green-500" />
+                  <span className="font-bold">{file.name}</span>
+                  <span className="text-muted-foreground">({file.data.length} rows)</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Preview first file's data */}
+            {parsedFiles[0]?.data.length > 0 && (
+              <div className="overflow-x-auto">
+                <p className="text-sm text-muted-foreground mb-2">Preview ({parsedFiles[0].name}):</p>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b-2 border-foreground">
+                      {Object.keys(parsedFiles[0].data[0]).map((key) => (
+                        <th key={key} className="text-left p-2 font-bold uppercase">
+                          {key}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {parsedData.length > 5 && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  ...and {parsedData.length - 5} more rows
-                </p>
-              )}
-            </div>
+                  </thead>
+                  <tbody>
+                    {parsedFiles[0].data.slice(0, 3).map((row, i) => (
+                      <tr key={i} className="border-b border-muted">
+                        {Object.values(row).map((value, j) => (
+                          <td key={j} className="p-2 max-w-xs truncate">
+                            {String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {parsedFiles[0].data.length > 3 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    ...and {parsedFiles[0].data.length - 3} more rows in this file
+                  </p>
+                )}
+              </div>
+            )}
           </ComicPanel>
         )}
 
@@ -292,29 +438,32 @@ const BulkImport = () => {
         {errors.length > 0 && (
           <ComicPanel className="p-6 bg-destructive/10">
             <div className="flex items-center gap-2 mb-4">
-              <AlertCircle className="w-5 h-5 text-destructive" />
-              <Label className="text-lg font-display text-destructive">Errors</Label>
+              <FileWarning className="w-5 h-5 text-destructive" />
+              <Label className="text-lg font-display text-destructive">Issues Found</Label>
             </div>
             <ul className="space-y-1 text-sm">
-              {errors.map((error, i) => (
+              {errors.slice(0, 10).map((error, i) => (
                 <li key={i} className="text-destructive">{error}</li>
               ))}
+              {errors.length > 10 && (
+                <li className="text-destructive font-bold">...and {errors.length - 10} more errors</li>
+              )}
             </ul>
           </ComicPanel>
         )}
 
         {/* Import Button */}
-        {parsedData.length > 0 && (
+        {getTotalRows() > 0 && (
           <div className="space-y-4">
             {importing && (
-              <div className="h-2 bg-muted border-2 border-foreground overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${importProgress}%` }}
-                />
+              <div className="space-y-2">
+                <Progress value={importProgress} className="h-3" />
+                <p className="text-sm text-muted-foreground text-center">
+                  Importing... {importProgress}%
+                </p>
               </div>
             )}
-            <PopButton onClick={handleImport} disabled={importing}>
+            <PopButton onClick={handleImport} disabled={importing} className="w-full">
               {importing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -323,7 +472,7 @@ const BulkImport = () => {
               ) : (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  Import {parsedData.length} Items
+                  Import {getTotalRows()} Items
                 </>
               )}
             </PopButton>
