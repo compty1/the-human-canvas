@@ -258,7 +258,7 @@ const Favorites = () => {
                       {streamingLinks.length > 0 && (
                         <div className="flex items-center gap-2 pt-3 border-t border-muted">
                           <span className="text-xs text-muted-foreground">
-                            {fav.type === 'music' ? 'Listen:' : 'Watch:'}
+                            {fav.type === 'music' || fav.type === 'podcast' ? 'Listen:' : 'Watch:'}
                           </span>
                           <div className="flex gap-1">
                             {streamingLinks.map(({ key, url, platform }) => (
