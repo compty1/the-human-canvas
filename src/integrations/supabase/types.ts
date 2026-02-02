@@ -295,6 +295,80 @@ export type Database = {
         }
         Relationships: []
       }
+      experiment_products: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          etsy_listing_id: string | null
+          experiment_id: string | null
+          id: string
+          images: string[] | null
+          materials: string[] | null
+          name: string
+          original_price: number | null
+          price: number | null
+          quantity_available: number | null
+          quantity_sold: number | null
+          sku: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string | null
+          variations: Json | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          etsy_listing_id?: string | null
+          experiment_id?: string | null
+          id?: string
+          images?: string[] | null
+          materials?: string[] | null
+          name: string
+          original_price?: number | null
+          price?: number | null
+          quantity_available?: number | null
+          quantity_sold?: number | null
+          sku?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          variations?: Json | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          etsy_listing_id?: string | null
+          experiment_id?: string | null
+          id?: string
+          images?: string[] | null
+          materials?: string[] | null
+          name?: string
+          original_price?: number | null
+          price?: number | null
+          quantity_available?: number | null
+          quantity_sold?: number | null
+          sku?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          variations?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiment_products_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "experiments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experiments: {
         Row: {
           admin_notes: string | null

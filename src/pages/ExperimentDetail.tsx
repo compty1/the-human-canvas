@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, SpeechBubble } from "@/components/pop-art";
+import { ProductGallery } from "@/components/experiments/ProductGallery";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Star, TrendingUp, Calendar, Package, DollarSign, Target, Lightbulb } from "lucide-react";
 
@@ -139,6 +140,9 @@ const ExperimentDetail = () => {
                 </ul>
               </ComicPanel>
             )}
+
+            {/* Product Gallery - shows actual products with images */}
+            <ProductGallery experimentId={experiment.id} />
 
             {/* Sample Reviews */}
             {experiment.sample_reviews && experiment.sample_reviews.length > 0 && (
