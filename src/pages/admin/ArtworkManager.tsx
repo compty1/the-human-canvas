@@ -5,7 +5,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, Search, Image } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Image, Upload } from "lucide-react";
+import { BulkArtworkUploader } from "@/components/admin/BulkArtworkUploader";
 import { toast } from "sonner";
 
 // Local asset imports for resolving paths
@@ -56,6 +57,7 @@ const resolveImageUrl = (url: string): string => {
 const ArtworkManager = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: artwork, isLoading } = useQuery({
@@ -99,6 +101,17 @@ const ArtworkManager = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
+        {/* Bulk Upload Modal */}
+        {showBulkUpload && (
+          <BulkArtworkUploader
+            onComplete={() => {
+              setShowBulkUpload(false);
+              queryClient.invalidateQueries({ queryKey: ["admin-artwork"] });
+            }}
+            onCancel={() => setShowBulkUpload(false)}
+          />
+        )}
+
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -110,6 +123,9 @@ const ArtworkManager = () => {
               <Plus className="w-4 h-4 mr-2" /> Add Artwork
             </PopButton>
           </Link>
+          <PopButton variant="secondary" onClick={() => setShowBulkUpload(true)}>
+            <Upload className="w-4 h-4 mr-2" /> Bulk Upload
+          </PopButton>
         </div>
 
         {/* Filters */}
