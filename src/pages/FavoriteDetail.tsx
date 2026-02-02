@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, ExternalLink, MapPin, Calendar, Heart, Loader2, Music, Film } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPin, Calendar, Heart, Loader2, Music, Film, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { streamingPlatforms, getAvailableStreamingLinks } from "@/lib/streamingPlatforms";
 
@@ -75,7 +75,27 @@ const FavoriteDetail = () => {
   const streamingLinks = getAvailableStreamingLinks(favorite.streaming_links);
   const isMusicType = favorite.type === 'music';
   const isVideoType = favorite.type === 'movie' || favorite.type === 'show';
+  const isPodcastType = favorite.type === 'podcast';
   const hasStreamingLinks = streamingLinks.length > 0;
+
+  const getStreamingSectionTitle = () => {
+    if (isMusicType) return 'Listen On';
+    if (isPodcastType) return 'Listen On';
+    return 'Where to Watch';
+  };
+
+  const getStreamingIcon = () => {
+    if (isMusicType) return <Music className="w-6 h-6 text-primary" />;
+    if (isPodcastType) return <Mic className="w-6 h-6 text-primary" />;
+    return <Film className="w-6 h-6 text-primary" />;
+  };
+
+  const getSeasonLabel = () => {
+    if (isPodcastType) {
+      return favorite.season_count === 1 ? 'Episode' : 'Episodes';
+    }
+    return favorite.season_count === 1 ? 'Season' : 'Seasons';
+  };
 
   return (
     <Layout>
@@ -131,7 +151,7 @@ const FavoriteDetail = () => {
 
           {favorite.season_count && (
             <p className="text-lg text-muted-foreground mb-2">
-              {favorite.season_count} {favorite.season_count === 1 ? 'Season' : 'Seasons'}
+              {favorite.season_count} {getSeasonLabel()}
             </p>
           )}
 
@@ -166,13 +186,9 @@ const FavoriteDetail = () => {
             <div className="max-w-3xl mx-auto">
               <ComicPanel className="p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  {isMusicType ? (
-                    <Music className="w-6 h-6 text-primary" />
-                  ) : (
-                    <Film className="w-6 h-6 text-primary" />
-                  )}
+                  {getStreamingIcon()}
                   <h2 className="text-2xl font-display">
-                    {isMusicType ? 'Listen On' : 'Where to Watch'}
+                    {getStreamingSectionTitle()}
                   </h2>
                 </div>
                 <div className="grid gap-3">
