@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -7,6 +7,10 @@ import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploa
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
+import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
+import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
+import { useAutosave } from "@/hooks/useAutosave";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,8 +70,10 @@ interface FormState {
 const ProjectEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const isEditing = !!id;
+  const cloneId = searchParams.get("clone");
 
   const [form, setForm] = useState<FormState>({
     title: "",
@@ -149,20 +155,51 @@ const ProjectEditor = () => {
     pushHistory(newForm);
   };
 
-  // Load existing project
+  // Load existing project or clone source
   const { data: project, isLoading } = useQuery({
-    queryKey: ["project-edit", id],
+    queryKey: ["project-edit", id || cloneId],
     queryFn: async () => {
-      if (!id) return null;
+      const targetId = id || cloneId;
+      if (!targetId) return null;
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .eq("id", id)
+        .eq("id", targetId)
         .single();
       if (error) throw error;
       return data;
     },
-    enabled: isEditing,
+    enabled: !!(id || cloneId),
+  });
+
+  // Autosave hook
+  const autosaveKey = `project_${id || "new"}`;
+  const {
+    hasDraft,
+    draftData,
+    draftTimestamp,
+    restoreDraft,
+    discardDraft,
+    clearDraft,
+  } = useAutosave({
+    key: autosaveKey,
+    data: form,
+    enabled: true,
+  });
+
+  // Keyboard shortcuts
+  useEditorShortcuts({
+    onSave: () => {
+      saveMutation.mutate();
+      clearDraft();
+    },
+    onSaveAndExit: () => {
+      saveMutation.mutate();
+      clearDraft();
+    },
+    onExit: () => navigate("/admin/projects"),
+    isDirty: historyIndex > 0,
+    enabled: true,
   });
 
   useEffect(() => {
@@ -170,8 +207,8 @@ const ProjectEditor = () => {
       // Handle legacy finishing_stages status by mapping to in_progress
       const projectStatus = project.status === 'finishing_stages' ? 'in_progress' : project.status;
       const initialForm: FormState = {
-        title: project.title || "",
-        slug: project.slug || "",
+        title: cloneId ? `${project.title} (Copy)` : project.title || "",
+        slug: cloneId ? "" : project.slug || "",
         description: project.description || "",
         long_description: project.long_description || "",
         status: (projectStatus as FormState['status']) || "planned",
@@ -185,23 +222,34 @@ const ProjectEditor = () => {
         problem_statement: project.problem_statement || "",
         solution_summary: project.solution_summary || "",
         case_study: project.case_study || "",
-        funding_goal: project.funding_goal?.toString() || "",
+        funding_goal: cloneId ? "" : project.funding_goal?.toString() || "",
         admin_notes: project.admin_notes || "",
         architecture_notes: (project as Record<string, unknown>).architecture_notes as string || "",
         accessibility_notes: (project as Record<string, unknown>).accessibility_notes as string || "",
-        start_date: (project as Record<string, unknown>).start_date as string || "",
-        end_date: (project as Record<string, unknown>).end_date as string || "",
-        expenses: (project.expenses as unknown as ExpenseItem[]) || [],
-        income_data: (project.income_data as unknown as IncomeData) || {},
+        start_date: cloneId ? "" : (project as Record<string, unknown>).start_date as string || "",
+        end_date: cloneId ? "" : (project as Record<string, unknown>).end_date as string || "",
+        expenses: cloneId ? [] : (project.expenses as unknown as ExpenseItem[]) || [],
+        income_data: cloneId ? {} : (project.income_data as unknown as IncomeData) || {},
       };
       setForm(initialForm);
       setHistory([initialForm]);
       setHistoryIndex(0);
-    } else if (!isEditing) {
+    } else if (!isEditing && !cloneId) {
       setHistory([form]);
       setHistoryIndex(0);
     }
-  }, [project, isEditing]);
+  }, [project, isEditing, cloneId]);
+
+  // Handle draft restoration
+  const handleRestoreDraft = () => {
+    const restoredData = restoreDraft();
+    if (restoredData) {
+      setForm(restoredData);
+      setHistory([restoredData]);
+      setHistoryIndex(0);
+      toast.success("Draft restored");
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -244,6 +292,7 @@ const ProjectEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-projects"] });
+      clearDraft();
       toast.success(isEditing ? "Project updated" : "Project created");
       navigate("/admin/projects");
     },
@@ -441,14 +490,26 @@ const ProjectEditor = () => {
   return (
     <AdminLayout>
       <div className="space-y-6 max-w-4xl">
+        {/* Draft Recovery Banner */}
+        {hasDraft && draftTimestamp && (
+          <DraftRecoveryBanner
+            timestamp={draftTimestamp}
+            onRestore={handleRestoreDraft}
+            onDiscard={discardDraft}
+          />
+        )}
+
         {/* Header */}
         <div className="flex items-center gap-4">
           <button onClick={() => navigate("/admin/projects")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-grow">
-            <h1 className="text-3xl font-display">{isEditing ? "Edit Project" : "New Project"}</h1>
+            <h1 className="text-3xl font-display">
+              {cloneId ? "Clone Project" : isEditing ? "Edit Project" : "New Project"}
+            </h1>
           </div>
+          <KeyboardShortcutsHelp />
           <UndoRedoControls
             canUndo={canUndo}
             canRedo={canRedo}

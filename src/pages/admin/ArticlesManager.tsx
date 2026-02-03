@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -171,6 +172,7 @@ const ArticlesManager = () => {
                         <EyeOff className="w-4 h-4" />
                       )}
                     </button>
+                    <DuplicateButton id={article.id} type="article" />
                     <Link
                       to={`/admin/articles/${article.id}/edit`}
                       className="p-2 hover:bg-muted rounded"

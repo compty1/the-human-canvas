@@ -91,6 +91,8 @@ import ExperienceEditorPage from "./pages/admin/ExperienceEditor";
 import CertificationsManager from "./pages/admin/CertificationsManager";
 import CertificationEditor from "./pages/admin/CertificationEditor";
 import ContentLibrary from "./pages/admin/ContentLibrary";
+import QuickCapture from "./pages/admin/QuickCapture";
+import MediaLibrary from "./pages/admin/MediaLibrary";
 
 // Additional Public pages
 import ExperiencesPage from "./pages/Experiences";
@@ -208,6 +210,8 @@ const App = () => (
               <Route path="/admin/certifications/new" element={<CertificationEditor />} />
               <Route path="/admin/certifications/:id/edit" element={<CertificationEditor />} />
               <Route path="/admin/content-library" element={<ContentLibrary />} />
+              <Route path="/admin/quick-capture" element={<QuickCapture />} />
+              <Route path="/admin/media-library" element={<MediaLibrary />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

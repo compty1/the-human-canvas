@@ -1,9 +1,10 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { CommandPalette } from "./CommandPalette";
 import {
   LayoutDashboard,
   BarChart3,
@@ -38,6 +39,7 @@ import {
   Beaker,
   ShoppingBag,
   Gift,
+  Command,
 } from "lucide-react";
 import { PopButton } from "@/components/pop-art";
 import { toast } from "@/hooks/use-toast";
@@ -93,6 +95,8 @@ const navGroups: NavGroup[] = [
   {
     title: "Tools",
     items: [
+      { label: "Quick Capture", href: "/admin/quick-capture", icon: Sparkles },
+      { label: "Media Library", href: "/admin/media-library", icon: Image },
       { label: "Content Library", href: "/admin/content-library", icon: FileText },
       { label: "Content Review", href: "/admin/content-review", icon: FileText },
       { label: "Time Tracker", href: "/admin/time-tracker", icon: Clock },
@@ -120,6 +124,19 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  // Global Ctrl+K shortcut for command palette
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Check admin access
   const { data: isAdmin, isLoading } = useQuery({
@@ -166,6 +183,9 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   return (
     <div className="min-h-screen flex bg-background">
+      {/* Command Palette */}
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
@@ -238,8 +258,21 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           ))}
         </nav>
 
-        {/* Sign Out */}
-        <div className="absolute bottom-0 left-0 right-0 p-2 border-t-2 border-background/20">
+        {/* Command Palette Trigger & Sign Out */}
+        <div className="absolute bottom-0 left-0 right-0 p-2 border-t-2 border-background/20 space-y-1">
+          <button
+            onClick={() => setCommandOpen(true)}
+            className="flex items-center gap-3 px-3 py-2 w-full rounded hover:bg-background/10 transition-colors"
+            title={collapsed ? "Command Palette (Ctrl+K)" : undefined}
+          >
+            <Command className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && (
+              <div className="flex items-center justify-between w-full">
+                <span>Search</span>
+                <kbd className="text-xs bg-background/20 px-1.5 py-0.5 rounded">⌘K</kbd>
+              </div>
+            )}
+          </button>
           <button
             onClick={handleSignOut}
             className="flex items-center gap-3 px-3 py-2 w-full rounded hover:bg-background/10 transition-colors"
