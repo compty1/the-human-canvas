@@ -98,20 +98,28 @@ export const PocketCastsIcon: React.FC<IconProps> = ({ className, size = 24 }) =
 
 // Export a map of platform key to icon component
 export const streamingIconMap: Record<string, React.FC<IconProps>> = {
+  // Music platforms
   spotify: SpotifyIcon,
   apple_music: AppleMusicIcon,
   youtube_music: YouTubeMusicIcon,
   soundcloud: SoundCloudIcon,
+  
+  // Video platforms
   netflix: NetflixIcon,
   hulu: HuluIcon,
   amazon_prime: PrimeVideoIcon,
+  prime_video: PrimeVideoIcon, // Alternate key
   disney_plus: DisneyPlusIcon,
   hbo_max: MaxIcon,
+  max: MaxIcon, // Alternate key
   apple_tv: AppleTVIcon,
+  
+  // Podcast platforms
   apple_podcasts: ApplePodcastsIcon,
   spotify_podcasts: SpotifyIcon,
   google_podcasts: GooglePodcastsIcon,
   youtube_podcast: YouTubeIcon,
+  youtube: YouTubeIcon, // Generic YouTube key
   overcast: OvercastIcon,
   pocket_casts: PocketCastsIcon,
 };
