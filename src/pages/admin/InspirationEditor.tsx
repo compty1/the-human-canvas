@@ -4,8 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { MultiImageUploader } from "@/components/admin/MultiImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
+import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +19,18 @@ import { toast } from "sonner";
 interface RelatedLink {
   title: string;
   url: string;
+}
+
+interface FormState {
+  title: string;
+  category: string;
+  description: string;
+  detailed_content: string;
+  image_url: string;
+  images: string[];
+  related_links: RelatedLink[];
+  influence_areas: string[];
+  order_index: number;
 }
 
 const categories = [
@@ -31,16 +46,66 @@ const InspirationEditor = () => {
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     title: "",
     category: "person",
     description: "",
     detailed_content: "",
     image_url: "",
-    related_links: [] as RelatedLink[],
-    influence_areas: [] as string[],
+    images: [],
+    related_links: [],
+    influence_areas: [],
     order_index: 0,
   });
+
+  // Undo/Redo history
+  const [history, setHistory] = useState<FormState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  const pushHistory = (newForm: FormState) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newForm);
+    // Keep max 50 history states
+    if (newHistory.length > 50) newHistory.shift();
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  const undo = () => {
+    if (canUndo) {
+      setHistoryIndex(prev => prev - 1);
+      setForm(history[historyIndex - 1]);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setHistoryIndex(prev => prev + 1);
+      setForm(history[historyIndex + 1]);
+    }
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey && canRedo) redo();
+        else if (!e.shiftKey && canUndo) undo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canUndo, canRedo, historyIndex, history]);
+
+  const updateForm = (updates: Partial<FormState>) => {
+    const newForm = { ...form, ...updates };
+    setForm(newForm);
+    pushHistory(newForm);
+  };
 
   const [newArea, setNewArea] = useState("");
   const [newLink, setNewLink] = useState({ title: "", url: "" });
@@ -62,20 +127,28 @@ const InspirationEditor = () => {
 
   useEffect(() => {
     if (inspiration) {
-      setForm({
+      const initialForm: FormState = {
         title: inspiration.title || "",
         category: inspiration.category || "person",
         description: inspiration.description || "",
         detailed_content: inspiration.detailed_content || "",
         image_url: inspiration.image_url || "",
+        images: (inspiration as Record<string, unknown>).images as string[] || [],
         related_links: Array.isArray(inspiration.related_links) 
           ? (inspiration.related_links as unknown as RelatedLink[]) 
           : [],
         influence_areas: inspiration.influence_areas || [],
         order_index: inspiration.order_index || 0,
-      });
+      };
+      setForm(initialForm);
+      setHistory([initialForm]);
+      setHistoryIndex(0);
+    } else if (!isEditing) {
+      // Initialize history for new items
+      setHistory([form]);
+      setHistoryIndex(0);
     }
-  }, [inspiration]);
+  }, [inspiration, isEditing]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -85,6 +158,7 @@ const InspirationEditor = () => {
         description: form.description || null,
         detailed_content: form.detailed_content || null,
         image_url: form.image_url || null,
+        images: form.images,
         related_links: JSON.parse(JSON.stringify(form.related_links)),
         influence_areas: form.influence_areas,
         order_index: form.order_index,
@@ -114,14 +188,14 @@ const InspirationEditor = () => {
 
   const addInfluenceArea = () => {
     if (newArea && !form.influence_areas.includes(newArea)) {
-      setForm(prev => ({ ...prev, influence_areas: [...prev.influence_areas, newArea] }));
+      updateForm({ influence_areas: [...form.influence_areas, newArea] });
       setNewArea("");
     }
   };
 
   const addRelatedLink = () => {
     if (newLink.title && newLink.url) {
-      setForm(prev => ({ ...prev, related_links: [...prev.related_links, { ...newLink }] }));
+      updateForm({ related_links: [...form.related_links, { ...newLink }] });
       setNewLink({ title: "", url: "" });
     }
   };
@@ -143,22 +217,30 @@ const InspirationEditor = () => {
           <button onClick={() => navigate("/admin/inspirations")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-grow">
             <h1 className="text-3xl font-display">
               {isEditing ? "Edit Inspiration" : "Add Inspiration"}
             </h1>
           </div>
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+          />
         </div>
 
         {/* Bulk Text Importer */}
         <BulkTextImporter
           contentType="inspiration"
           onImport={(data) => {
-            if (data.title) setForm(prev => ({ ...prev, title: String(data.title) }));
-            if (data.category) setForm(prev => ({ ...prev, category: String(data.category) }));
-            if (data.description) setForm(prev => ({ ...prev, description: String(data.description) }));
-            if (data.detailed_content) setForm(prev => ({ ...prev, detailed_content: String(data.detailed_content) }));
-            if (data.influence_areas) setForm(prev => ({ ...prev, influence_areas: Array.isArray(data.influence_areas) ? data.influence_areas : [] }));
+            const updates: Partial<FormState> = {};
+            if (data.title) updates.title = String(data.title);
+            if (data.category) updates.category = String(data.category);
+            if (data.description) updates.description = String(data.description);
+            if (data.detailed_content) updates.detailed_content = String(data.detailed_content);
+            if (data.influence_areas) updates.influence_areas = Array.isArray(data.influence_areas) ? data.influence_areas : [];
+            updateForm(updates);
           }}
         />
 
@@ -172,7 +254,7 @@ const InspirationEditor = () => {
                 <Input
                   id="title"
                   value={form.title}
-                  onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => updateForm({ title: e.target.value })}
                   placeholder="e.g., Bret Helquist, Society & Struggle"
                 />
               </div>
@@ -181,7 +263,7 @@ const InspirationEditor = () => {
                 <select
                   id="category"
                   value={form.category}
-                  onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))}
+                  onChange={(e) => updateForm({ category: e.target.value })}
                   className="w-full h-10 px-3 border-2 border-input bg-background"
                 >
                   {categories.map((c) => (
@@ -192,11 +274,22 @@ const InspirationEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="description">Short Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="description">Short Description</Label>
+                <AIGenerateButton
+                  fieldName="description"
+                  fieldLabel="Description"
+                  contentType="inspiration"
+                  context={{ title: form.title, category: form.category }}
+                  currentValue={form.description}
+                  onGenerated={(value) => updateForm({ description: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="description"
                 value={form.description}
-                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => updateForm({ description: e.target.value })}
                 rows={3}
                 placeholder="Brief overview of this inspiration..."
               />
@@ -208,26 +301,50 @@ const InspirationEditor = () => {
                 id="order"
                 type="number"
                 value={form.order_index}
-                onChange={(e) => setForm(prev => ({ ...prev, order_index: parseInt(e.target.value) || 0 }))}
+                onChange={(e) => updateForm({ order_index: parseInt(e.target.value) || 0 })}
               />
               <p className="text-xs text-muted-foreground mt-1">Lower numbers appear first</p>
             </div>
 
             <ImageUploader
               value={form.image_url}
-              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
-              label="Image"
+              onChange={(url) => updateForm({ image_url: url })}
+              label="Cover Image"
               folder="inspirations"
+            />
+
+            <MultiImageUploader
+              value={form.images}
+              onChange={(urls) => updateForm({ images: urls })}
+              label="Additional Images"
+              folder="inspirations/gallery"
+              maxImages={10}
             />
           </div>
         </ComicPanel>
 
         {/* Detailed Content */}
         <ComicPanel className="p-6">
-          <h2 className="text-xl font-display mb-4">Detailed Content</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display">Detailed Content</h2>
+            <AIGenerateButton
+              fieldName="detailed_content"
+              fieldLabel="Content"
+              contentType="inspiration"
+              context={{ 
+                title: form.title, 
+                category: form.category, 
+                description: form.description,
+                influence_areas: form.influence_areas 
+              }}
+              currentValue={form.detailed_content}
+              onGenerated={(value) => updateForm({ detailed_content: value })}
+              variant="small"
+            />
+          </div>
           <RichTextEditor
             content={form.detailed_content}
-            onChange={(content) => setForm(prev => ({ ...prev, detailed_content: content }))}
+            onChange={(content) => updateForm({ detailed_content: content })}
             placeholder="Write in detail about this inspiration and how it influences your work..."
           />
         </ComicPanel>
@@ -242,7 +359,7 @@ const InspirationEditor = () => {
             {form.influence_areas.map((area) => (
               <span key={area} className="inline-flex items-center gap-1 px-3 py-1 bg-muted border-2 border-foreground font-bold text-sm">
                 {area}
-                <button onClick={() => setForm(prev => ({ ...prev, influence_areas: prev.influence_areas.filter(a => a !== area) }))}>
+                <button onClick={() => updateForm({ influence_areas: form.influence_areas.filter(a => a !== area) })}>
                   <X className="w-4 h-4" />
                 </button>
               </span>
@@ -272,7 +389,7 @@ const InspirationEditor = () => {
                   <div className="font-bold truncate">{link.title}</div>
                   <div className="text-xs text-muted-foreground truncate">{link.url}</div>
                 </div>
-                <button onClick={() => setForm(prev => ({ ...prev, related_links: prev.related_links.filter((_, idx) => idx !== i) }))}>
+                <button onClick={() => updateForm({ related_links: form.related_links.filter((_, idx) => idx !== i) })}>
                   <X className="w-4 h-4" />
                 </button>
               </div>

@@ -5,6 +5,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
+import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -21,6 +23,18 @@ import { ArrowLeft, Save, Trash2, Image as ImageIcon, Loader2 } from "lucide-rea
 
 type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research";
 
+interface FormState {
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  category: WritingCategory;
+  tags: string;
+  readingTime: string;
+  featuredImage: string;
+  published: boolean;
+}
+
 const categoryOptions: { value: WritingCategory; label: string }[] = [
   { value: "philosophy", label: "Philosophy" },
   { value: "narrative", label: "Narrative" },
@@ -35,15 +49,64 @@ const ArticleEditor = () => {
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [content, setContent] = useState("");
-  const [excerpt, setExcerpt] = useState("");
-  const [category, setCategory] = useState<WritingCategory>("philosophy");
-  const [tags, setTags] = useState("");
-  const [readingTime, setReadingTime] = useState("5");
-  const [featuredImage, setFeaturedImage] = useState("");
-  const [published, setPublished] = useState(false);
+  const [form, setForm] = useState<FormState>({
+    title: "",
+    slug: "",
+    content: "",
+    excerpt: "",
+    category: "philosophy",
+    tags: "",
+    readingTime: "5",
+    featuredImage: "",
+    published: false,
+  });
+
+  // Undo/Redo history
+  const [history, setHistory] = useState<FormState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  const pushHistory = (newForm: FormState) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newForm);
+    if (newHistory.length > 50) newHistory.shift();
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  const undo = () => {
+    if (canUndo) {
+      setHistoryIndex(prev => prev - 1);
+      setForm(history[historyIndex - 1]);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setHistoryIndex(prev => prev + 1);
+      setForm(history[historyIndex + 1]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey && canRedo) redo();
+        else if (!e.shiftKey && canUndo) undo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canUndo, canRedo, historyIndex, history]);
+
+  const updateForm = (updates: Partial<FormState>) => {
+    const newForm = { ...form, ...updates };
+    setForm(newForm);
+    pushHistory(newForm);
+  };
 
   // Fetch existing article if editing
   const { data: existingArticle, isLoading: isLoadingArticle } = useQuery({
@@ -65,28 +128,36 @@ const ArticleEditor = () => {
   // Populate form when editing
   useEffect(() => {
     if (existingArticle) {
-      setTitle(existingArticle.title);
-      setSlug(existingArticle.slug);
-      setContent(existingArticle.content || "");
-      setExcerpt(existingArticle.excerpt || "");
-      setCategory(existingArticle.category as WritingCategory);
-      setTags(existingArticle.tags?.join(", ") || "");
-      setReadingTime(String(existingArticle.reading_time_minutes || 5));
-      setFeaturedImage(existingArticle.featured_image || "");
-      setPublished(existingArticle.published || false);
+      const initialForm: FormState = {
+        title: existingArticle.title,
+        slug: existingArticle.slug,
+        content: existingArticle.content || "",
+        excerpt: existingArticle.excerpt || "",
+        category: existingArticle.category as WritingCategory,
+        tags: existingArticle.tags?.join(", ") || "",
+        readingTime: String(existingArticle.reading_time_minutes || 5),
+        featuredImage: existingArticle.featured_image || "",
+        published: existingArticle.published || false,
+      };
+      setForm(initialForm);
+      setHistory([initialForm]);
+      setHistoryIndex(0);
+    } else if (!isEditing) {
+      setHistory([form]);
+      setHistoryIndex(0);
     }
-  }, [existingArticle]);
+  }, [existingArticle, isEditing]);
 
   // Auto-generate slug from title
   useEffect(() => {
-    if (!isEditing && title) {
-      const generatedSlug = title
+    if (!isEditing && form.title && historyIndex <= 0) {
+      const generatedSlug = form.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
-      setSlug(generatedSlug);
+      setForm(prev => ({ ...prev, slug: generatedSlug }));
     }
-  }, [title, isEditing]);
+  }, [form.title, isEditing, historyIndex]);
 
   // Featured image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,22 +182,22 @@ const ArticleEditor = () => {
       .from("content-images")
       .getPublicUrl(data.path);
 
-    setFeaturedImage(urlData.publicUrl);
+    updateForm({ featuredImage: urlData.publicUrl });
   };
 
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
       const articleData = {
-        title,
-        slug,
-        content,
-        excerpt: excerpt || null,
-        category,
-        tags: tags ? tags.split(",").map((t) => t.trim()) : null,
-        reading_time_minutes: parseInt(readingTime) || 5,
-        featured_image: featuredImage || null,
-        published,
+        title: form.title,
+        slug: form.slug,
+        content: form.content,
+        excerpt: form.excerpt || null,
+        category: form.category,
+        tags: form.tags ? form.tags.split(",").map((t) => t.trim()) : null,
+        reading_time_minutes: parseInt(form.readingTime) || 5,
+        featured_image: form.featuredImage || null,
+        published: form.published,
       };
 
       if (isEditing) {
@@ -146,7 +217,7 @@ const ArticleEditor = () => {
       queryClient.invalidateQueries({ queryKey: ["articles"] });
       toast({
         title: isEditing ? "Article saved" : "Article created",
-        description: published
+        description: form.published
           ? "Your article is now live."
           : "Your article has been saved as a draft.",
       });
@@ -210,17 +281,23 @@ const ArticleEditor = () => {
           <button onClick={() => navigate("/admin/articles")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-3xl font-display">
+          <h1 className="text-3xl font-display flex-grow">
             {isEditing ? "Edit Article" : "New Article"}
           </h1>
-          <div className="ml-auto flex items-center gap-2">
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+          />
+          <div className="flex items-center gap-2">
             <Switch
               id="published"
-              checked={published}
-              onCheckedChange={setPublished}
+              checked={form.published}
+              onCheckedChange={(checked) => updateForm({ published: checked })}
             />
             <Label htmlFor="published" className="font-bold">
-              {published ? "Published" : "Draft"}
+              {form.published ? "Published" : "Draft"}
             </Label>
           </div>
         </div>
@@ -229,11 +306,13 @@ const ArticleEditor = () => {
         <BulkTextImporter
           contentType="article"
           onImport={(data) => {
-            if (data.title) setTitle(String(data.title));
-            if (data.content) setContent(String(data.content));
-            if (data.excerpt) setExcerpt(String(data.excerpt));
-            if (data.category) setCategory(data.category as WritingCategory);
-            if (data.tags) setTags(Array.isArray(data.tags) ? data.tags.join(", ") : String(data.tags));
+            const updates: Partial<FormState> = {};
+            if (data.title) updates.title = String(data.title);
+            if (data.content) updates.content = String(data.content);
+            if (data.excerpt) updates.excerpt = String(data.excerpt);
+            if (data.category) updates.category = data.category as WritingCategory;
+            if (data.tags) updates.tags = Array.isArray(data.tags) ? data.tags.join(", ") : String(data.tags);
+            updateForm(updates);
           }}
         />
 
@@ -241,16 +320,16 @@ const ArticleEditor = () => {
         <ComicPanel className="p-6">
           <Label className="text-lg font-bold mb-2 block">Featured Image</Label>
           <div className="border-2 border-foreground p-4">
-            {featuredImage ? (
+            {form.featuredImage ? (
               <div className="relative">
                 <img
-                  src={featuredImage}
+                  src={form.featuredImage}
                   alt="Featured"
                   className="w-full h-48 object-cover border-2 border-foreground"
                 />
                 <button
                   type="button"
-                  onClick={() => setFeaturedImage("")}
+                  onClick={() => updateForm({ featuredImage: "" })}
                   className="absolute top-2 right-2 p-2 bg-background border-2 border-foreground hover:bg-muted"
                 >
                   Remove
@@ -282,14 +361,14 @@ const ArticleEditor = () => {
                 <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  value={form.title}
+                  onChange={(e) => updateForm({ title: e.target.value })}
                   placeholder="Article title..."
                 />
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select value={category} onValueChange={(v) => setCategory(v as WritingCategory)}>
+                <Select value={form.category} onValueChange={(v) => updateForm({ category: v as WritingCategory })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -309,8 +388,8 @@ const ArticleEditor = () => {
                 <Label htmlFor="slug">Slug</Label>
                 <Input
                   id="slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  value={form.slug}
+                  onChange={(e) => updateForm({ slug: e.target.value })}
                   placeholder="url-friendly-slug"
                 />
               </div>
@@ -320,18 +399,29 @@ const ArticleEditor = () => {
                   id="readingTime"
                   type="number"
                   min="1"
-                  value={readingTime}
-                  onChange={(e) => setReadingTime(e.target.value)}
+                  value={form.readingTime}
+                  onChange={(e) => updateForm({ readingTime: e.target.value })}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="excerpt">Excerpt</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="excerpt">Excerpt</Label>
+                <AIGenerateButton
+                  fieldName="excerpt"
+                  fieldLabel="Excerpt"
+                  contentType="article"
+                  context={{ title: form.title, category: form.category }}
+                  currentValue={form.excerpt}
+                  onGenerated={(value) => updateForm({ excerpt: value })}
+                  variant="small"
+                />
+              </div>
               <Input
                 id="excerpt"
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
+                value={form.excerpt}
+                onChange={(e) => updateForm({ excerpt: e.target.value })}
                 placeholder="Brief summary for article cards..."
               />
             </div>
@@ -340,8 +430,8 @@ const ArticleEditor = () => {
               <Label htmlFor="tags">Tags (comma-separated)</Label>
               <Input
                 id="tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
+                value={form.tags}
+                onChange={(e) => updateForm({ tags: e.target.value })}
                 placeholder="philosophy, existentialism, life"
               />
             </div>
@@ -350,10 +440,21 @@ const ArticleEditor = () => {
 
         {/* Content */}
         <ComicPanel className="p-6">
-          <Label className="text-lg font-bold mb-2 block">Content</Label>
+          <div className="flex items-center justify-between mb-4">
+            <Label className="text-lg font-bold">Content</Label>
+            <AIGenerateButton
+              fieldName="content"
+              fieldLabel="Content"
+              contentType="article"
+              context={{ title: form.title, category: form.category, excerpt: form.excerpt }}
+              currentValue={form.content}
+              onGenerated={(value) => updateForm({ content: value })}
+              variant="small"
+            />
+          </div>
           <RichTextEditor
-            content={content}
-            onChange={setContent}
+            content={form.content}
+            onChange={(content) => updateForm({ content })}
             placeholder="Start writing your article..."
           />
         </ComicPanel>
@@ -375,7 +476,7 @@ const ArticleEditor = () => {
             <PopButton
               type="button"
               onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || !title || !slug}
+              disabled={saveMutation.isPending || !form.title || !form.slug}
             >
               {saveMutation.isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

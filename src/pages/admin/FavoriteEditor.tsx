@@ -5,6 +5,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
+import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,6 +78,40 @@ const FavoriteEditor = () => {
   const [newTag, setNewTag] = useState("");
   const [importing, setImporting] = useState(false);
   const [streamingOpen, setStreamingOpen] = useState(true);
+
+  // Undo/Redo
+  const [historyStack, setHistoryStack] = useState<typeof form[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < historyStack.length - 1;
+
+  const pushToHistory = (newForm: typeof form) => {
+    const newStack = historyStack.slice(0, historyIndex + 1);
+    newStack.push(newForm);
+    if (newStack.length > 50) newStack.shift();
+    setHistoryStack(newStack);
+    setHistoryIndex(newStack.length - 1);
+  };
+
+  const undo = () => {
+    if (canUndo) {
+      setHistoryIndex(prev => prev - 1);
+      setForm(historyStack[historyIndex - 1]);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setHistoryIndex(prev => prev + 1);
+      setForm(historyStack[historyIndex + 1]);
+    }
+  };
+
+  const updateForm = (updates: Partial<typeof form>) => {
+    const newForm = { ...form, ...updates };
+    setForm(newForm);
+    pushToHistory(newForm);
+  };
 
   const { data: favorite, isLoading } = useQuery({
     queryKey: ["favorite-edit", id],
@@ -264,11 +300,17 @@ const FavoriteEditor = () => {
           <button onClick={() => navigate("/admin/favorites")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-grow">
             <h1 className="text-3xl font-display">
               {isEditing ? "Edit Favorite" : "Add Favorite"}
             </h1>
           </div>
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+          />
         </div>
 
         {/* Bulk Text Importer */}
