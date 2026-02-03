@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProductReviews from "./pages/ProductReviews";
 import ProductReviewDetail from "./pages/ProductReviewDetail";
+import Contact from "./pages/Contact";
 
 // Admin pages
 import ProjectsManager from "./pages/admin/ProjectsManager";
@@ -148,6 +149,7 @@ const App = () => (
               <Route path="/experiences" element={<ExperiencesPage />} />
               <Route path="/experiences/:slug" element={<ExperienceDetailPage />} />
               <Route path="/certifications" element={<CertificationsPage />} />
+              <Route path="/contact" element={<Contact />} />
               {/* Admin routes */}
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/analytics" element={<Analytics />} />
