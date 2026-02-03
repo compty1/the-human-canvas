@@ -5,7 +5,7 @@ interface ComicPanelProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
   size?: "sm" | "md" | "lg";
-  color?: "magenta" | "cyan" | "yellow" | "default";
+  color?: "magenta" | "cyan" | "yellow" | "default" | "terracotta" | "teal" | "gold";
 }
 
 export const ComicPanel = forwardRef<HTMLDivElement, ComicPanelProps>(
@@ -18,9 +18,12 @@ export const ComicPanel = forwardRef<HTMLDivElement, ComicPanelProps>(
 
     const colorClasses = {
       default: "bg-card",
-      magenta: "bg-pop-magenta",
-      cyan: "bg-pop-cyan",
-      yellow: "bg-pop-yellow",
+      magenta: "bg-pop-terracotta",
+      cyan: "bg-pop-teal",
+      yellow: "bg-pop-gold",
+      terracotta: "bg-pop-terracotta",
+      teal: "bg-pop-teal",
+      gold: "bg-pop-gold",
     };
 
     return (
