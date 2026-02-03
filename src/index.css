@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
 
 @tailwind base;
 
@@ -21,6 +21,15 @@
   }
 }
 
+@keyframes film-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 .animate-float {
   animation: float 8s ease-in-out infinite;
 }
@@ -28,89 +37,105 @@
 .animate-scroll-left {
   animation: scroll-left 20s linear infinite;
 }
+
+.animate-film-scroll {
+  animation: film-scroll 30s linear infinite;
+}
+
 @tailwind components;
 @tailwind utilities;
 
-/* LeCompte Pop Art Design System - Bold, Vibrant, Human */
+/* LeCompte Gallery Warmth Design System - Sophisticated, Earthy, Human */
 
 @layer base {
   :root {
-    /* Core Pop Art Palette */
-    --pop-magenta: 328 100% 54%;
-    --pop-cyan: 188 100% 50%;
-    --pop-yellow: 50 99% 49%;
-    --pop-orange: 25 100% 55%;
-    --pop-black: 0 0% 5%;
-    --pop-white: 0 0% 98%;
+    /* New Gallery Warmth Palette */
+    --pop-gold: 38 78% 56%;        /* #E8A838 - Warm gold */
+    --pop-teal: 180 50% 32%;       /* #2A7B7B - Deep teal */
+    --pop-terracotta: 15 55% 50%;  /* #C45D3A - Earthy accent */
+    --pop-cream: 45 50% 95%;       /* #FAF6E9 - Warm background */
+    --pop-navy: 210 40% 17%;       /* #1A2A3A - Deep contrast */
+    --pop-rust: 15 60% 44%;        /* #B54729 */
+    --pop-ochre: 43 62% 55%;       /* #D4A843 */
+    --pop-sage: 112 15% 54%;       /* #7A9B76 */
+    --pop-burgundy: 355 45% 32%;   /* #722F37 */
+    
+    /* Legacy colors for compatibility */
+    --pop-magenta: 15 55% 50%;     /* Maps to terracotta */
+    --pop-cyan: 180 50% 32%;       /* Maps to teal */
+    --pop-yellow: 38 78% 56%;      /* Maps to gold */
+    --pop-orange: 25 55% 50%;      /* Warm orange */
+    --pop-black: 210 40% 10%;      /* Warm black */
+    --pop-white: 45 50% 97%;       /* Cream white */
     
     /* Semantic Colors */
-    --background: 0 0% 98%;
-    --foreground: 0 0% 5%;
+    --background: 45 50% 97%;      /* Warm cream */
+    --foreground: 210 40% 12%;     /* Rich navy-black */
     
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 5%;
+    --card: 45 40% 98%;
+    --card-foreground: 210 40% 12%;
     
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 5%;
+    --popover: 45 40% 98%;
+    --popover-foreground: 210 40% 12%;
     
-    --primary: 50 99% 49%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 38 78% 56%;         /* Warm gold */
+    --primary-foreground: 210 40% 10%;
     
-    --secondary: 188 100% 50%;
-    --secondary-foreground: 0 0% 5%;
+    --secondary: 180 50% 32%;      /* Deep teal */
+    --secondary-foreground: 45 50% 97%;
     
-    --accent: 328 100% 54%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 15 55% 50%;          /* Terracotta */
+    --accent-foreground: 45 50% 97%;
     
-    --muted: 0 0% 90%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 40 20% 88%;
+    --muted-foreground: 210 20% 40%;
     
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 45 50% 97%;
     
-    --border: 0 0% 10%;
-    --input: 0 0% 90%;
-    --ring: 50 99% 49%;
+    --border: 210 30% 20%;
+    --input: 40 20% 90%;
+    --ring: 38 78% 56%;
     
     --radius: 0px;
     
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 5%;
-    --sidebar-primary: 50 99% 49%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 328 100% 54%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 10%;
-    --sidebar-ring: 50 99% 49%;
+    --sidebar-background: 45 50% 97%;
+    --sidebar-foreground: 210 40% 12%;
+    --sidebar-primary: 38 78% 56%;
+    --sidebar-primary-foreground: 210 40% 10%;
+    --sidebar-accent: 15 55% 50%;
+    --sidebar-accent-foreground: 45 50% 97%;
+    --sidebar-border: 210 30% 20%;
+    --sidebar-ring: 38 78% 56%;
   }
 
   .dark {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 98%;
+    --background: 210 40% 8%;
+    --foreground: 45 30% 92%;
     
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
+    --card: 210 35% 12%;
+    --card-foreground: 45 30% 92%;
     
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 210 35% 12%;
+    --popover-foreground: 45 30% 92%;
     
-    --primary: 50 99% 55%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 38 78% 60%;
+    --primary-foreground: 210 40% 8%;
     
-    --secondary: 188 100% 55%;
-    --secondary-foreground: 0 0% 5%;
+    --secondary: 180 45% 40%;
+    --secondary-foreground: 45 30% 92%;
     
-    --accent: 328 100% 60%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 15 50% 55%;
+    --accent-foreground: 45 30% 92%;
     
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 210 30% 18%;
+    --muted-foreground: 40 15% 60%;
     
-    --border: 0 0% 90%;
-    --input: 0 0% 15%;
+    --border: 45 20% 80%;
+    --input: 210 30% 18%;
     
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 98%;
+    --sidebar-background: 210 35% 10%;
+    --sidebar-foreground: 45 30% 92%;
   }
 }
 
@@ -222,10 +247,10 @@
     z-index: 1;
   }
 
-  /* Ben-Day Dots Pattern */
+  /* Ben-Day Dots Pattern - Updated with warm tones */
   .benday-dots {
-    background-image: radial-gradient(hsl(var(--pop-magenta) / 0.3) 2px, transparent 2px),
-                      radial-gradient(hsl(var(--pop-cyan) / 0.3) 2px, transparent 2px);
+    background-image: radial-gradient(hsl(var(--pop-terracotta) / 0.2) 2px, transparent 2px),
+                      radial-gradient(hsl(var(--pop-teal) / 0.2) 2px, transparent 2px);
     background-size: 12px 12px;
     background-position: 0 0, 6px 6px;
   }
@@ -237,19 +262,35 @@
         0deg,
         transparent,
         transparent 2px,
-        hsl(var(--foreground) / 0.03) 2px,
-        hsl(var(--foreground) / 0.03) 4px
+        hsl(var(--foreground) / 0.02) 2px,
+        hsl(var(--foreground) / 0.02) 4px
       );
   }
 
-  /* Pop Art Link Underline */
+  /* Paper Texture Overlay */
+  .paper-texture {
+    position: relative;
+  }
+  
+  .paper-texture::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.04;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+  }
+
+  /* Pop Art Link Underline - Updated with warm colors */
   .pop-link {
     @apply relative inline-block font-bold;
   }
   
   .pop-link::after {
     content: '';
-    @apply absolute bottom-0 left-0 w-full h-1 bg-accent;
+    @apply absolute bottom-0 left-0 w-full h-1;
+    background: hsl(var(--pop-terracotta));
     transform: scaleX(0);
     transform-origin: right;
     transition: transform 0.3s ease-out;
@@ -275,7 +316,7 @@
     100% { transform: translateX(-50%); }
   }
 
-  /* Image Pop Frame */
+  /* Image Pop Frame - Updated with warm colors */
   .pop-frame {
     @apply relative;
   }
@@ -285,26 +326,95 @@
     @apply absolute inset-0 border-4 border-foreground;
     transform: translate(8px, 8px);
     z-index: -1;
-    background: hsl(var(--pop-cyan));
+    background: hsl(var(--pop-teal));
   }
   
-  .pop-frame-magenta::before {
-    background: hsl(var(--pop-magenta));
+  .pop-frame-magenta::before,
+  .pop-frame-terracotta::before {
+    background: hsl(var(--pop-terracotta));
   }
   
-  .pop-frame-yellow::before {
-    background: hsl(var(--pop-yellow));
+  .pop-frame-yellow::before,
+  .pop-frame-gold::before {
+    background: hsl(var(--pop-gold));
   }
 
-  /* Gradient Text */
+  /* Gradient Text - Updated with warm palette */
   .gradient-text {
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(
       135deg,
-      hsl(var(--pop-yellow)) 0%,
-      hsl(var(--pop-cyan)) 50%,
-      hsl(var(--pop-magenta)) 100%
+      hsl(var(--pop-gold)) 0%,
+      hsl(var(--pop-terracotta)) 50%,
+      hsl(var(--pop-teal)) 100%
     );
+  }
+  
+  /* Polaroid Frame Styles */
+  .polaroid {
+    @apply bg-card p-3 pb-12;
+    box-shadow: 
+      0 4px 6px -1px hsl(var(--foreground) / 0.1),
+      0 2px 4px -2px hsl(var(--foreground) / 0.1),
+      0 0 0 1px hsl(var(--foreground) / 0.05);
+  }
+  
+  .polaroid-caption {
+    font-family: 'Playfair Display', serif;
+    @apply text-sm text-muted-foreground mt-2 italic;
+  }
+  
+  /* Film Strip Styles */
+  .film-strip {
+    @apply relative overflow-hidden py-4;
+    background: hsl(var(--pop-navy));
+  }
+  
+  .film-strip::before,
+  .film-strip::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 20px,
+      hsl(var(--pop-cream)) 20px,
+      hsl(var(--pop-cream)) 30px
+    );
+  }
+  
+  .film-strip::before {
+    top: 0;
+  }
+  
+  .film-strip::after {
+    bottom: 0;
+  }
+
+  /* Editorial Quote Style */
+  .editorial-quote {
+    font-family: 'Playfair Display', serif;
+    @apply text-2xl italic leading-relaxed;
+  }
+  
+  /* Warm Section Backgrounds */
+  .warm-section {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--pop-cream)) 0%,
+      hsl(45 40% 94%) 50%,
+      hsl(var(--pop-cream)) 100%
+    );
+  }
+  
+  /* Gallery Wall Grid */
+  .gallery-wall {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 }
 

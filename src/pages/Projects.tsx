@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, LikeButton } from "@/components/pop-art";
+import { TexturedSection } from "@/components/layout/TexturedSection";
+import { DecorativeArt } from "@/components/home/DecorativeArt";
 import { supabase } from "@/integrations/supabase/client";
 import { ExternalLink, ArrowRight, Heart, Loader2, Calendar } from "lucide-react";
 
@@ -10,10 +12,10 @@ type ProjectFilter = "all" | "live" | "in_progress" | "planned" | "finishing_sta
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   planned: { label: "Planned", color: "bg-muted" },
-  in_progress: { label: "In Progress", color: "bg-pop-yellow" },
-  finishing_stages: { label: "Finishing", color: "bg-orange-500" },
-  final_review: { label: "Final Review", color: "bg-purple-500" },
-  live: { label: "Live", color: "bg-pop-cyan" },
+  in_progress: { label: "In Progress", color: "bg-pop-gold" },
+  finishing_stages: { label: "Finishing", color: "bg-pop-terracotta" },
+  final_review: { label: "Final Review", color: "bg-pop-burgundy text-pop-cream" },
+  live: { label: "Live", color: "bg-pop-teal text-pop-cream" },
 };
 
 const Projects = () => {
@@ -39,9 +41,15 @@ const Projects = () => {
   return (
     <Layout>
       {/* Hero */}
-      <section className="py-20 benday-dots">
-        <div className="container mx-auto px-4">
-          <div className="caption-box inline-block mb-4">Tech Projects</div>
+      <TexturedSection variant="warm" texture="dots" className="py-20 relative overflow-hidden">
+        {/* Decorative Art */}
+        <DecorativeArt variant="left" className="absolute -left-10 top-10" />
+        <DecorativeArt variant="accent" className="absolute right-20 bottom-10" />
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="inline-block px-4 py-2 bg-pop-teal text-pop-cream font-bold uppercase tracking-wide border-2 border-foreground mb-4">
+            Tech Projects
+          </div>
           <h1 className="text-5xl md:text-7xl font-display gradient-text mb-6">
             Projects Hub
           </h1>
@@ -50,7 +58,7 @@ const Projects = () => {
             community platforms — technology that makes a difference.
           </p>
         </div>
-      </section>
+      </TexturedSection>
 
       {/* Filter */}
       <section className="py-8 border-y-4 border-foreground bg-background sticky top-16 z-40">
@@ -225,9 +233,9 @@ const Projects = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-foreground text-background">
+      <TexturedSection variant="dark" texture="dots" className="py-16">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-display text-pop-yellow mb-4">
+          <h2 className="text-4xl font-display text-pop-gold mb-4">
             Want to Support These Projects?
           </h2>
           <p className="text-lg font-sans opacity-80 max-w-xl mx-auto mb-8">
@@ -240,7 +248,7 @@ const Projects = () => {
             </PopButton>
           </Link>
         </div>
-      </section>
+      </TexturedSection>
     </Layout>
   );
 };

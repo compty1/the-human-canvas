@@ -43,7 +43,7 @@ export const Header = () => {
   });
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b-4 border-foreground">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-4 border-foreground">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -78,7 +78,7 @@ export const Header = () => {
                 {isAdmin && (
                   <Link
                     to="/admin"
-                    className="flex items-center gap-2 px-3 py-2 bg-pop-yellow border-2 border-foreground hover:bg-pop-yellow/80 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 bg-pop-gold border-2 border-foreground hover:bg-pop-gold/80 transition-colors"
                   >
                     <Settings className="w-4 h-4" />
                     <span className="font-bold text-sm">Admin</span>
@@ -147,7 +147,7 @@ export const Header = () => {
                   {isAdmin && (
                     <Link
                       to="/admin"
-                      className="block py-2 font-bold text-pop-yellow"
+                      className="block py-2 font-bold text-pop-gold"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Admin Panel

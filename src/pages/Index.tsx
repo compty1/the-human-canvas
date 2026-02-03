@@ -2,9 +2,11 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Palette, Code, PenTool, Heart } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
-import { ComicPanel, PopButton, Ticker, HalftoneImage } from "@/components/pop-art";
+import { ComicPanel, PopButton, Ticker, HalftoneImage, PolaroidFrame } from "@/components/pop-art";
 import { HeroBackground } from "@/components/home/HeroBackground";
-import { ArtStrip, DecorativeArt } from "@/components/home/DecorativeArt";
+import { ArtStrip, DecorativeArt, PolaroidStrip } from "@/components/home/DecorativeArt";
+import { FilmStrip } from "@/components/home/FilmStrip";
+import { TexturedSection } from "@/components/layout/TexturedSection";
 import { supabase } from "@/integrations/supabase/client";
 
 import moodboard1 from "@/assets/artwork/moodboard-1.png";
@@ -12,6 +14,8 @@ import moodboard2 from "@/assets/artwork/moodboard-2.png";
 import nancySinatra from "@/assets/artwork/nancy-sinatra.png";
 import flowerPotHead from "@/assets/artwork/hero/flower-pot-head.png";
 import bandageFace from "@/assets/artwork/hero/bandage-face.png";
+import anarchistKing from "@/assets/artwork/hero/anarchist-king.png";
+import peaceLoveCollage from "@/assets/artwork/hero/peace-love-collage.png";
 
 const navPanels = [
   {
@@ -19,29 +23,39 @@ const navPanels = [
     description: "Visual explorations of the human experience",
     href: "/art",
     icon: Palette,
-    color: "magenta" as const,
+    color: "terracotta" as const,
   },
   {
     title: "Projects",
     description: "Tech tools for change and innovation",
     href: "/projects",
     icon: Code,
-    color: "cyan" as const,
+    color: "teal" as const,
   },
   {
     title: "Writing",
     description: "Stories, essays, and cultural commentary",
     href: "/writing",
     icon: PenTool,
-    color: "yellow" as const,
+    color: "gold" as const,
   },
   {
     title: "Support",
     description: "Fund the journey and future projects",
     href: "/support",
     icon: Heart,
-    color: "magenta" as const,
+    color: "terracotta" as const,
   },
+];
+
+const filmStripImages = [
+  { src: moodboard1, alt: "Moodboard 1" },
+  { src: flowerPotHead, alt: "Flower Pot Head" },
+  { src: nancySinatra, alt: "Nancy Sinatra" },
+  { src: bandageFace, alt: "Bandage Face" },
+  { src: moodboard2, alt: "Moodboard 2" },
+  { src: anarchistKing, alt: "Anarchist King" },
+  { src: peaceLoveCollage, alt: "Peace Love Collage" },
 ];
 
 const Index = () => {
@@ -116,26 +130,25 @@ const Index = () => {
 
   return (
     <Layout>
-      {/* Hero Section with stunning background */}
+      {/* Hero Section with stunning gallery warmth background */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
         {/* Artwork background */}
         <HeroBackground />
         
         {/* Gradient overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-br from-background/95 via-background/85 to-background/70" />
-        
-        {/* Ben-Day dots pattern */}
-        <div className="absolute inset-0 benday-dots opacity-50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-background/90 via-background/75 to-background/60" />
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left - Text */}
             <div className="space-y-8 animate-fade-in">
-              <div className="caption-box inline-block">The Human Experience</div>
+              <div className="inline-block px-4 py-2 bg-pop-terracotta text-pop-cream font-bold uppercase tracking-wide border-2 border-foreground">
+                The Human Experience
+              </div>
               <h1 className="text-6xl md:text-8xl font-display leading-none gradient-text">
                 LeCompte
               </h1>
-              <p className="text-xl md:text-2xl font-sans max-w-lg">
+              <p className="text-xl md:text-2xl font-sans max-w-lg text-foreground/90">
                 Artist. Developer. Storyteller. Building tools and creating works
                 that reflect society and spark transformation.
               </p>
@@ -153,37 +166,41 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Right - Art Preview with new artwork */}
+            {/* Right - Polaroid Gallery */}
             <div className="relative hidden lg:block">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-6">
-                  <HalftoneImage
-                    src={moodboard1}
-                    alt="Moodboard artwork"
-                    frameColor="magenta"
-                    className="animate-fade-in stagger-1"
-                  />
-                  <HalftoneImage
-                    src={flowerPotHead}
-                    alt="Flower Pot Head artwork"
-                    frameColor="yellow"
-                    className="animate-fade-in stagger-3"
-                  />
-                </div>
-                <div className="pt-12 space-y-6">
-                  <HalftoneImage
-                    src={bandageFace}
-                    alt="Bandage Face artwork"
-                    frameColor="cyan"
-                    className="animate-fade-in stagger-2"
-                  />
-                  <HalftoneImage
-                    src={nancySinatra}
-                    alt="Nancy Sinatra portrait"
-                    frameColor="magenta"
-                    className="animate-fade-in stagger-4"
-                  />
-                </div>
+              <div className="relative h-[500px]">
+                {/* Scattered polaroid layout */}
+                <PolaroidFrame
+                  src={anarchistKing}
+                  alt="Anarchist King"
+                  title="Anarchist King"
+                  rotation={-8}
+                  size="lg"
+                  className="absolute top-0 left-0 animate-fade-in stagger-1"
+                />
+                <PolaroidFrame
+                  src={bandageFace}
+                  alt="Bandage Face"
+                  title="Bandage Face"
+                  rotation={5}
+                  size="md"
+                  className="absolute top-10 right-10 animate-fade-in stagger-2"
+                />
+                <PolaroidFrame
+                  src={flowerPotHead}
+                  alt="Flower Pot Head"
+                  title="Bloom"
+                  rotation={-3}
+                  size="md"
+                  className="absolute bottom-20 left-20 animate-fade-in stagger-3"
+                />
+                <PolaroidFrame
+                  src={peaceLoveCollage}
+                  alt="Peace Love"
+                  rotation={7}
+                  size="sm"
+                  className="absolute bottom-0 right-0 animate-fade-in stagger-4"
+                />
               </div>
             </div>
           </div>
@@ -193,11 +210,11 @@ const Index = () => {
       {/* Currently Working On Ticker */}
       <Ticker items={tickerItems} />
 
-      {/* Art Strip Divider */}
-      <ArtStrip />
+      {/* Film Strip Divider */}
+      <FilmStrip images={filmStripImages} speed="slow" />
 
       {/* Navigation Panels */}
-      <section className="py-20 screen-print relative overflow-hidden">
+      <TexturedSection variant="warm" texture="paper" className="py-20">
         {/* Decorative artwork */}
         <DecorativeArt variant="left" className="absolute -left-16 top-20" />
         <DecorativeArt variant="right" className="absolute -right-16 bottom-20" />
@@ -208,39 +225,49 @@ const Index = () => {
           </h2>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {navPanels.map((panel, index) => (
-              <Link key={panel.href} to={panel.href}>
-                <ComicPanel
-                  color={panel.color}
-                  className={`p-6 h-full animate-fade-in stagger-${index + 1}`}
-                >
-                  <panel.icon className="w-12 h-12 mb-4 text-foreground" />
-                  <h3 className="text-2xl font-display mb-2">{panel.title}</h3>
-                  <p className="text-sm font-sans opacity-80">
-                    {panel.description}
-                  </p>
-                  <ArrowRight className="w-5 h-5 mt-4" />
-                </ComicPanel>
-              </Link>
-            ))}
+            {navPanels.map((panel, index) => {
+              const colorClasses = {
+                terracotta: "bg-pop-terracotta/10 hover:bg-pop-terracotta/20 border-pop-terracotta",
+                teal: "bg-pop-teal/10 hover:bg-pop-teal/20 border-pop-teal",
+                gold: "bg-pop-gold/10 hover:bg-pop-gold/20 border-pop-gold",
+              };
+              
+              return (
+                <Link key={panel.href} to={panel.href}>
+                  <div
+                    className={`p-6 h-full border-2 ${colorClasses[panel.color]} transition-all duration-300 hover:translate-x-1 hover:translate-y-1 animate-fade-in stagger-${index + 1}`}
+                    style={{
+                      boxShadow: '4px 4px 0 0 hsl(var(--foreground))',
+                    }}
+                  >
+                    <panel.icon className="w-12 h-12 mb-4 text-foreground" />
+                    <h3 className="text-2xl font-display mb-2">{panel.title}</h3>
+                    <p className="text-sm font-sans text-muted-foreground">
+                      {panel.description}
+                    </p>
+                    <ArrowRight className="w-5 h-5 mt-4 text-foreground" />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
-      </section>
+      </TexturedSection>
 
       {/* Mission Statement */}
-      <section className="py-20 bg-foreground text-background relative overflow-hidden">
+      <TexturedSection variant="dark" texture="dots" className="py-20">
         {/* Background pattern */}
         <div 
           className="absolute inset-0 opacity-5"
           style={{
-            backgroundImage: `radial-gradient(circle, hsl(var(--background)) 2px, transparent 2px)`,
+            backgroundImage: `radial-gradient(circle, hsl(var(--pop-gold)) 2px, transparent 2px)`,
             backgroundSize: '24px 24px',
           }}
         />
         
         <div className="container mx-auto px-4 text-center relative z-10">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-6xl font-display text-pop-yellow mb-8">
+            <h2 className="text-4xl md:text-6xl font-display text-pop-gold mb-8">
               The Human Experience Is Everything
             </h2>
             <p className="text-xl md:text-2xl font-sans leading-relaxed opacity-90">
@@ -257,10 +284,13 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </section>
+      </TexturedSection>
+
+      {/* Polaroid Strip Transition */}
+      <PolaroidStrip />
 
       {/* Featured Projects Preview */}
-      <section className="py-20 relative overflow-hidden">
+      <TexturedSection variant="cream" texture="lines" className="py-20">
         {/* Floating decorative art */}
         <DecorativeArt variant="floating" className="absolute left-10 top-40" />
         <DecorativeArt variant="corner" className="absolute right-5 bottom-10" />
@@ -304,27 +334,27 @@ const Index = () => {
             ))}
           </div>
         </div>
-      </section>
+      </TexturedSection>
 
       {/* Art Strip before CTA */}
       <ArtStrip />
 
       {/* CTA Section */}
-      <section className="py-20 bg-pop-cyan relative overflow-hidden">
+      <TexturedSection variant="teal" texture="none" className="py-20">
         {/* Decorative pattern */}
         <div 
           className="absolute inset-0 opacity-10"
           style={{
-            backgroundImage: `repeating-linear-gradient(45deg, hsl(var(--foreground)) 0, hsl(var(--foreground)) 1px, transparent 0, transparent 50%)`,
+            backgroundImage: `repeating-linear-gradient(45deg, hsl(var(--pop-cream)) 0, hsl(var(--pop-cream)) 1px, transparent 0, transparent 50%)`,
             backgroundSize: '10px 10px',
           }}
         />
         
         <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-display text-foreground mb-6">
+          <h2 className="text-4xl md:text-5xl font-display text-pop-cream mb-6">
             Support the Journey
           </h2>
-          <p className="text-lg font-sans text-foreground/80 max-w-2xl mx-auto mb-8">
+          <p className="text-lg font-sans text-pop-cream/80 max-w-2xl mx-auto mb-8">
             Every contribution helps fund new projects, learning goals, and the
             continuous exploration of what makes us human.
           </p>
@@ -334,7 +364,7 @@ const Index = () => {
             </PopButton>
           </Link>
         </div>
-      </section>
+      </TexturedSection>
     </Layout>
   );
 };
