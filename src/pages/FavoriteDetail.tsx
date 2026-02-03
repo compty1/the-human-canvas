@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, ExternalLink, MapPin, Calendar, Heart, Loader2, Music, Film, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { streamingPlatforms, getAvailableStreamingLinks } from "@/lib/streamingPlatforms";
+import { getStreamingIcon } from "@/components/icons/StreamingIcons";
 
 interface Favorite {
   id: string;
@@ -84,7 +85,7 @@ const FavoriteDetail = () => {
     return 'Where to Watch';
   };
 
-  const getStreamingIcon = () => {
+  const getStreamingSectionIcon = () => {
     if (isMusicType) return <Music className="w-6 h-6 text-primary" />;
     if (isPodcastType) return <Mic className="w-6 h-6 text-primary" />;
     return <Film className="w-6 h-6 text-primary" />;
@@ -121,7 +122,7 @@ const FavoriteDetail = () => {
               </span>
             )}
             {favorite.is_current && (
-              <span className="px-3 py-1 text-sm font-bold bg-pop-yellow">
+              <span className="px-3 py-1 text-sm font-bold bg-pop-gold">
                 Currently Enjoying
               </span>
             )}
@@ -179,38 +180,51 @@ const FavoriteDetail = () => {
         </section>
       )}
 
-      {/* Where to Watch/Listen */}
+      {/* Where to Watch/Listen - with Real Logos */}
       {hasStreamingLinks && (
         <section className="py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
               <ComicPanel className="p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  {getStreamingIcon()}
+                  {getStreamingSectionIcon()}
                   <h2 className="text-2xl font-display">
                     {getStreamingSectionTitle()}
                   </h2>
                 </div>
                 <div className="grid gap-3">
-                  {streamingLinks.map(({ key, url, platform }) => (
-                    <a
-                      key={key}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 p-4 border-2 border-foreground hover:bg-muted transition-colors group"
-                      style={{ borderLeftColor: platform.color, borderLeftWidth: '4px' }}
-                    >
-                      <span className="text-2xl">{platform.icon}</span>
-                      <div className="flex-1">
-                        <span className="font-bold">{platform.name}</span>
-                        <p className="text-sm text-muted-foreground truncate max-w-md">
-                          {url}
-                        </p>
-                      </div>
-                      <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </a>
-                  ))}
+                  {streamingLinks.map(({ key, url, platform }) => {
+                    const IconComponent = getStreamingIcon(key);
+                    
+                    return (
+                      <a
+                        key={key}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-4 p-4 border-2 border-foreground hover:bg-muted transition-colors group"
+                        style={{ borderLeftColor: platform.color, borderLeftWidth: '4px' }}
+                      >
+                        <div 
+                          className="w-10 h-10 flex items-center justify-center rounded-lg"
+                          style={{ backgroundColor: platform.color }}
+                        >
+                          {IconComponent ? (
+                            <IconComponent size={24} className="text-white" />
+                          ) : (
+                            <span className="text-2xl">{platform.icon}</span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-bold">{platform.name}</span>
+                          <p className="text-sm text-muted-foreground truncate max-w-md">
+                            {url}
+                          </p>
+                        </div>
+                        <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      </a>
+                    );
+                  })}
                 </div>
               </ComicPanel>
             </div>

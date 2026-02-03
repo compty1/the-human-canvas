@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, LikeButton } from "@/components/pop-art";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Local asset imports for resolving paths
@@ -58,8 +58,10 @@ interface ArtworkItem {
   image: string;
   category: string;
   likes: number;
+  created_at?: string;
 }
 
+// Media categories
 const categories = [
   { id: "all", label: "All Work" },
   { id: "photography", label: "Photography" },
@@ -69,10 +71,48 @@ const categories = [
   { id: "graphic_design", label: "Graphic Design" },
 ];
 
+// Period sections
+interface PeriodSection {
+  id: string;
+  title: string;
+  subtitle: string;
+  yearRange: string;
+  startYear: number;
+  endYear: number;
+}
+
+const periodSections: PeriodSection[] = [
+  {
+    id: "current",
+    title: "Current Work",
+    subtitle: "Ongoing creative exploration",
+    yearRange: "2020-Present",
+    startYear: 2020,
+    endYear: 9999,
+  },
+  {
+    id: "experimentation",
+    title: "Continuation of Experimentation",
+    subtitle: "Expanding techniques and finding voice",
+    yearRange: "2015-2019",
+    startYear: 2015,
+    endYear: 2019,
+  },
+  {
+    id: "foundational",
+    title: "Older Foundational Work",
+    subtitle: "Early explorations and artistic beginnings",
+    yearRange: "2011-2015",
+    startYear: 2011,
+    endYear: 2014,
+  },
+];
+
 const ArtGallery = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkItem | null>(null);
   const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
+  const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set(["current"]));
 
   // Fetch all artwork from database
   const { data: dbArtwork = [], isLoading } = useQuery({
@@ -80,7 +120,7 @@ const ArtGallery = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("artwork")
-        .select("id, title, description, image_url, category")
+        .select("id, title, description, image_url, category, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -95,12 +135,37 @@ const ArtGallery = () => {
     image: resolveImageUrl(item.image_url),
     category: item.category || "mixed",
     likes: 0,
+    created_at: item.created_at,
   }));
 
-  const filteredArtwork =
+  // Filter by category
+  const filteredByCategory =
     selectedCategory === "all"
       ? artworkData
       : artworkData.filter((item) => item.category === selectedCategory);
+
+  // Group artwork by period based on created_at year
+  const getArtworkYear = (item: ArtworkItem): number => {
+    if (!item.created_at) return new Date().getFullYear();
+    return new Date(item.created_at).getFullYear();
+  };
+
+  const getArtworkByPeriod = (period: PeriodSection): ArtworkItem[] => {
+    return filteredByCategory.filter(item => {
+      const year = getArtworkYear(item);
+      return year >= period.startYear && year <= period.endYear;
+    });
+  };
+
+  // Group by category within a period
+  const groupByCategory = (items: ArtworkItem[]): Record<string, ArtworkItem[]> => {
+    return items.reduce((acc, item) => {
+      const cat = item.category || "mixed";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    }, {} as Record<string, ArtworkItem[]>);
+  };
 
   const toggleLike = (id: string) => {
     setLikedItems((prev) => {
@@ -112,6 +177,22 @@ const ArtGallery = () => {
       }
       return newSet;
     });
+  };
+
+  const togglePeriod = (periodId: string) => {
+    setExpandedPeriods(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(periodId)) {
+        newSet.delete(periodId);
+      } else {
+        newSet.add(periodId);
+      }
+      return newSet;
+    });
+  };
+
+  const getCategoryLabel = (categoryId: string): string => {
+    return categories.find(c => c.id === categoryId)?.label || categoryId.replace("_", " ");
   };
 
   return (
@@ -152,49 +233,103 @@ const ArtGallery = () => {
         </div>
       </section>
 
-      {/* Gallery Grid */}
+      {/* Gallery by Period */}
       <section className="py-16 screen-print">
         <div className="container mx-auto px-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredArtwork.length === 0 ? (
+          ) : filteredByCategory.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-xl text-muted-foreground">
                 No artwork in this category yet. More coming soon!
               </p>
             </div>
           ) : (
-            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-              {filteredArtwork.map((artwork, index) => (
-                <ComicPanel
-                  key={artwork.id}
-                  className={`break-inside-avoid p-4 animate-fade-in stagger-${(index % 5) + 1}`}
-                  onClick={() => setSelectedArtwork(artwork)}
-                >
-                  <div className="halftone-overlay overflow-hidden border-2 border-foreground">
-                    <img
-                      src={artwork.image}
-                      alt={artwork.title}
-                      className="w-full h-auto object-cover transition-transform duration-300 hover:scale-105"
-                    />
+            <div className="space-y-12">
+              {periodSections.map((period) => {
+                const periodArtwork = getArtworkByPeriod(period);
+                if (periodArtwork.length === 0) return null;
+                
+                const isExpanded = expandedPeriods.has(period.id);
+                const groupedArtwork = groupByCategory(periodArtwork);
+
+                return (
+                  <div key={period.id} className="border-4 border-foreground">
+                    {/* Period Header */}
+                    <button
+                      onClick={() => togglePeriod(period.id)}
+                      className="w-full p-6 bg-muted flex items-center justify-between hover:bg-accent transition-colors"
+                    >
+                      <div className="text-left">
+                        <h2 className="text-3xl font-display">{period.title}</h2>
+                        <p className="text-muted-foreground">{period.subtitle}</p>
+                        <span className="inline-block mt-2 px-3 py-1 bg-primary text-primary-foreground text-sm font-bold">
+                          {period.yearRange} • {periodArtwork.length} pieces
+                        </span>
+                      </div>
+                      {isExpanded ? (
+                        <ChevronUp className="w-8 h-8" />
+                      ) : (
+                        <ChevronDown className="w-8 h-8" />
+                      )}
+                    </button>
+
+                    {/* Period Content */}
+                    {isExpanded && (
+                      <div className="p-6 space-y-8">
+                        {Object.entries(groupedArtwork).map(([categoryId, items]) => (
+                          <div key={categoryId}>
+                            {/* Category Subheader */}
+                            <div className="flex items-center gap-4 mb-4">
+                              <h3 className="text-xl font-display capitalize">
+                                {getCategoryLabel(categoryId)}
+                              </h3>
+                              <span className="text-sm text-muted-foreground">
+                                ({items.length})
+                              </span>
+                              <div className="flex-1 h-0.5 bg-foreground/20" />
+                            </div>
+
+                            {/* Artwork Grid */}
+                            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+                              {items.map((artwork, index) => (
+                                <ComicPanel
+                                  key={artwork.id}
+                                  className={`break-inside-avoid p-4 animate-fade-in stagger-${(index % 5) + 1}`}
+                                  onClick={() => setSelectedArtwork(artwork)}
+                                >
+                                  <div className="halftone-overlay overflow-hidden border-2 border-foreground">
+                                    <img
+                                      src={artwork.image}
+                                      alt={artwork.title}
+                                      className="w-full h-auto object-cover transition-transform duration-300 hover:scale-105"
+                                    />
+                                  </div>
+                                  <div className="mt-4 flex justify-between items-start">
+                                    <div>
+                                      <h3 className="text-xl font-display">{artwork.title}</h3>
+                                      <p className="text-sm text-muted-foreground capitalize">
+                                        {artwork.category.replace("_", " ")}
+                                      </p>
+                                    </div>
+                                    <LikeButton
+                                      count={artwork.likes + (likedItems.has(artwork.id) ? 1 : 0)}
+                                      liked={likedItems.has(artwork.id)}
+                                      onLike={() => toggleLike(artwork.id)}
+                                    />
+                                  </div>
+                                </ComicPanel>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="text-xl font-display">{artwork.title}</h3>
-                      <p className="text-sm text-muted-foreground capitalize">
-                        {artwork.category.replace("_", " ")}
-                      </p>
-                    </div>
-                    <LikeButton
-                      count={artwork.likes + (likedItems.has(artwork.id) ? 1 : 0)}
-                      liked={likedItems.has(artwork.id)}
-                      onLike={() => toggleLike(artwork.id)}
-                    />
-                  </div>
-                </ComicPanel>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -204,7 +339,7 @@ const ArtGallery = () => {
       <section className="py-16 bg-foreground text-background">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl font-display text-pop-yellow mb-8">
+            <h2 className="text-4xl font-display text-pop-gold mb-8">
               Future Artifacts of Humanity
             </h2>
             <p className="text-lg font-sans leading-relaxed">

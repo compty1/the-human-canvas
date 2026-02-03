@@ -3,14 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
-import { ImageUploader } from "@/components/admin/ImageUploader";
+import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Loader2, Plus, X } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Plus, X, Image } from "lucide-react";
 import { toast } from "sonner";
 
 const LifePeriodEditor = () => {
@@ -28,6 +28,7 @@ const LifePeriodEditor = () => {
     themes: [] as string[],
     key_works: [] as string[],
     image_url: "",
+    images: [] as string[], // Multiple images for gallery
     is_current: false,
     order_index: 0,
   });
@@ -86,6 +87,7 @@ const LifePeriodEditor = () => {
         themes: period.themes || [],
         key_works: period.key_works || [],
         image_url: period.image_url || "",
+        images: (period as Record<string, unknown>).images as string[] || [],
         is_current: period.is_current || false,
         order_index: period.order_index || 0,
       });
@@ -104,11 +106,17 @@ const LifePeriodEditor = () => {
       }
 
       const data = {
-        ...form,
+        title: form.title,
+        start_date: form.start_date,
         end_date: form.end_date || null,
         description: form.description || null,
         detailed_content: form.detailed_content || null,
+        themes: form.themes,
+        key_works: form.key_works,
         image_url: form.image_url || null,
+        images: form.images,
+        is_current: form.is_current,
+        order_index: form.order_index,
       };
 
       if (isEditing) {
@@ -247,6 +255,24 @@ const LifePeriodEditor = () => {
               folder="life-periods"
             />
           </div>
+        </ComicPanel>
+
+        {/* Period Gallery Images */}
+        <ComicPanel className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Image className="w-5 h-5" />
+            <h2 className="text-xl font-display">Gallery Images</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add multiple images to showcase this period. These will appear in a gallery on the detail page.
+          </p>
+          <MultiImageUploader
+            value={form.images}
+            onChange={(urls) => setForm(prev => ({ ...prev, images: urls }))}
+            label="Period Gallery"
+            folder="life-periods/gallery"
+            maxImages={12}
+          />
         </ComicPanel>
 
         {/* Themes */}

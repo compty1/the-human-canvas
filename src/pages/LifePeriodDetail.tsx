@@ -3,11 +3,28 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Calendar, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Star, Loader2, Image } from "lucide-react";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+
+interface LifePeriod {
+  id: string;
+  title: string;
+  description: string | null;
+  detailed_content: string | null;
+  start_date: string;
+  end_date: string | null;
+  is_current: boolean | null;
+  themes: string[] | null;
+  key_works: string[] | null;
+  image_url: string | null;
+  images: string[] | null;
+}
 
 const LifePeriodDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const { data: period, isLoading, error } = useQuery({
     queryKey: ["life-period", id],
@@ -19,7 +36,7 @@ const LifePeriodDetail = () => {
         .maybeSingle();
       
       if (error) throw error;
-      return data;
+      return data as LifePeriod | null;
     },
     enabled: !!id,
   });
@@ -78,6 +95,8 @@ const LifePeriodDetail = () => {
     );
   }
 
+  const hasGalleryImages = period.images && period.images.length > 0;
+
   return (
     <Layout>
       {/* Hero */}
@@ -89,7 +108,7 @@ const LifePeriodDetail = () => {
           
           <div className="flex flex-wrap gap-3 mb-4">
             {period.is_current && (
-              <span className="px-3 py-1 text-sm font-bold bg-pop-yellow flex items-center gap-2">
+              <span className="px-3 py-1 text-sm font-bold bg-pop-gold flex items-center gap-2">
                 <Star className="w-4 h-4" /> Current Period
               </span>
             )}
@@ -110,7 +129,7 @@ const LifePeriodDetail = () => {
         </div>
       </section>
 
-      {/* Image */}
+      {/* Cover Image */}
       {period.image_url && (
         <section className="py-8">
           <div className="container mx-auto px-4">
@@ -121,6 +140,35 @@ const LifePeriodDetail = () => {
                 className="w-full h-auto"
               />
             </ComicPanel>
+          </div>
+        </section>
+      )}
+
+      {/* Gallery Images */}
+      {hasGalleryImages && (
+        <section className="py-12 bg-muted">
+          <div className="container mx-auto px-4">
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-center gap-3 mb-6">
+                <Image className="w-6 h-6" />
+                <h2 className="text-3xl font-display">Gallery</h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {period.images!.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(img)}
+                    className="aspect-square overflow-hidden border-4 border-foreground hover:border-primary transition-colors"
+                  >
+                    <img 
+                      src={img} 
+                      alt={`${period.title} gallery image ${index + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       )}
@@ -173,7 +221,7 @@ const LifePeriodDetail = () => {
       {(keyArtworks.length > 0 || keyProjects.length > 0) && (
         <section className="py-16 bg-foreground text-background">
           <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-display text-pop-yellow text-center mb-12">
+            <h2 className="text-4xl font-display text-pop-gold text-center mb-12">
               Key Works from This Period
             </h2>
             
@@ -223,6 +271,20 @@ const LifePeriodDetail = () => {
           </div>
         </div>
       </section>
+
+      {/* Image Lightbox */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl p-0 border-4 border-foreground bg-background">
+          <DialogTitle className="sr-only">Gallery Image</DialogTitle>
+          {selectedImage && (
+            <img 
+              src={selectedImage} 
+              alt="Gallery image" 
+              className="w-full h-auto"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

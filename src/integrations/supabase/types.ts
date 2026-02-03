@@ -1032,6 +1032,7 @@ export type Database = {
           end_date: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           is_current: boolean | null
           key_works: string[] | null
           order_index: number | null
@@ -1046,6 +1047,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_current?: boolean | null
           key_works?: string[] | null
           order_index?: number | null
@@ -1060,6 +1062,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_current?: boolean | null
           key_works?: string[] | null
           order_index?: number | null
