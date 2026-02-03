@@ -84,17 +84,38 @@ const InspirationDetail = () => {
         </div>
       </section>
 
-      {/* Image */}
-      {inspiration.image_url && (
+      {/* Image(s) */}
+      {(inspiration.image_url || ((inspiration as Record<string, unknown>).images as string[] || []).length > 0) && (
         <section className="py-8">
           <div className="container mx-auto px-4">
-            <ComicPanel className="overflow-hidden max-w-3xl mx-auto">
-              <img 
-                src={inspiration.image_url} 
-                alt={inspiration.title}
-                className="w-full h-auto"
-              />
-            </ComicPanel>
+            {/* Cover Image */}
+            {inspiration.image_url && (
+              <ComicPanel className="overflow-hidden max-w-3xl mx-auto mb-6">
+                <img 
+                  src={inspiration.image_url} 
+                  alt={inspiration.title}
+                  className="w-full h-auto"
+                />
+              </ComicPanel>
+            )}
+            
+            {/* Additional Images Gallery */}
+            {((inspiration as Record<string, unknown>).images as string[] || []).length > 0 && (
+              <div className="max-w-3xl mx-auto">
+                <h3 className="text-lg font-display mb-4">Gallery</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {((inspiration as Record<string, unknown>).images as string[]).map((img, idx) => (
+                    <ComicPanel key={idx} className="overflow-hidden aspect-square">
+                      <img 
+                        src={img} 
+                        alt={`${inspiration.title} - Image ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      />
+                    </ComicPanel>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}

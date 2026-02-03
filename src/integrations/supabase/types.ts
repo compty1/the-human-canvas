@@ -763,6 +763,7 @@ export type Database = {
           detailed_content: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           influence_areas: string[] | null
           order_index: number | null
           related_links: Json | null
@@ -775,6 +776,7 @@ export type Database = {
           detailed_content?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           influence_areas?: string[] | null
           order_index?: number | null
           related_links?: Json | null
@@ -787,6 +789,7 @@ export type Database = {
           detailed_content?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           influence_areas?: string[] | null
           order_index?: number | null
           related_links?: Json | null
@@ -1809,7 +1812,12 @@ export type Database = {
       lead_status: "new" | "contacted" | "responded" | "converted" | "archived"
       note_category: "brand" | "marketing" | "content" | "traffic" | "ideas"
       note_status: "idea" | "planned" | "in_progress" | "done"
-      project_status: "live" | "in_progress" | "planned"
+      project_status:
+        | "live"
+        | "in_progress"
+        | "planned"
+        | "finishing_stages"
+        | "final_review"
       search_status: "pending" | "completed" | "failed"
       writing_category:
         | "philosophy"
@@ -1957,7 +1965,13 @@ export const Constants = {
       lead_status: ["new", "contacted", "responded", "converted", "archived"],
       note_category: ["brand", "marketing", "content", "traffic", "ideas"],
       note_status: ["idea", "planned", "in_progress", "done"],
-      project_status: ["live", "in_progress", "planned"],
+      project_status: [
+        "live",
+        "in_progress",
+        "planned",
+        "finishing_stages",
+        "final_review",
+      ],
       search_status: ["pending", "completed", "failed"],
       writing_category: [
         "philosophy",

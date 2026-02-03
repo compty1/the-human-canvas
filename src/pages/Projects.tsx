@@ -6,8 +6,18 @@ import { ComicPanel, PopButton, LikeButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { ExternalLink, ArrowRight, Heart, Loader2, Calendar } from "lucide-react";
 
+type ProjectFilter = "all" | "live" | "in_progress" | "planned" | "finishing_stages" | "final_review";
+
+const statusConfig: Record<string, { label: string; color: string }> = {
+  planned: { label: "Planned", color: "bg-muted" },
+  in_progress: { label: "In Progress", color: "bg-pop-yellow" },
+  finishing_stages: { label: "Finishing", color: "bg-orange-500" },
+  final_review: { label: "Final Review", color: "bg-purple-500" },
+  live: { label: "Live", color: "bg-pop-cyan" },
+};
+
 const Projects = () => {
-  const [filter, setFilter] = useState<"all" | "live" | "in_progress" | "planned">("all");
+  const [filter, setFilter] = useState<ProjectFilter>("all");
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
@@ -49,12 +59,14 @@ const Projects = () => {
             {[
               { id: "all", label: "All Projects" },
               { id: "live", label: "Live" },
+              { id: "final_review", label: "Final Review" },
+              { id: "finishing_stages", label: "Finishing" },
               { id: "in_progress", label: "In Progress" },
               { id: "planned", label: "Planned" },
             ].map((f) => (
               <button
                 key={f.id}
-                onClick={() => setFilter(f.id as typeof filter)}
+                onClick={() => setFilter(f.id as ProjectFilter)}
                 className={`px-4 py-2 font-bold uppercase text-sm tracking-wide border-2 border-foreground transition-all ${
                   filter === f.id
                     ? "bg-primary text-primary-foreground"
@@ -106,14 +118,10 @@ const Projects = () => {
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
                     <div
                       className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground ${
-                        project.status === "live"
-                          ? "bg-pop-cyan"
-                          : project.status === "in_progress"
-                          ? "bg-pop-yellow"
-                          : "bg-muted"
+                        statusConfig[project.status]?.color || "bg-muted"
                       }`}
                     >
-                      {project.status === "live" ? "Live" : project.status === "in_progress" ? "In Progress" : "Planned"}
+                      {statusConfig[project.status]?.label || project.status}
                     </div>
                     {/* Date Display */}
                     {project.start_date && (

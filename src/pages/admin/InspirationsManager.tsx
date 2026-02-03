@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 
 interface Inspiration {
@@ -33,6 +34,8 @@ const categoryColors: Record<string, string> = {
 
 const InspirationsManager = () => {
   const queryClient = useQueryClient();
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const { data: inspirations = [], isLoading } = useQuery({
     queryKey: ["admin-inspirations"],
@@ -56,6 +59,71 @@ const InspirationsManager = () => {
       toast.success("Inspiration deleted");
     },
   });
+
+  const swapOrderMutation = useMutation({
+    mutationFn: async ({ draggedId, targetId }: { draggedId: string; targetId: string }) => {
+      const draggedItem = inspirations.find(i => i.id === draggedId);
+      const targetItem = inspirations.find(i => i.id === targetId);
+      
+      if (!draggedItem || !targetItem) return;
+
+      // Swap the order_index values
+      const { error: error1 } = await supabase
+        .from("inspirations")
+        .update({ order_index: targetItem.order_index })
+        .eq("id", draggedId);
+      
+      if (error1) throw error1;
+
+      const { error: error2 } = await supabase
+        .from("inspirations")
+        .update({ order_index: draggedItem.order_index })
+        .eq("id", targetId);
+      
+      if (error2) throw error2;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-inspirations"] });
+      toast.success("Order updated");
+    },
+    onError: () => {
+      toast.error("Failed to update order");
+    },
+  });
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedId !== id) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const draggedItemId = e.dataTransfer.getData("text/plain");
+    
+    if (draggedItemId && draggedItemId !== targetId) {
+      swapOrderMutation.mutate({ draggedId: draggedItemId, targetId });
+    }
+    
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
 
   const byCategory = inspirations.reduce((acc, i) => {
     acc[i.category] = (acc[i.category] || 0) + 1;
@@ -91,6 +159,12 @@ const InspirationsManager = () => {
           ))}
         </div>
 
+        {/* Drag hint */}
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <GripVertical className="w-4 h-4" />
+          Drag items to reorder. Items will swap positions automatically.
+        </p>
+
         {/* Inspirations List */}
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -108,20 +182,41 @@ const InspirationsManager = () => {
             </Link>
           </ComicPanel>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {inspirations.map((insp, index) => {
               const Icon = categoryIcons[insp.category] || Sparkles;
+              const isDragging = draggedId === insp.id;
+              const isDragOver = dragOverId === insp.id;
+              
               return (
-                <ComicPanel key={insp.id} className="p-4">
+                <ComicPanel 
+                  key={insp.id} 
+                  className={`p-4 transition-all ${
+                    isDragging ? "opacity-50 scale-[0.98]" : ""
+                  } ${
+                    isDragOver ? "ring-2 ring-primary ring-offset-2" : ""
+                  }`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, insp.id)}
+                  onDragOver={(e) => handleDragOver(e, insp.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, insp.id)}
+                  onDragEnd={handleDragEnd}
+                >
                   <div className="flex items-start gap-4">
+                    {/* Drag Handle */}
+                    <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded self-center">
+                      <GripVertical className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    
                     {insp.image_url && (
                       <img
                         src={insp.image_url}
                         alt={insp.title}
-                        className="w-24 h-24 object-cover border-2 border-foreground flex-shrink-0"
+                        className="w-20 h-20 object-cover border-2 border-foreground flex-shrink-0"
                       />
                     )}
-                    <div className="flex-grow">
+                    <div className="flex-grow min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm text-muted-foreground">#{index + 1}</span>
                         <span className={`px-2 py-0.5 text-xs font-bold text-white flex items-center gap-1 ${categoryColors[insp.category]}`}>

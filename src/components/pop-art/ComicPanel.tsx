@@ -1,16 +1,15 @@
 import { cn } from "@/lib/utils";
-import { forwardRef, ReactNode } from "react";
+import { forwardRef, ReactNode, HTMLAttributes } from "react";
 
-interface ComicPanelProps {
+interface ComicPanelProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
   size?: "sm" | "md" | "lg";
   color?: "magenta" | "cyan" | "yellow" | "default";
-  onClick?: () => void;
 }
 
 export const ComicPanel = forwardRef<HTMLDivElement, ComicPanelProps>(
-  ({ children, className, size = "md", color = "default", onClick }, ref) => {
+  ({ children, className, size = "md", color = "default", onClick, ...props }, ref) => {
     const sizeClasses = {
       sm: "comic-panel-sm",
       md: "comic-panel",
@@ -35,6 +34,7 @@ export const ComicPanel = forwardRef<HTMLDivElement, ComicPanelProps>(
           className
         )}
         onClick={onClick}
+        {...props}
       >
         {children}
       </div>

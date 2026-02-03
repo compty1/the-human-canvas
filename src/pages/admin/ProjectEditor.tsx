@@ -32,7 +32,7 @@ const ProjectEditor = () => {
     slug: "",
     description: "",
     long_description: "",
-    status: "planned" as "live" | "in_progress" | "planned",
+    status: "planned" as "live" | "in_progress" | "planned" | "finishing_stages" | "final_review",
     external_url: "",
     github_url: "",
     image_url: "",
@@ -429,6 +429,8 @@ const ProjectEditor = () => {
                 >
                   <option value="planned">Planned</option>
                   <option value="in_progress">In Progress</option>
+                  <option value="finishing_stages">Finishing Stages</option>
+                  <option value="final_review">Final Review</option>
                   <option value="live">Live</option>
                 </select>
               </div>
