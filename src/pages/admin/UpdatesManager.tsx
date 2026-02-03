@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -11,7 +12,8 @@ import {
   Eye, 
   EyeOff,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -28,6 +30,7 @@ interface Update {
 
 const UpdatesManager = () => {
   const queryClient = useQueryClient();
+  const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
 
   const { data: updates = [], isLoading } = useQuery({
     queryKey: ["admin-updates"],
@@ -72,6 +75,14 @@ const UpdatesManager = () => {
     },
   });
 
+  const handleSelectAll = () => {
+    if (selectedIds.length === updates.length) {
+      clearSelection();
+    } else {
+      selectAll(updates.map((u) => u.id));
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -83,12 +94,23 @@ const UpdatesManager = () => {
               Manage project updates and announcements
             </p>
           </div>
-          <Link to="/admin/updates/new">
-            <PopButton>
-              <Plus className="w-4 h-4 mr-2" />
-              New Update
-            </PopButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            {updates.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                {selectedIds.length === updates.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+            <Link to="/admin/updates/new">
+              <PopButton>
+                <Plus className="w-4 h-4 mr-2" />
+                New Update
+              </PopButton>
+            </Link>
+          </div>
         </div>
 
         {/* Updates List */}
@@ -115,6 +137,13 @@ const UpdatesManager = () => {
             {updates.map((update) => (
               <ComicPanel key={update.id} className="p-4">
                 <div className="flex items-center gap-4">
+                  {/* Selection checkbox */}
+                  <SelectableCheckbox
+                    id={update.id}
+                    selectedIds={selectedIds}
+                    onToggle={toggleSelection}
+                  />
+
                   {/* Status indicator */}
                   <div
                     className={`w-3 h-3 rounded-full ${
@@ -191,6 +220,16 @@ const UpdatesManager = () => {
             ))}
           </div>
         )}
+
+        {/* Bulk Actions Bar */}
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          tableName="updates"
+          queryKey={["admin-updates"]}
+          actions={["publish", "unpublish", "delete"]}
+          statusField="published"
+        />
       </div>
     </AdminLayout>
   );

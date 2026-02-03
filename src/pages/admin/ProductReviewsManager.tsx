@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { 
@@ -11,13 +12,15 @@ import {
   Trash2, 
   Search,
   Eye,
-  Star
+  Star,
+  CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
 
 const ProductReviewsManager = () => {
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
+  const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
 
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["admin-product-reviews"],
@@ -58,6 +61,16 @@ const ProductReviewsManager = () => {
     return "bg-red-500";
   };
 
+  const handleSelectAll = () => {
+    if (filteredReviews) {
+      if (selectedIds.length === filteredReviews.length) {
+        clearSelection();
+      } else {
+        selectAll(filteredReviews.map((r) => r.id));
+      }
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -67,11 +80,22 @@ const ProductReviewsManager = () => {
             <h1 className="text-4xl font-display">Product Reviews</h1>
             <p className="text-muted-foreground">Manage your UX reviews and case studies</p>
           </div>
-          <Link to="/admin/product-reviews/new">
-            <PopButton>
-              <Plus className="w-4 h-4 mr-2" /> New Review
-            </PopButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            {filteredReviews && filteredReviews.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                {selectedIds.length === filteredReviews.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+            <Link to="/admin/product-reviews/new">
+              <PopButton>
+                <Plus className="w-4 h-4 mr-2" /> New Review
+              </PopButton>
+            </Link>
+          </div>
         </div>
 
         {/* Search */}
@@ -97,6 +121,13 @@ const ProductReviewsManager = () => {
             {filteredReviews.map((review) => (
               <ComicPanel key={review.id} className="p-4">
                 <div className="flex items-start gap-4">
+                  {/* Selection checkbox */}
+                  <SelectableCheckbox
+                    id={review.id}
+                    selectedIds={selectedIds}
+                    onToggle={toggleSelection}
+                  />
+
                   {/* Rating Badge */}
                   <div className={`w-16 h-16 ${getRatingColor(review.overall_rating)} flex items-center justify-center border-2 border-foreground flex-shrink-0`}>
                     <div className="text-center">
@@ -173,6 +204,16 @@ const ProductReviewsManager = () => {
             </Link>
           </ComicPanel>
         )}
+
+        {/* Bulk Actions Bar */}
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          tableName="product_reviews"
+          queryKey={["admin-product-reviews"]}
+          actions={["publish", "unpublish", "delete"]}
+          statusField="published"
+        />
       </div>
     </AdminLayout>
   );

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -11,7 +12,8 @@ import {
   Eye, 
   EyeOff,
   Loader2,
-  FileText
+  FileText,
+  CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -29,6 +31,7 @@ interface Article {
 
 const ArticlesManager = () => {
   const queryClient = useQueryClient();
+  const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
 
   const { data: articles = [], isLoading } = useQuery({
     queryKey: ["admin-articles"],
@@ -81,6 +84,14 @@ const ArticlesManager = () => {
     research: "bg-red-100 text-red-700",
   };
 
+  const handleSelectAll = () => {
+    if (selectedIds.length === articles.length) {
+      clearSelection();
+    } else {
+      selectAll(articles.map((a) => a.id));
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -92,12 +103,23 @@ const ArticlesManager = () => {
               Manage blog articles and essays
             </p>
           </div>
-          <Link to="/admin/articles/new">
-            <PopButton>
-              <Plus className="w-4 h-4 mr-2" />
-              New Article
-            </PopButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            {articles.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                {selectedIds.length === articles.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+            <Link to="/admin/articles/new">
+              <PopButton>
+                <Plus className="w-4 h-4 mr-2" />
+                New Article
+              </PopButton>
+            </Link>
+          </div>
         </div>
 
         {/* Articles List */}
@@ -124,6 +146,13 @@ const ArticlesManager = () => {
             {articles.map((article) => (
               <ComicPanel key={article.id} className="p-4">
                 <div className="flex items-center gap-4">
+                  {/* Selection checkbox */}
+                  <SelectableCheckbox
+                    id={article.id}
+                    selectedIds={selectedIds}
+                    onToggle={toggleSelection}
+                  />
+
                   {/* Status indicator */}
                   <div
                     className={`w-3 h-3 rounded-full ${
@@ -195,6 +224,16 @@ const ArticlesManager = () => {
             ))}
           </div>
         )}
+
+        {/* Bulk Actions Bar */}
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          tableName="articles"
+          queryKey={["admin-articles"]}
+          actions={["publish", "unpublish", "delete"]}
+          statusField="published"
+        />
       </div>
     </AdminLayout>
   );
