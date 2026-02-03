@@ -1,366 +1,340 @@
 
-
-# Comprehensive Feature Enhancement Plan
+# Comprehensive Enhancement Plan
 
 ## Overview
 
-This plan addresses 8 major feature requests requiring new database tables, admin management pages, public pages, and data imports. Due to the scope, I'll organize this into logical implementation phases.
+This plan addresses multiple feature requests to enhance the portfolio platform:
+
+1. **Multiple images for inspirations** with admin multi-upload support
+2. **Auto-generate/regenerate AI buttons** across all content editors
+3. **Undo/Redo functionality** for content editing
+4. **New project statuses**: "Finishing Stages" and "Final Review"
+5. **Drag-to-reorder** inspirations with automatic order swapping
 
 ---
 
-## Phase 1: Product Data Import
+## 1. Multiple Images for Inspirations
 
-### 1.1 Import CompteHaus Products from Etsy PDF
+### Database Migration
 
-The uploaded PDF `EtsyListingsDownload_1.pdf` needs to be parsed for product data. I'll extract the product information and add it to:
+Add `images` array column to the `inspirations` table:
 
-**A) experiment_products table (linked to CompteHaus experiment)**
-- Products with full details (name, price, description, images, SKU, etc.)
-- Link to experiment_id for CompteHaus (`cfee45f2-9977-4d54-8e6a-7412d8fa4371`)
+```sql
+ALTER TABLE inspirations ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
+```
 
-**B) products table (Store)**
-- Replace current store products with the CompteHaus inventory
-- Status set to active for store display
+The existing `image_url` column will remain for backward compatibility (used as primary/cover image), while `images` stores additional images.
 
-### 1.2 GlucoHaus Clarification
+### Admin Editor Changes
 
-Update the GlucoHaus experiment record to clearly indicate it was pre-planning only:
-- Update description to emphasize "Concept & Pre-Planning Phase - No Launch"
-- Update status field and add banner indicator
-- Add note about no branding/no actual products sold
+**File: `src/pages/admin/InspirationEditor.tsx`**
+
+- Add `MultiImageUploader` component alongside the existing single ImageUploader
+- Update form state to include `images: []`
+- Save both `image_url` (cover) and `images` (gallery) to database
+
+### Public Page Changes
+
+**File: `src/pages/InspirationDetail.tsx`**
+
+- Display image gallery when multiple images exist
+- Create a scrollable gallery or grid layout
 
 ---
 
-## Phase 2: Content Library with Publishing Workflow
+## 2. AI Auto-Generate/Regenerate Buttons
 
-### 2.1 Database Changes
+### New Component: `AIGenerateButton.tsx`
 
-The existing content review system supports scheduling. Add a unified content library view.
+**File: `src/components/admin/AIGenerateButton.tsx`**
 
-**Enhance existing tables:**
-- articles, updates already have `scheduled_at`, `review_status`, `published` fields
-- Add a unified dashboard to manage all content types
+A reusable component that:
+- Shows "Generate" for empty fields, "Regenerate" if content exists
+- Calls the AI assistant edge function with field-specific prompts
+- Displays loading state during generation
+- Returns generated content via callback
 
-### 2.2 New Admin Page: Content Library
-
-**File: `src/pages/admin/ContentLibrary.tsx`**
-
-Features:
-- Combined view of all content types (articles, updates, experiments, projects)
-- Filter by content type, status, scheduled date
-- Actions: Edit, Schedule Publish, Publish Now, Unpublish, Delete
-- Quick status indicators (Draft, Scheduled, Published)
-- Calendar view for scheduled content
-
-```
-+------------------------------------------------------------------+
-| Content Library                                                    |
-+------------------------------------------------------------------+
-| [+ New Article] [+ New Update] [+ New Project]                    |
-|                                                                    |
-| Filter: [All Types ▼] [All Status ▼] [Date Range]                 |
-|                                                                    |
-| +------------------+----------+----------+------------+--------+  |
-| | Title            | Type     | Status   | Scheduled  | Actions|  |
-| +------------------+----------+----------+------------+--------+  |
-| | My New Article   | Article  | Draft    | --         | [...]  |  |
-| | Weekly Update    | Update   | Scheduled| Feb 10     | [...]  |  |
-| | Project Launch   | Project  | Published| --         | [...]  |  |
-| +------------------+----------+----------+------------+--------+  |
-+------------------------------------------------------------------+
+```text
++-------------------------------------------+
+| [Sparkles icon] Generate Description      |
++-------------------------------------------+
 ```
 
-### 2.3 Route Addition
+### Integration Points
 
-Add to App.tsx:
+Add the AIGenerateButton to these content editors:
+
+| Editor | Fields to Auto-Generate |
+|--------|------------------------|
+| `InspirationEditor.tsx` | description, detailed_content |
+| `ArticleEditor.tsx` | excerpt, content |
+| `ProjectEditor.tsx` | description, long_description, problem_statement, solution_summary |
+| `ExperienceEditor.tsx` | description, long_description |
+| `CertificationEditor.tsx` | description |
+| `FavoriteEditor.tsx` | description, impact_statement |
+| `UpdateEditor.tsx` | content |
+
+### Edge Function Enhancement
+
+**File: `supabase/functions/ai-assistant/index.ts`**
+
+Add a `generateField` action type that accepts:
+- `fieldName`: which field to generate
+- `context`: existing form data for context
+- `contentType`: type of content being edited
+
+Returns field-specific generated text.
+
+---
+
+## 3. Undo/Redo Functionality
+
+### Approach: Form History Stack
+
+Create a custom hook that tracks form state changes:
+
+**File: `src/hooks/useFormHistory.ts`**
+
 ```typescript
-<Route path="/admin/content-library" element={<ContentLibrary />} />
+export const useFormHistory = <T>(initialState: T) => {
+  const [history, setHistory] = useState<T[]>([initialState]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  const canUndo = currentIndex > 0;
+  const canRedo = currentIndex < history.length - 1;
+  
+  const undo = () => { ... };
+  const redo = () => { ... };
+  const pushState = (newState: T) => { ... };
+  
+  return { current, canUndo, canRedo, undo, redo, pushState };
+};
 ```
+
+### UI Component: `UndoRedoControls.tsx`
+
+**File: `src/components/admin/UndoRedoControls.tsx`**
+
+A simple toolbar component:
+
+```text
++--------+--------+
+| [Undo] | [Redo] |
++--------+--------+
+```
+
+- Disabled states when at beginning/end of history
+- Keyboard shortcuts: Ctrl+Z for undo, Ctrl+Shift+Z for redo
+
+### Integration
+
+Add `UndoRedoControls` to editor headers in:
+- InspirationEditor
+- ArticleEditor
+- ProjectEditor
+- ExperienceEditor
+- CertificationEditor
+- FavoriteEditor
+- UpdateEditor
 
 ---
 
-## Phase 3: Experience Section (Past Experiences)
+## 4. New Project Statuses
 
-### 3.1 Database: Create `experiences` Table
+### Database Migration
+
+The `projects.status` column currently uses a text type with values: `planned`, `in_progress`, `live`.
+
+Add new status values:
 
 ```sql
-CREATE TABLE experiences (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
-  category TEXT NOT NULL, -- 'creative', 'business', 'technical', 'service'
-  subcategory TEXT, -- more specific categorization
-  description TEXT,
-  long_description TEXT,
-  image_url TEXT,
-  screenshots TEXT[] DEFAULT '{}',
-  
-  -- Time period
-  start_date DATE,
-  end_date DATE,
-  is_ongoing BOOLEAN DEFAULT false,
-  
-  -- Skills and tools
-  skills_used TEXT[] DEFAULT '{}',
-  tools_used TEXT[] DEFAULT '{}',
-  
-  -- Outcomes
-  key_achievements TEXT[] DEFAULT '{}',
-  lessons_learned TEXT[] DEFAULT '{}',
-  challenges_overcome TEXT[] DEFAULT '{}',
-  
-  -- Metrics (when applicable)
-  clients_served INTEGER,
-  revenue_generated NUMERIC(10,2),
-  projects_completed INTEGER,
-  
-  -- Admin
-  admin_notes TEXT,
-  order_index INTEGER DEFAULT 0,
-  published BOOLEAN DEFAULT true,
-  
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+-- No migration needed - the column is TEXT type, not an enum
+-- Simply update the UI to include new options
 ```
 
-### 3.2 Sample Experience Categories
+### UI Updates
 
-Based on your request, here are the experience entries to create:
+**File: `src/pages/admin/ProjectEditor.tsx`**
 
-| Category | Subcategory | Experiences |
-|----------|-------------|-------------|
-| Creative | Visual Art | Acrylic painting, Pencil/sketch, Clay/sculpture, Ceramics, Image/print transfer |
-| Creative | Design | Graphic design, Product design, Logo design |
-| Creative | Writing | Non-fiction, Fiction, Children's literature, Editorial |
-| Business | E-commerce | Etsy, Shopify, eBay (antique furniture), Independent shops |
-| Business | Operations | Inventory management, Shipping/delivery, Cost/profit analysis, Accounting |
-| Business | Marketing | Google Ads, Google Analytics, Content production |
-| Technical | Web Dev | Wix, Lovable, Python, Stripe integration |
-| Technical | Analysis | SWOT analysis, UX/product analysis, Customer experience |
-| Service | Tutoring | High school/middle school tutoring |
-| Service | Notary | Independent notary services |
-| Service | Health | T1D advocacy, Mentoring/support |
-| Other | Horticulture | Planting, growing, plant care |
-| Other | Restoration | Antique furniture refinishing |
-| Other | Research | Deep research and analysis |
+Update the status dropdown options:
 
-### 3.3 Admin Pages
+```typescript
+const statusOptions = [
+  { value: "planned", label: "Planned" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "finishing_stages", label: "Finishing Stages" },
+  { value: "final_review", label: "Final Review" },
+  { value: "live", label: "Live" },
+];
+```
 
-**Files to create:**
-- `src/pages/admin/ExperiencesManager.tsx` - List and manage experiences
-- `src/pages/admin/ExperienceEditor.tsx` - Add/edit experience
+**File: `src/pages/Projects.tsx`** and related files
 
-### 3.4 Public Page
+Update status display colors:
 
-**File: `src/pages/Experiences.tsx`**
-
-Layout similar to FuturePlans but for past experiences:
-- Category filters (Creative, Business, Technical, Service)
-- Timeline/card view of experiences
-- Detail pages showing full information
+| Status | Color |
+|--------|-------|
+| planned | Gray/Muted |
+| in_progress | Yellow |
+| finishing_stages | Orange |
+| final_review | Purple |
+| live | Green |
 
 ---
 
-## Phase 4: Certifications Section
+## 5. Drag-to-Reorder Inspirations with Auto-Swap
 
-### 4.1 Database: Create `certifications` Table
+### Library
 
-```sql
-CREATE TABLE certifications (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  issuer TEXT NOT NULL, -- "Google", "AWS", "Coursera"
-  category TEXT, -- 'technical', 'creative', 'business', 'health'
-  description TEXT,
-  image_url TEXT, -- certificate image or issuer logo
-  
-  -- Status
-  status TEXT DEFAULT 'planned', -- 'earned', 'in_progress', 'planned', 'wanted'
-  earned_date DATE,
-  expiration_date DATE,
-  credential_url TEXT, -- link to verify
-  credential_id TEXT,
-  
-  -- Funding (for sponsorship)
-  estimated_cost NUMERIC(10,2),
-  funded_amount NUMERIC(10,2) DEFAULT 0,
-  funding_enabled BOOLEAN DEFAULT true,
-  
-  -- Skills covered
-  skills TEXT[] DEFAULT '{}',
-  
-  -- Admin
-  admin_notes TEXT,
-  order_index INTEGER DEFAULT 0,
-  
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+Use native HTML5 drag-and-drop (no additional dependencies needed).
+
+### Admin Manager Changes
+
+**File: `src/pages/admin/InspirationsManager.tsx`**
+
+Add drag-and-drop functionality:
+
+1. Make each inspiration row draggable
+2. Show visual indicators during drag (drop zones)
+3. On drop: swap `order_index` values between dragged item and target
+4. Persist to database immediately
+
+```text
++--------------------------------------------------+
+| [:::] #1 | Inspiration A          | [Edit] [Del] |
++--------------------------------------------------+
+| [:::] #2 | Inspiration B (dragging)| [Edit] [Del] |
++--------------------------------------------------+
+| [:::] #3 | Inspiration C           | [Edit] [Del] |
++--------------------------------------------------+
+       ^
+       |-- Drop zone indicator
 ```
 
-### 4.2 Admin Pages
+### Swap Logic
 
-**Files:**
-- `src/pages/admin/CertificationsManager.tsx`
-- `src/pages/admin/CertificationEditor.tsx`
+When dragging item A to position of item B:
+- Item A gets B's `order_index`
+- Item B gets A's `order_index`
+- Both are updated in a single database transaction
 
-### 4.3 Public Page
-
-**File: `src/pages/Certifications.tsx`**
-
-Layout:
-- Earned certifications (badges/cards)
-- In Progress section with progress bars
-- Planned/Wanted section with sponsorship option
-- "Sponsor This Certification" button linking to Support page
-
----
-
-## Phase 5: Project Financial Tracking
-
-### 5.1 Database: Enhance `projects` Table
-
-The table already has `money_spent`, `money_needed`, `funding_goal`, `funding_raised`. Add:
-
-```sql
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS 
-  expenses JSONB DEFAULT '[]', -- Array of {category, description, amount, date}
-  income_data JSONB DEFAULT '{}', -- {revenue: 0, sources: [], user_count: 0}
-  analytics_notes TEXT;
+```typescript
+const handleDrop = async (draggedId: string, targetId: string) => {
+  const draggedItem = inspirations.find(i => i.id === draggedId);
+  const targetItem = inspirations.find(i => i.id === targetId);
+  
+  // Swap order indices
+  await supabase.from("inspirations").update({ order_index: targetItem.order_index }).eq("id", draggedId);
+  await supabase.from("inspirations").update({ order_index: draggedItem.order_index }).eq("id", targetId);
+  
+  // Refetch to update UI
+  queryClient.invalidateQueries(["admin-inspirations"]);
+};
 ```
 
-### 5.2 Update ProjectEditor.tsx
+### Editor Order Field Enhancement
 
-Add new sections:
-- **Expenses Tracking**: Add/edit/remove expense items with category, description, amount
-- **Income Data**: Revenue, payment sources, user metrics
-- **Financial Summary**: Auto-calculated totals
+**File: `src/pages/admin/InspirationEditor.tsx`**
 
-### 5.3 Update ProjectDetail.tsx
-
-Add financial transparency section:
-- Display expenses breakdown
-- Show income if available
-- Total investment vs. returns
-
----
-
-## Phase 6: Inspirations - Roots Section
-
-### 6.1 Database: Add `is_childhood_root` to favorites
-
-```sql
-ALTER TABLE favorites ADD COLUMN IF NOT EXISTS 
-  is_childhood_root BOOLEAN DEFAULT false,
-  childhood_age_range TEXT, -- "5-8", "9-12", etc.
-  childhood_impact TEXT; -- What it instilled
-```
-
-### 6.2 Update Inspirations.tsx
-
-Add "Roots" section before or after main inspirations:
-- Query favorites where `is_childhood_root = true`
-- Display with special styling indicating childhood/formative influence
-- Show "What it instilled in me" content
-
-### 6.3 Update FavoriteEditor.tsx
-
-Add checkbox and fields for childhood favorites:
-- Is this a childhood/formative favorite?
-- Age range when discovered
-- What it instilled
+When changing `order_index` manually:
+- Show current item in that position (if any)
+- Prompt: "This will swap with [Item Name]. Continue?"
+- Auto-swap on confirmation
 
 ---
 
 ## File Summary
 
-### New Files to Create
+### New Files
 
 | File | Purpose |
 |------|---------|
-| `src/pages/admin/ContentLibrary.tsx` | Unified content management |
-| `src/pages/admin/ExperiencesManager.tsx` | Manage experiences |
-| `src/pages/admin/ExperienceEditor.tsx` | Add/edit experience |
-| `src/pages/Experiences.tsx` | Public experiences page |
-| `src/pages/ExperienceDetail.tsx` | Experience detail page |
-| `src/pages/admin/CertificationsManager.tsx` | Manage certifications |
-| `src/pages/admin/CertificationEditor.tsx` | Add/edit certification |
-| `src/pages/Certifications.tsx` | Public certifications page |
+| `src/components/admin/AIGenerateButton.tsx` | Reusable AI content generation button |
+| `src/components/admin/UndoRedoControls.tsx` | Undo/redo toolbar component |
+| `src/hooks/useFormHistory.ts` | Form state history management hook |
 
-### Files to Modify
+### Modified Files
 
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add new routes for experiences, certifications, content library |
-| `src/pages/Inspirations.tsx` | Add Roots section |
-| `src/pages/admin/FavoriteEditor.tsx` | Add childhood favorite fields |
-| `src/pages/admin/ProjectEditor.tsx` | Add financial tracking sections |
-| `src/pages/ProjectDetail.tsx` | Display financial breakdown |
-| `src/integrations/supabase/types.ts` | Auto-updates with schema changes |
+| `src/pages/admin/InspirationEditor.tsx` | Add multi-image upload, AI buttons, undo/redo |
+| `src/pages/admin/InspirationsManager.tsx` | Add drag-and-drop reordering |
+| `src/pages/admin/ProjectEditor.tsx` | Add new status options, AI buttons, undo/redo |
+| `src/pages/admin/ArticleEditor.tsx` | Add AI buttons, undo/redo |
+| `src/pages/admin/ExperienceEditor.tsx` | Add AI buttons, undo/redo |
+| `src/pages/admin/CertificationEditor.tsx` | Add AI buttons, undo/redo |
+| `src/pages/admin/FavoriteEditor.tsx` | Add AI buttons, undo/redo |
+| `src/pages/admin/UpdateEditor.tsx` | Add AI buttons, undo/redo |
+| `src/pages/InspirationDetail.tsx` | Display multiple images gallery |
+| `src/pages/Projects.tsx` | Display new status colors |
+| `supabase/functions/ai-assistant/index.ts` | Add field generation endpoint |
 
-### Database Migrations
+### Database Migration
 
-| Table | Action |
-|-------|--------|
-| `experiences` | Create new table |
-| `certifications` | Create new table |
-| `favorites` | Add childhood root columns |
-| `projects` | Add expenses/income JSONB columns |
+```sql
+-- Add images array to inspirations
+ALTER TABLE inspirations ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
+```
 
-### Data Inserts
+---
 
-1. Parse Etsy PDF and insert products into `experiment_products` and `products`
-2. Update GlucoHaus experiment with clarification text
-3. Sample experiences based on listed skills
-4. Childhood roots favorites (if provided)
+## Technical Details
+
+### Drag-and-Drop Implementation
+
+Using native HTML5 APIs:
+
+```typescript
+<div
+  draggable
+  onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
+  onDragOver={(e) => e.preventDefault()}
+  onDrop={(e) => handleDrop(e.dataTransfer.getData("text/plain"), item.id)}
+>
+  {/* Inspiration content */}
+</div>
+```
+
+### AI Generation Prompt Templates
+
+For each field type, use specific prompts:
+
+```typescript
+const prompts = {
+  description: `Write a compelling 1-2 sentence description for this ${contentType}...`,
+  long_description: `Write a detailed 2-3 paragraph description...`,
+  excerpt: `Write a brief teaser excerpt (under 160 characters)...`,
+  impact_statement: `Write a personal impact statement explaining how this influenced you...`,
+};
+```
+
+### Undo/Redo Keyboard Shortcuts
+
+```typescript
+useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      if (e.shiftKey && canRedo) redo();
+      else if (canUndo) undo();
+      e.preventDefault();
+    }
+  };
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [canUndo, canRedo]);
+```
 
 ---
 
 ## Implementation Order
 
-1. **Database migrations** - Create new tables and alter existing
-2. **Parse Etsy PDF** - Extract and import product data
-3. **Update GlucoHaus** - Clarify pre-planning status
-4. **Content Library** - Build unified content management
-5. **Experiences** - Create admin and public pages
-6. **Certifications** - Create admin and public pages with funding
-7. **Project Financials** - Enhance editor and detail pages
-8. **Inspirations Roots** - Add childhood favorites section
-
----
-
-## Technical Notes
-
-### RLS Policies
-
-All new tables will have:
-- Public read access for published content
-- Admin-only write access via `has_role(auth.uid(), 'admin')`
-
-### Navigation Updates
-
-Add to admin sidebar and public header:
-- Experiences link
-- Certifications link
-- Content Library (admin only)
-
-### Routing
-
-New routes to add to App.tsx:
-```typescript
-// Public
-<Route path="/experiences" element={<Experiences />} />
-<Route path="/experiences/:slug" element={<ExperienceDetail />} />
-<Route path="/certifications" element={<Certifications />} />
-
-// Admin
-<Route path="/admin/content-library" element={<ContentLibrary />} />
-<Route path="/admin/experiences" element={<ExperiencesManager />} />
-<Route path="/admin/experiences/new" element={<ExperienceEditor />} />
-<Route path="/admin/experiences/:id/edit" element={<ExperienceEditor />} />
-<Route path="/admin/certifications" element={<CertificationsManager />} />
-<Route path="/admin/certifications/new" element={<CertificationEditor />} />
-<Route path="/admin/certifications/:id/edit" element={<CertificationEditor />} />
-```
-
+1. Database migration (add `images` column)
+2. Create `useFormHistory` hook
+3. Create `UndoRedoControls` component
+4. Create `AIGenerateButton` component
+5. Update edge function for field generation
+6. Update `InspirationEditor` with all features
+7. Update `InspirationsManager` with drag-and-drop
+8. Update `ProjectEditor` with new statuses
+9. Update remaining editors with AI + undo/redo
+10. Update public pages for new data display
