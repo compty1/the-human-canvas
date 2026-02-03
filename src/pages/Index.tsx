@@ -3,11 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Palette, Code, PenTool, Heart } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, Ticker, HalftoneImage } from "@/components/pop-art";
+import { HeroBackground } from "@/components/home/HeroBackground";
+import { ArtStrip, DecorativeArt } from "@/components/home/DecorativeArt";
 import { supabase } from "@/integrations/supabase/client";
 
 import moodboard1 from "@/assets/artwork/moodboard-1.png";
 import moodboard2 from "@/assets/artwork/moodboard-2.png";
 import nancySinatra from "@/assets/artwork/nancy-sinatra.png";
+import flowerPotHead from "@/assets/artwork/hero/flower-pot-head.png";
+import bandageFace from "@/assets/artwork/hero/bandage-face.png";
 
 const navPanels = [
   {
@@ -112,9 +116,16 @@ const Index = () => {
 
   return (
     <Layout>
-      {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center benday-dots overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-background/80" />
+      {/* Hero Section with stunning background */}
+      <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+        {/* Artwork background */}
+        <HeroBackground />
+        
+        {/* Gradient overlay for readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-background/95 via-background/85 to-background/70" />
+        
+        {/* Ben-Day dots pattern */}
+        <div className="absolute inset-0 benday-dots opacity-50" />
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -142,7 +153,7 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Right - Art Preview */}
+            {/* Right - Art Preview with new artwork */}
             <div className="relative hidden lg:block">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-6">
@@ -153,18 +164,24 @@ const Index = () => {
                     className="animate-fade-in stagger-1"
                   />
                   <HalftoneImage
-                    src={nancySinatra}
-                    alt="Nancy Sinatra portrait"
+                    src={flowerPotHead}
+                    alt="Flower Pot Head artwork"
                     frameColor="yellow"
                     className="animate-fade-in stagger-3"
                   />
                 </div>
-                <div className="pt-12">
+                <div className="pt-12 space-y-6">
                   <HalftoneImage
-                    src={moodboard2}
-                    alt="Moodboard artwork 2"
+                    src={bandageFace}
+                    alt="Bandage Face artwork"
                     frameColor="cyan"
                     className="animate-fade-in stagger-2"
+                  />
+                  <HalftoneImage
+                    src={nancySinatra}
+                    alt="Nancy Sinatra portrait"
+                    frameColor="magenta"
+                    className="animate-fade-in stagger-4"
                   />
                 </div>
               </div>
@@ -176,9 +193,16 @@ const Index = () => {
       {/* Currently Working On Ticker */}
       <Ticker items={tickerItems} />
 
+      {/* Art Strip Divider */}
+      <ArtStrip />
+
       {/* Navigation Panels */}
-      <section className="py-20 screen-print">
-        <div className="container mx-auto px-4">
+      <section className="py-20 screen-print relative overflow-hidden">
+        {/* Decorative artwork */}
+        <DecorativeArt variant="left" className="absolute -left-16 top-20" />
+        <DecorativeArt variant="right" className="absolute -right-16 bottom-20" />
+        
+        <div className="container mx-auto px-4 relative z-10">
           <h2 className="text-4xl md:text-5xl font-display text-center mb-12">
             Explore the Work
           </h2>
@@ -204,8 +228,17 @@ const Index = () => {
       </section>
 
       {/* Mission Statement */}
-      <section className="py-20 bg-foreground text-background">
-        <div className="container mx-auto px-4 text-center">
+      <section className="py-20 bg-foreground text-background relative overflow-hidden">
+        {/* Background pattern */}
+        <div 
+          className="absolute inset-0 opacity-5"
+          style={{
+            backgroundImage: `radial-gradient(circle, hsl(var(--background)) 2px, transparent 2px)`,
+            backgroundSize: '24px 24px',
+          }}
+        />
+        
+        <div className="container mx-auto px-4 text-center relative z-10">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl md:text-6xl font-display text-pop-yellow mb-8">
               The Human Experience Is Everything
@@ -227,8 +260,12 @@ const Index = () => {
       </section>
 
       {/* Featured Projects Preview */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
+      <section className="py-20 relative overflow-hidden">
+        {/* Floating decorative art */}
+        <DecorativeArt variant="floating" className="absolute left-10 top-40" />
+        <DecorativeArt variant="corner" className="absolute right-5 bottom-10" />
+        
+        <div className="container mx-auto px-4 relative z-10">
           <div className="flex justify-between items-center mb-12">
             <h2 className="text-4xl md:text-5xl font-display">Live Projects</h2>
             <Link to="/projects" className="pop-link text-lg font-bold">
@@ -269,9 +306,21 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Art Strip before CTA */}
+      <ArtStrip />
+
       {/* CTA Section */}
-      <section className="py-20 bg-pop-cyan">
-        <div className="container mx-auto px-4 text-center">
+      <section className="py-20 bg-pop-cyan relative overflow-hidden">
+        {/* Decorative pattern */}
+        <div 
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage: `repeating-linear-gradient(45deg, hsl(var(--foreground)) 0, hsl(var(--foreground)) 1px, transparent 0, transparent 50%)`,
+            backgroundSize: '10px 10px',
+          }}
+        />
+        
+        <div className="container mx-auto px-4 text-center relative z-10">
           <h2 className="text-4xl md:text-5xl font-display text-foreground mb-6">
             Support the Journey
           </h2>
