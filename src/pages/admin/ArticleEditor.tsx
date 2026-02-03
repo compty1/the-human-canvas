@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -7,6 +7,12 @@ import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
+import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
+import { TemplateSelector, SaveAsTemplateButton } from "@/components/admin/TemplateSelector";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
+import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
+import { useAutosave } from "@/hooks/useAutosave";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -45,9 +51,11 @@ const categoryOptions: { value: WritingCategory; label: string }[] = [
 
 const ArticleEditor = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEditing = !!id;
+  const cloneId = searchParams.get("clone");
 
   const [form, setForm] = useState<FormState>({
     title: "",
@@ -108,21 +116,91 @@ const ArticleEditor = () => {
     pushHistory(newForm);
   };
 
-  // Fetch existing article if editing
+  // Autosave hook
+  const autosaveKey = `article_${id || "new"}`;
+  const {
+    hasDraft,
+    draftData,
+    draftTimestamp,
+    restoreDraft,
+    discardDraft,
+    clearDraft,
+  } = useAutosave({
+    key: autosaveKey,
+    data: form,
+    enabled: true,
+  });
+
+  // Keyboard shortcuts
+  useEditorShortcuts({
+    onSave: () => {
+      saveMutation.mutate();
+      clearDraft();
+    },
+    onSaveAndExit: () => {
+      saveMutation.mutate();
+      clearDraft();
+    },
+    onExit: () => navigate("/admin/articles"),
+    isDirty: historyIndex > 0,
+    enabled: true,
+  });
+
+  // Handle draft restoration
+  const handleRestoreDraft = () => {
+    const restoredData = restoreDraft();
+    if (restoredData) {
+      setForm(restoredData);
+      setHistory([restoredData]);
+      setHistoryIndex(0);
+      toast({ title: "Draft restored" });
+    }
+  };
+
+  // Handle template selection
+  const handleTemplateSelect = (templateData: Record<string, unknown>) => {
+    const updates: Partial<FormState> = {};
+    if (templateData.title) updates.title = String(templateData.title);
+    if (templateData.content) updates.content = String(templateData.content);
+    if (templateData.excerpt) updates.excerpt = String(templateData.excerpt);
+    if (templateData.category) updates.category = templateData.category as WritingCategory;
+    if (templateData.tags) updates.tags = Array.isArray(templateData.tags) ? templateData.tags.join(", ") : String(templateData.tags);
+    updateForm(updates);
+  };
+
+  // Handle version restore
+  const handleVersionRestore = (versionData: Record<string, unknown>) => {
+    const restoredForm: FormState = {
+      title: String(versionData.title || ""),
+      slug: String(versionData.slug || ""),
+      content: String(versionData.content || ""),
+      excerpt: String(versionData.excerpt || ""),
+      category: (versionData.category as WritingCategory) || "philosophy",
+      tags: Array.isArray(versionData.tags) ? versionData.tags.join(", ") : String(versionData.tags || ""),
+      readingTime: String(versionData.readingTime || 5),
+      featuredImage: String(versionData.featuredImage || ""),
+      published: Boolean(versionData.published),
+    };
+    setForm(restoredForm);
+    pushHistory(restoredForm);
+  };
+
+  // Fetch existing article if editing or cloning
   const { data: existingArticle, isLoading: isLoadingArticle } = useQuery({
-    queryKey: ["article-edit", id],
+    queryKey: ["article-edit", id || cloneId],
     queryFn: async () => {
-      if (!id) return null;
+      const targetId = id || cloneId;
+      if (!targetId) return null;
       const { data, error } = await supabase
         .from("articles")
         .select("*")
-        .eq("id", id)
+        .eq("id", targetId)
         .maybeSingle();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
+    enabled: !!(id || cloneId),
   });
 
   // Populate form when editing
@@ -213,7 +291,12 @@ const ArticleEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Save version for history
+      if (isEditing && id) {
+        await saveContentVersion("article", id, form as unknown as Record<string, unknown>);
+      }
+      clearDraft();
       queryClient.invalidateQueries({ queryKey: ["articles"] });
       toast({
         title: isEditing ? "Article saved" : "Article created",
@@ -276,29 +359,61 @@ const ArticleEditor = () => {
   return (
     <AdminLayout>
       <div className="max-w-4xl space-y-6">
+        {/* Draft Recovery Banner */}
+        {hasDraft && draftTimestamp && (
+          <DraftRecoveryBanner
+            timestamp={draftTimestamp}
+            onRestore={handleRestoreDraft}
+            onDiscard={discardDraft}
+          />
+        )}
+
         {/* Header */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <button onClick={() => navigate("/admin/articles")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-3xl font-display flex-grow">
             {isEditing ? "Edit Article" : "New Article"}
           </h1>
-          <UndoRedoControls
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onUndo={undo}
-            onRedo={redo}
-          />
-          <div className="flex items-center gap-2">
-            <Switch
-              id="published"
-              checked={form.published}
-              onCheckedChange={(checked) => updateForm({ published: checked })}
+          
+          {/* Tools */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {!isEditing && (
+              <TemplateSelector
+                contentType="article"
+                onSelect={handleTemplateSelect}
+              />
+            )}
+            {isEditing && id && (
+              <VersionHistory
+                contentType="article"
+                contentId={id}
+                onRestore={handleVersionRestore}
+              />
+            )}
+            <SaveAsTemplateButton
+              contentType="article"
+              formData={form as unknown as Record<string, unknown>}
+              onSaved={() => toast({ title: "Template saved" })}
             />
-            <Label htmlFor="published" className="font-bold">
-              {form.published ? "Published" : "Draft"}
-            </Label>
+            <KeyboardShortcutsHelp />
+            <UndoRedoControls
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={undo}
+              onRedo={redo}
+            />
+            <div className="flex items-center gap-2">
+              <Switch
+                id="published"
+                checked={form.published}
+                onCheckedChange={(checked) => updateForm({ published: checked })}
+              />
+              <Label htmlFor="published" className="font-bold">
+                {form.published ? "Published" : "Draft"}
+              </Label>
+            </div>
           </div>
         </div>
 

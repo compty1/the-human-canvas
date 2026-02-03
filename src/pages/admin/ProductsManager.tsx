@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, ExternalLink, DollarSign, Package } from "lucide-react";
+import { Plus, Edit2, Trash2, ExternalLink, DollarSign, Package, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 
 const ProductsManager = () => {
   const queryClient = useQueryClient();
+  const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["admin-products"],
@@ -47,6 +49,16 @@ const ProductsManager = () => {
     archived: "bg-muted",
   };
 
+  const handleSelectAll = () => {
+    if (products) {
+      if (selectedIds.length === products.length) {
+        clearSelection();
+      } else {
+        selectAll(products.map((p) => p.id));
+      }
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -56,12 +68,23 @@ const ProductsManager = () => {
             <h1 className="text-3xl font-display">Products</h1>
             <p className="text-muted-foreground">Manage store products (Shopify-ready)</p>
           </div>
-          <Link to="/admin/products/new">
-            <PopButton>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </PopButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            {products && products.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                {selectedIds.length === products.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+            <Link to="/admin/products/new">
+              <PopButton>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </PopButton>
+            </Link>
+          </div>
         </div>
 
         {/* Shopify Notice */}
@@ -84,6 +107,13 @@ const ProductsManager = () => {
             {products.map((product) => (
               <ComicPanel key={product.id} className="p-4">
                 <div className="flex items-center gap-4">
+                  {/* Selection checkbox */}
+                  <SelectableCheckbox
+                    id={product.id}
+                    selectedIds={selectedIds}
+                    onToggle={toggleSelection}
+                  />
+
                   {/* Image */}
                   {product.images && product.images.length > 0 ? (
                     <div className="w-16 h-16 flex-shrink-0 border-2 border-foreground overflow-hidden">
@@ -164,6 +194,16 @@ const ProductsManager = () => {
             </Link>
           </ComicPanel>
         )}
+
+        {/* Bulk Actions Bar */}
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          tableName="products"
+          queryKey={["admin-products"]}
+          actions={["archive", "delete"]}
+          statusField="status"
+        />
       </div>
     </AdminLayout>
   );

@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 
 interface Favorite {
@@ -41,6 +42,7 @@ const typeColors: Record<string, string> = {
 
 const FavoritesManager = () => {
   const queryClient = useQueryClient();
+  const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
 
   const { data: favorites = [], isLoading } = useQuery({
     queryKey: ["admin-favorites"],
@@ -86,6 +88,14 @@ const FavoritesManager = () => {
 
   const currentlyEnjoying = favorites.filter(f => f.is_current);
 
+  const handleSelectAll = () => {
+    if (selectedIds.length === favorites.length) {
+      clearSelection();
+    } else {
+      selectAll(favorites.map((f) => f.id));
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -97,11 +107,22 @@ const FavoritesManager = () => {
             </h1>
             <p className="text-muted-foreground">Content you enjoy - art, music, movies, creators, and more</p>
           </div>
-          <Link to="/admin/favorites/new">
-            <PopButton>
-              <Plus className="w-4 h-4 mr-2" /> Add Favorite
-            </PopButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            {favorites.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                {selectedIds.length === favorites.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+            <Link to="/admin/favorites/new">
+              <PopButton>
+                <Plus className="w-4 h-4 mr-2" /> Add Favorite
+              </PopButton>
+            </Link>
+          </div>
         </div>
 
         {/* Stats by Type */}
@@ -154,9 +175,16 @@ const FavoritesManager = () => {
             {favorites.map((fav) => {
               const Icon = typeIcons[fav.type] || Star;
               return (
-                <ComicPanel key={fav.id} className="p-0 overflow-hidden">
+              <ComicPanel key={fav.id} className="p-0 overflow-hidden">
+                  <div className="absolute top-2 left-2 z-10">
+                    <SelectableCheckbox
+                      id={fav.id}
+                      selectedIds={selectedIds}
+                      onToggle={toggleSelection}
+                    />
+                  </div>
                   {fav.image_url && (
-                    <div className="aspect-video overflow-hidden">
+                    <div className="aspect-video overflow-hidden relative">
                       <img
                         src={fav.image_url}
                         alt={fav.title}
@@ -212,6 +240,15 @@ const FavoritesManager = () => {
             })}
           </div>
         )}
+
+        {/* Bulk Actions Bar */}
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          tableName="favorites"
+          queryKey={["admin-favorites"]}
+          actions={["delete"]}
+        />
       </div>
     </AdminLayout>
   );

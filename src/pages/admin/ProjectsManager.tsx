@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { 
@@ -13,7 +14,7 @@ import {
   ExternalLink, 
   Search,
   Eye,
-  EyeOff
+  CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +22,7 @@ const ProjectsManager = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const queryClient = useQueryClient();
+  const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["admin-projects"],
@@ -64,6 +66,16 @@ const ProjectsManager = () => {
     }
   };
 
+  const handleSelectAll = () => {
+    if (filteredProjects) {
+      if (selectedIds.length === filteredProjects.length) {
+        clearSelection();
+      } else {
+        selectAll(filteredProjects.map((p) => p.id));
+      }
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -73,11 +85,22 @@ const ProjectsManager = () => {
             <h1 className="text-4xl font-display">Projects</h1>
             <p className="text-muted-foreground">Manage your portfolio projects</p>
           </div>
-          <Link to="/admin/projects/new">
-            <PopButton>
-              <Plus className="w-4 h-4 mr-2" /> New Project
-            </PopButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            {filteredProjects && filteredProjects.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                {selectedIds.length === filteredProjects.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+            <Link to="/admin/projects/new">
+              <PopButton>
+                <Plus className="w-4 h-4 mr-2" /> New Project
+              </PopButton>
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}
@@ -120,6 +143,13 @@ const ProjectsManager = () => {
             {filteredProjects.map((project) => (
               <ComicPanel key={project.id} className="p-4">
                 <div className="flex items-start gap-4">
+                  {/* Selection checkbox */}
+                  <SelectableCheckbox
+                    id={project.id}
+                    selectedIds={selectedIds}
+                    onToggle={toggleSelection}
+                  />
+
                   {/* Thumbnail */}
                   {project.image_url && (
                     <img 
@@ -209,6 +239,16 @@ const ProjectsManager = () => {
             </Link>
           </ComicPanel>
         )}
+
+        {/* Bulk Actions Bar */}
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+          tableName="projects"
+          queryKey={["admin-projects"]}
+          actions={["archive", "delete"]}
+          statusField="status"
+        />
       </div>
     </AdminLayout>
   );
