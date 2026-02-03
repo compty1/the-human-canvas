@@ -168,6 +168,8 @@ const ArtworkEditor = () => {
                 <option value="graphic_design">Graphic Design</option>
                 <option value="mixed">Mixed Media</option>
                 <option value="photography">Photography</option>
+                <option value="sketch">Sketch</option>
+                <option value="colored">Colored</option>
               </select>
             </div>
 

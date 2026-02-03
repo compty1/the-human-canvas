@@ -44,6 +44,10 @@ const CATEGORIES = [
   "abstract",
   "digital",
   "traditional",
+  "sketch",
+  "colored",
+  "pop_art",
+  "graphic_design",
 ];
 
 export const BulkArtworkUploader = ({ onComplete, onCancel }: BulkArtworkUploaderProps) => {

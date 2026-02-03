@@ -148,6 +148,8 @@ export const BulkTextImporter = ({
       for (let i = 0; i < chunks.length; i++) {
         setProgress(((i + 1) / chunks.length) * 100);
 
+        console.log(`[BulkTextImporter] Processing chunk ${i + 1}/${chunks.length}`);
+        
         const { data, error } = await supabase.functions.invoke("generate-copy", {
           body: {
             type: "bulk_import",
@@ -156,6 +158,8 @@ export const BulkTextImporter = ({
             fields,
           },
         });
+
+        console.log("[BulkTextImporter] API Response:", { data, error });
 
         if (error) {
           console.error("Chunk analysis error:", error);
@@ -171,27 +175,60 @@ export const BulkTextImporter = ({
           throw error;
         }
 
-        if (data?.extracted) {
-          results.push(data.extracted);
+        // Handle different response formats from the edge function
+        let extractedData: Record<string, unknown> | null = null;
+        
+        if (data?.extracted && typeof data.extracted === "object") {
+          extractedData = data.extracted;
+          console.log("[BulkTextImporter] Found data.extracted:", extractedData);
         } else if (data?.content) {
           try {
             const parsed = JSON.parse(data.content);
-            results.push(parsed);
-          } catch {
-            // Skip unparseable chunks
+            extractedData = parsed;
+            console.log("[BulkTextImporter] Parsed data.content:", extractedData);
+          } catch (parseError) {
+            console.warn("[BulkTextImporter] Failed to parse data.content:", parseError);
           }
+        } else if (data && typeof data === "object" && !data.error) {
+          // The response might be the extracted data directly
+          const possibleData = { ...data };
+          delete possibleData.success;
+          if (Object.keys(possibleData).length > 0) {
+            extractedData = possibleData;
+            console.log("[BulkTextImporter] Using response as extracted data:", extractedData);
+          }
+        }
+
+        if (extractedData && Object.keys(extractedData).length > 0) {
+          results.push(extractedData);
+        } else {
+          console.warn(`[BulkTextImporter] Chunk ${i + 1} returned no extractable data`);
         }
       }
 
+      console.log("[BulkTextImporter] Total results:", results.length, results);
+
       if (results.length > 0) {
         const merged = mergeExtractedData(results);
+        console.log("[BulkTextImporter] Merged data:", merged);
+        
+        // Check if we actually extracted meaningful data
+        const extractedFieldCount = Object.keys(merged).filter(
+          key => merged[key] !== null && merged[key] !== undefined && merged[key] !== ""
+        ).length;
+        
+        if (extractedFieldCount === 0) {
+          toast.warning("AI couldn't extract specific fields. Try providing more structured content.");
+          return;
+        }
+        
         onImport(merged);
-        toast.success(`Content analyzed from ${chunks.length} chunk(s) and fields populated!`);
+        toast.success(`Extracted ${extractedFieldCount} field(s) from ${chunks.length} chunk(s)!`);
         setText("");
         setUploadedFile(null);
         setIsOpen(false);
       } else {
-        toast.error("No data extracted. Please try with more detailed text.");
+        toast.error("No data could be extracted. Please ensure your text contains relevant information for this content type.");
       }
     } catch (error) {
       console.error("Bulk import error:", error);
