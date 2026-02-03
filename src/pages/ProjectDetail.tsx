@@ -3,8 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, LikeButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, ArrowLeft, Heart, Check, Target, Lightbulb, Calendar } from "lucide-react";
+import { ExternalLink, ArrowLeft, Heart, Check, Target, Lightbulb, Calendar, DollarSign, Users, Layers, Accessibility } from "lucide-react";
 import { useState } from "react";
+
+interface ExpenseItem {
+  category: string;
+  description: string;
+  amount: number;
+  date?: string;
+}
+
+interface IncomeData {
+  revenue?: number;
+  user_count?: number;
+  sources?: string[];
+}
 
 // Helper to format date range
 const formatDateRange = (startDate?: string | null, endDate?: string | null, status?: string) => {
@@ -79,6 +92,23 @@ const ProjectDetail = () => {
     setLikeCount(prev => liked ? prev - 1 : prev + 1);
   };
 
+  // Parse financial data
+  const expenses = (project.expenses as unknown as ExpenseItem[]) || [];
+  const incomeData = (project.income_data as unknown as IncomeData) || {};
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const hasFinancialData = expenses.length > 0 || incomeData.revenue || incomeData.user_count;
+  
+  // Group expenses by category
+  const expensesByCategory = expenses.reduce((acc, expense) => {
+    acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Technical notes
+  const architectureNotes = (project as Record<string, unknown>).architecture_notes as string | null;
+  const accessibilityNotes = (project as Record<string, unknown>).accessibility_notes as string | null;
+  const hasTechnicalNotes = architectureNotes || accessibilityNotes;
+
   return (
     <Layout>
       {/* Hero */}
@@ -90,7 +120,7 @@ const ProjectDetail = () => {
           
           <div className="flex flex-wrap gap-3 mb-4">
             <div className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground ${
-              project.status === "live" ? "bg-pop-cyan" : project.status === "in_progress" ? "bg-pop-yellow" : "bg-muted"
+              project.status === "live" ? "bg-pop-teal text-background" : project.status === "in_progress" ? "bg-pop-gold" : "bg-muted"
             }`}>
               {project.status === "live" ? "Live" : project.status === "in_progress" ? "In Progress" : "Planned"}
             </div>
@@ -165,7 +195,7 @@ const ProjectDetail = () => {
               {project.problem_statement && (
                 <ComicPanel className="p-8">
                   <div className="flex items-center gap-3 mb-4">
-                    <Target className="w-8 h-8 text-pop-magenta" />
+                    <Target className="w-8 h-8 text-pop-terracotta" />
                     <h2 className="text-2xl font-display">The Problem</h2>
                   </div>
                   <p className="text-lg font-sans text-muted-foreground">
@@ -175,7 +205,7 @@ const ProjectDetail = () => {
               )}
               
               {project.solution_summary && (
-                <ComicPanel className="p-8 bg-pop-cyan">
+                <ComicPanel className="p-8 bg-pop-teal text-background">
                   <div className="flex items-center gap-3 mb-4">
                     <Lightbulb className="w-8 h-8" />
                     <h2 className="text-2xl font-display">The Solution</h2>
@@ -185,6 +215,82 @@ const ProjectDetail = () => {
                   </p>
                 </ComicPanel>
               )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Financial Transparency */}
+      {hasFinancialData && (
+        <section className="py-16 bg-pop-gold/10">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 mb-8">
+                <DollarSign className="w-8 h-8" />
+                <h2 className="text-4xl font-display">Project Investment</h2>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Expenses Breakdown */}
+                {expenses.length > 0 && (
+                  <ComicPanel className="p-6">
+                    <h3 className="text-xl font-display mb-4">Investment Breakdown</h3>
+                    <div className="space-y-3">
+                      {Object.entries(expensesByCategory).map(([category, amount]) => (
+                        <div key={category} className="flex justify-between items-center">
+                          <span className="font-sans">{category}</span>
+                          <span className="font-bold">${amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                      <div className="border-t-2 border-foreground pt-3 mt-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-lg">Total Invested</span>
+                          <span className="font-bold text-xl">${totalExpenses.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </ComicPanel>
+                )}
+
+                {/* Income & Metrics */}
+                {(incomeData.revenue || incomeData.user_count) && (
+                  <ComicPanel className="p-6 bg-pop-teal text-background">
+                    <h3 className="text-xl font-display mb-4">Results & Metrics</h3>
+                    <div className="space-y-4">
+                      {incomeData.revenue && (
+                        <div className="flex items-center gap-3">
+                          <DollarSign className="w-6 h-6" />
+                          <div>
+                            <div className="text-sm opacity-80">Revenue Generated</div>
+                            <div className="text-2xl font-bold">${incomeData.revenue.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      )}
+                      {incomeData.user_count && (
+                        <div className="flex items-center gap-3">
+                          <Users className="w-6 h-6" />
+                          <div>
+                            <div className="text-sm opacity-80">Active Users</div>
+                            <div className="text-2xl font-bold">{incomeData.user_count.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      )}
+                      {incomeData.sources && incomeData.sources.length > 0 && (
+                        <div className="pt-3 border-t border-background/30">
+                          <div className="text-sm opacity-80 mb-2">Revenue Sources</div>
+                          <div className="flex flex-wrap gap-2">
+                            {incomeData.sources.map((source) => (
+                              <span key={source} className="px-2 py-1 bg-background/20 text-sm font-bold">
+                                {source}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </ComicPanel>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -231,7 +337,7 @@ const ProjectDetail = () => {
       {project.tech_stack && project.tech_stack.length > 0 && (
         <section className="py-16 bg-foreground text-background">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-4xl font-display text-pop-yellow mb-8">Tech Stack</h2>
+            <h2 className="text-4xl font-display text-pop-gold mb-8">Tech Stack</h2>
             <div className="flex flex-wrap justify-center gap-3">
               {project.tech_stack.map((tech) => (
                 <span 
@@ -241,6 +347,42 @@ const ProjectDetail = () => {
                   {tech}
                 </span>
               ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Technical Notes */}
+      {hasTechnicalNotes && (
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-4xl font-display text-center mb-12">Technical Details</h2>
+              <div className="grid md:grid-cols-2 gap-8">
+                {architectureNotes && (
+                  <ComicPanel className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Layers className="w-6 h-6 text-pop-teal" />
+                      <h3 className="text-xl font-display">Architecture</h3>
+                    </div>
+                    <p className="font-sans text-muted-foreground whitespace-pre-wrap">
+                      {architectureNotes}
+                    </p>
+                  </ComicPanel>
+                )}
+                
+                {accessibilityNotes && (
+                  <ComicPanel className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Accessibility className="w-6 h-6 text-pop-terracotta" />
+                      <h3 className="text-xl font-display">Accessibility</h3>
+                    </div>
+                    <p className="font-sans text-muted-foreground whitespace-pre-wrap">
+                      {accessibilityNotes}
+                    </p>
+                  </ComicPanel>
+                )}
+              </div>
             </div>
           </div>
         </section>
