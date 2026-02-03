@@ -307,22 +307,44 @@ const ExperienceEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="description">Short Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="description">Short Description</Label>
+                <AIGenerateButton
+                  fieldName="description"
+                  fieldLabel="Description"
+                  contentType="experience"
+                  context={{ title: form.title, category: form.category }}
+                  currentValue={form.description}
+                  onGenerated={(value) => updateForm({ description: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="description"
                 value={form.description}
-                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => updateForm({ description: e.target.value })}
                 rows={2}
                 placeholder="Brief overview of this experience"
               />
             </div>
 
             <div>
-              <Label htmlFor="long_description">Full Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="long_description">Full Description</Label>
+                <AIGenerateButton
+                  fieldName="long_description"
+                  fieldLabel="Full Description"
+                  contentType="experience"
+                  context={{ title: form.title, category: form.category, description: form.description }}
+                  currentValue={form.long_description}
+                  onGenerated={(value) => updateForm({ long_description: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="long_description"
                 value={form.long_description}
-                onChange={(e) => setForm(prev => ({ ...prev, long_description: e.target.value }))}
+                onChange={(e) => updateForm({ long_description: e.target.value })}
                 rows={5}
                 placeholder="Detailed description of your experience, what you learned, and accomplishments"
               />

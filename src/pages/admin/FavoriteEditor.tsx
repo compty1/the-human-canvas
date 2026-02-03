@@ -375,21 +375,43 @@ const FavoriteEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="description">Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="description">Description</Label>
+                <AIGenerateButton
+                  fieldName="description"
+                  fieldLabel="Description"
+                  contentType="favorite"
+                  context={{ title: form.title, type: form.type, creator: form.creator_name }}
+                  currentValue={form.description}
+                  onGenerated={(value) => updateForm({ description: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="description"
                 value={form.description}
-                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => updateForm({ description: e.target.value })}
                 rows={3}
               />
             </div>
 
             <div>
-              <Label htmlFor="impact">How it affected me</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="impact">How it affected me</Label>
+                <AIGenerateButton
+                  fieldName="impact_statement"
+                  fieldLabel="Impact Statement"
+                  contentType="favorite"
+                  context={{ title: form.title, type: form.type, description: form.description }}
+                  currentValue={form.impact_statement}
+                  onGenerated={(value) => updateForm({ impact_statement: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="impact"
                 value={form.impact_statement}
-                onChange={(e) => setForm(prev => ({ ...prev, impact_statement: e.target.value }))}
+                onChange={(e) => updateForm({ impact_statement: e.target.value })}
                 rows={4}
                 placeholder="Describe how this content impacted or inspired you..."
               />

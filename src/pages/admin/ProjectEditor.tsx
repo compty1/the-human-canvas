@@ -5,6 +5,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
+import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +19,48 @@ import {
   X,
   Loader2,
   Github,
-  Camera
+  Camera,
+  DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
+
+interface ExpenseItem {
+  category: string;
+  description: string;
+  amount: number;
+  date?: string;
+}
+
+interface IncomeData {
+  revenue?: number;
+  user_count?: number;
+  sources?: string[];
+}
+
+interface FormState {
+  title: string;
+  slug: string;
+  description: string;
+  long_description: string;
+  status: "live" | "in_progress" | "planned" | "finishing_stages" | "final_review";
+  external_url: string;
+  github_url: string;
+  image_url: string;
+  tech_stack: string[];
+  features: string[];
+  screenshots: string[];
+  problem_statement: string;
+  solution_summary: string;
+  case_study: string;
+  funding_goal: string;
+  admin_notes: string;
+  architecture_notes: string;
+  accessibility_notes: string;
+  start_date: string;
+  end_date: string;
+  expenses: ExpenseItem[];
+  income_data: IncomeData;
+}
 
 const ProjectEditor = () => {
   const { id } = useParams();
@@ -27,18 +68,18 @@ const ProjectEditor = () => {
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     title: "",
     slug: "",
     description: "",
     long_description: "",
-    status: "planned" as "live" | "in_progress" | "planned" | "finishing_stages" | "final_review",
+    status: "planned",
     external_url: "",
     github_url: "",
     image_url: "",
-    tech_stack: [] as string[],
-    features: [] as string[],
-    screenshots: [] as string[],
+    tech_stack: [],
+    features: [],
+    screenshots: [],
     problem_statement: "",
     solution_summary: "",
     case_study: "",
@@ -48,12 +89,63 @@ const ProjectEditor = () => {
     accessibility_notes: "",
     start_date: "",
     end_date: "",
+    expenses: [],
+    income_data: {},
   });
 
   const [newTech, setNewTech] = useState("");
   const [newFeature, setNewFeature] = useState("");
   const [analyzing, setAnalyzing] = useState<string>("");
   const [capturingScreenshots, setCapturingScreenshots] = useState(false);
+  const [newExpense, setNewExpense] = useState({ category: "", description: "", amount: "" });
+  const [newIncomeSource, setNewIncomeSource] = useState("");
+
+  // Undo/Redo history
+  const [history, setHistory] = useState<FormState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  const pushHistory = (newForm: FormState) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newForm);
+    if (newHistory.length > 50) newHistory.shift();
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  const undo = () => {
+    if (canUndo) {
+      setHistoryIndex(prev => prev - 1);
+      setForm(history[historyIndex - 1]);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setHistoryIndex(prev => prev + 1);
+      setForm(history[historyIndex + 1]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey && canRedo) redo();
+        else if (!e.shiftKey && canUndo) undo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canUndo, canRedo, historyIndex, history]);
+
+  const updateForm = (updates: Partial<FormState>) => {
+    const newForm = { ...form, ...updates };
+    setForm(newForm);
+    pushHistory(newForm);
+  };
 
   // Load existing project
   const { data: project, isLoading } = useQuery({
@@ -73,7 +165,7 @@ const ProjectEditor = () => {
 
   useEffect(() => {
     if (project) {
-      setForm({
+      const initialForm: FormState = {
         title: project.title || "",
         slug: project.slug || "",
         description: project.description || "",
@@ -94,25 +186,53 @@ const ProjectEditor = () => {
         accessibility_notes: (project as Record<string, unknown>).accessibility_notes as string || "",
         start_date: (project as Record<string, unknown>).start_date as string || "",
         end_date: (project as Record<string, unknown>).end_date as string || "",
-      });
+        expenses: (project.expenses as unknown as ExpenseItem[]) || [],
+        income_data: (project.income_data as unknown as IncomeData) || {},
+      };
+      setForm(initialForm);
+      setHistory([initialForm]);
+      setHistoryIndex(0);
+    } else if (!isEditing) {
+      setHistory([form]);
+      setHistoryIndex(0);
     }
-  }, [project]);
+  }, [project, isEditing]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const data = {
-        ...form,
+      const saveData = {
+        title: form.title,
+        slug: form.slug,
+        description: form.description,
+        long_description: form.long_description,
+        status: form.status,
+        external_url: form.external_url,
+        github_url: form.github_url,
+        image_url: form.image_url,
+        tech_stack: form.tech_stack,
+        features: form.features,
+        screenshots: form.screenshots,
+        problem_statement: form.problem_statement,
+        solution_summary: form.solution_summary,
+        case_study: form.case_study,
         funding_goal: form.funding_goal ? parseFloat(form.funding_goal) : null,
+        admin_notes: form.admin_notes,
+        architecture_notes: form.architecture_notes,
+        accessibility_notes: form.accessibility_notes,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        expenses: form.expenses.length > 0 ? JSON.parse(JSON.stringify(form.expenses)) : null,
+        income_data: Object.keys(form.income_data).length > 0 ? JSON.parse(JSON.stringify(form.income_data)) : null,
       };
 
       if (isEditing) {
         const { error } = await supabase
           .from("projects")
-          .update(data)
+          .update(saveData)
           .eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("projects").insert(data);
+        const { error } = await supabase.from("projects").insert(saveData);
         if (error) throw error;
       }
     },
@@ -142,16 +262,15 @@ const ProjectEditor = () => {
       if (error) throw error;
 
       if (data) {
-        setForm(prev => ({
-          ...prev,
-          title: data.title || prev.title,
-          description: data.description || prev.description,
-          long_description: data.long_description || prev.long_description,
-          tech_stack: data.tech_stack || prev.tech_stack,
-          features: data.features || prev.features,
-          problem_statement: data.problem_statement || prev.problem_statement,
-          solution_summary: data.solution_summary || prev.solution_summary,
-        }));
+        updateForm({
+          title: data.title || form.title,
+          description: data.description || form.description,
+          long_description: data.long_description || form.long_description,
+          tech_stack: data.tech_stack || form.tech_stack,
+          features: data.features || form.features,
+          problem_statement: data.problem_statement || form.problem_statement,
+          solution_summary: data.solution_summary || form.solution_summary,
+        });
         toast.success("Site analyzed! Fields updated.");
       }
     } catch (error) {
@@ -177,17 +296,16 @@ const ProjectEditor = () => {
       if (error) throw error;
 
       if (data) {
-        setForm(prev => ({
-          ...prev,
-          title: data.title || prev.title,
-          description: data.description || prev.description,
-          long_description: data.long_description || prev.long_description,
-          tech_stack: [...new Set([...prev.tech_stack, ...(data.tech_stack || [])])],
-          features: [...new Set([...prev.features, ...(data.features || [])])],
-          problem_statement: data.problem_statement || prev.problem_statement,
-          solution_summary: data.solution_summary || prev.solution_summary,
-          external_url: data.external_url || prev.external_url,
-        }));
+        updateForm({
+          title: data.title || form.title,
+          description: data.description || form.description,
+          long_description: data.long_description || form.long_description,
+          tech_stack: [...new Set([...form.tech_stack, ...(data.tech_stack || [])])],
+          features: [...new Set([...form.features, ...(data.features || [])])],
+          problem_statement: data.problem_statement || form.problem_statement,
+          solution_summary: data.solution_summary || form.solution_summary,
+          external_url: data.external_url || form.external_url,
+        });
         toast.success("GitHub repository analyzed!");
       }
     } catch (error) {
@@ -214,10 +332,9 @@ const ProjectEditor = () => {
       if (error) throw error;
 
       if (data?.screenshots && data.screenshots.length > 0) {
-        setForm(prev => ({
-          ...prev,
-          screenshots: [...new Set([...prev.screenshots, ...data.screenshots])],
-        }));
+        updateForm({
+          screenshots: [...new Set([...form.screenshots, ...data.screenshots])],
+        });
         toast.success(`Captured ${data.screenshots.length} screenshots!`);
       } else {
         toast.info("No screenshots could be captured from this URL");
@@ -232,24 +349,24 @@ const ProjectEditor = () => {
 
   const addTech = () => {
     if (newTech && !form.tech_stack.includes(newTech)) {
-      setForm(prev => ({ ...prev, tech_stack: [...prev.tech_stack, newTech] }));
+      updateForm({ tech_stack: [...form.tech_stack, newTech] });
       setNewTech("");
     }
   };
 
   const removeTech = (tech: string) => {
-    setForm(prev => ({ ...prev, tech_stack: prev.tech_stack.filter(t => t !== tech) }));
+    updateForm({ tech_stack: form.tech_stack.filter(t => t !== tech) });
   };
 
   const addFeature = () => {
     if (newFeature && !form.features.includes(newFeature)) {
-      setForm(prev => ({ ...prev, features: [...prev.features, newFeature] }));
+      updateForm({ features: [...form.features, newFeature] });
       setNewFeature("");
     }
   };
 
   const removeFeature = (feature: string) => {
-    setForm(prev => ({ ...prev, features: prev.features.filter(f => f !== feature) }));
+    updateForm({ features: form.features.filter(f => f !== feature) });
   };
 
   const generateSlug = () => {
@@ -257,7 +374,50 @@ const ProjectEditor = () => {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
-    setForm(prev => ({ ...prev, slug }));
+    updateForm({ slug });
+  };
+
+  // Expense management
+  const addExpense = () => {
+    if (newExpense.category && newExpense.amount) {
+      updateForm({
+        expenses: [...form.expenses, {
+          category: newExpense.category,
+          description: newExpense.description,
+          amount: parseFloat(newExpense.amount),
+          date: new Date().toISOString().split('T')[0],
+        }]
+      });
+      setNewExpense({ category: "", description: "", amount: "" });
+    }
+  };
+
+  const removeExpense = (index: number) => {
+    updateForm({ expenses: form.expenses.filter((_, i) => i !== index) });
+  };
+
+  const totalExpenses = form.expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Income source management
+  const addIncomeSource = () => {
+    if (newIncomeSource) {
+      updateForm({
+        income_data: {
+          ...form.income_data,
+          sources: [...(form.income_data.sources || []), newIncomeSource],
+        }
+      });
+      setNewIncomeSource("");
+    }
+  };
+
+  const removeIncomeSource = (source: string) => {
+    updateForm({
+      income_data: {
+        ...form.income_data,
+        sources: (form.income_data.sources || []).filter(s => s !== source),
+      }
+    });
   };
 
   if (isLoading) {
@@ -279,9 +439,15 @@ const ProjectEditor = () => {
           <button onClick={() => navigate("/admin/projects")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-grow">
             <h1 className="text-3xl font-display">{isEditing ? "Edit Project" : "New Project"}</h1>
           </div>
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+          />
         </div>
 
         {/* URL Analyzer */}
@@ -294,7 +460,7 @@ const ProjectEditor = () => {
                 <Input
                   id="url"
                   value={form.external_url}
-                  onChange={(e) => setForm(prev => ({ ...prev, external_url: e.target.value }))}
+                  onChange={(e) => updateForm({ external_url: e.target.value })}
                   placeholder="https://yourproject.com"
                 />
               </div>
@@ -314,7 +480,7 @@ const ProjectEditor = () => {
                 <Input
                   id="github_url"
                   value={form.github_url}
-                  onChange={(e) => setForm(prev => ({ ...prev, github_url: e.target.value }))}
+                  onChange={(e) => updateForm({ github_url: e.target.value })}
                   placeholder="https://github.com/user/repo"
                 />
               </div>
@@ -355,16 +521,15 @@ const ProjectEditor = () => {
           <BulkTextImporter
             contentType="project"
             onImport={(data) => {
-              setForm(prev => ({
-                ...prev,
-                title: (data.title as string) || prev.title,
-                description: (data.description as string) || prev.description,
-                long_description: (data.long_description as string) || prev.long_description,
-                tech_stack: (data.tech_stack as string[]) || prev.tech_stack,
-                features: (data.features as string[]) || prev.features,
-                problem_statement: (data.problem_statement as string) || prev.problem_statement,
-                solution_summary: (data.solution_summary as string) || prev.solution_summary,
-              }));
+              updateForm({
+                title: (data.title as string) || form.title,
+                description: (data.description as string) || form.description,
+                long_description: (data.long_description as string) || form.long_description,
+                tech_stack: (data.tech_stack as string[]) || form.tech_stack,
+                features: (data.features as string[]) || form.features,
+                problem_statement: (data.problem_statement as string) || form.problem_statement,
+                solution_summary: (data.solution_summary as string) || form.solution_summary,
+              });
             }}
           />
         </ComicPanel>
@@ -379,7 +544,7 @@ const ProjectEditor = () => {
                 <Input
                   id="title"
                   value={form.title}
-                  onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => updateForm({ title: e.target.value })}
                   onBlur={() => !form.slug && generateSlug()}
                 />
               </div>
@@ -389,7 +554,7 @@ const ProjectEditor = () => {
                   <Input
                     id="slug"
                     value={form.slug}
-                    onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
+                    onChange={(e) => updateForm({ slug: e.target.value })}
                   />
                   <button onClick={generateSlug} className="px-3 py-2 bg-muted hover:bg-accent border-2 border-foreground text-sm">
                     Generate
@@ -399,21 +564,43 @@ const ProjectEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="description">Short Description *</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="description">Short Description *</Label>
+                <AIGenerateButton
+                  fieldName="description"
+                  fieldLabel="Description"
+                  contentType="project"
+                  context={{ title: form.title }}
+                  currentValue={form.description}
+                  onGenerated={(value) => updateForm({ description: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="description"
                 value={form.description}
-                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => updateForm({ description: e.target.value })}
                 rows={2}
               />
             </div>
 
             <div>
-              <Label htmlFor="long_description">Long Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="long_description">Long Description</Label>
+                <AIGenerateButton
+                  fieldName="long_description"
+                  fieldLabel="Long Description"
+                  contentType="project"
+                  context={{ title: form.title, description: form.description }}
+                  currentValue={form.long_description}
+                  onGenerated={(value) => updateForm({ long_description: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="long_description"
                 value={form.long_description}
-                onChange={(e) => setForm(prev => ({ ...prev, long_description: e.target.value }))}
+                onChange={(e) => updateForm({ long_description: e.target.value })}
                 rows={4}
               />
             </div>
@@ -424,7 +611,7 @@ const ProjectEditor = () => {
                 <select
                   id="status"
                   value={form.status}
-                  onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value as typeof form.status }))}
+                  onChange={(e) => updateForm({ status: e.target.value as FormState["status"] })}
                   className="w-full h-10 px-3 border-2 border-input bg-background"
                 >
                   <option value="planned">Planned</option>
@@ -440,7 +627,7 @@ const ProjectEditor = () => {
                   id="funding_goal"
                   type="number"
                   value={form.funding_goal}
-                  onChange={(e) => setForm(prev => ({ ...prev, funding_goal: e.target.value }))}
+                  onChange={(e) => updateForm({ funding_goal: e.target.value })}
                 />
               </div>
             </div>
@@ -453,7 +640,7 @@ const ProjectEditor = () => {
                   id="start_date"
                   type="date"
                   value={form.start_date}
-                  onChange={(e) => setForm(prev => ({ ...prev, start_date: e.target.value }))}
+                  onChange={(e) => updateForm({ start_date: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground mt-1">When did this project begin?</p>
               </div>
@@ -463,7 +650,7 @@ const ProjectEditor = () => {
                   id="end_date"
                   type="date"
                   value={form.end_date}
-                  onChange={(e) => setForm(prev => ({ ...prev, end_date: e.target.value }))}
+                  onChange={(e) => updateForm({ end_date: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground mt-1">When was it completed or launched?</p>
               </div>
@@ -472,7 +659,7 @@ const ProjectEditor = () => {
             {/* Featured Image Upload */}
             <ImageUploader
               value={form.image_url}
-              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+              onChange={(url) => updateForm({ image_url: url })}
               label="Featured Image"
               folder="projects"
             />
@@ -480,7 +667,7 @@ const ProjectEditor = () => {
             {/* Screenshots Gallery */}
             <MultiImageUploader
               value={form.screenshots}
-              onChange={(urls) => setForm(prev => ({ ...prev, screenshots: urls }))}
+              onChange={(urls) => updateForm({ screenshots: urls })}
               label="Screenshots"
               folder="projects/screenshots"
               maxImages={8}
@@ -493,20 +680,42 @@ const ProjectEditor = () => {
           <h2 className="text-xl font-display mb-4">Problem & Solution</h2>
           <div className="grid gap-4">
             <div>
-              <Label htmlFor="problem_statement">Problem Statement</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="problem_statement">Problem Statement</Label>
+                <AIGenerateButton
+                  fieldName="problem_statement"
+                  fieldLabel="Problem Statement"
+                  contentType="project"
+                  context={{ title: form.title, description: form.description }}
+                  currentValue={form.problem_statement}
+                  onGenerated={(value) => updateForm({ problem_statement: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="problem_statement"
                 value={form.problem_statement}
-                onChange={(e) => setForm(prev => ({ ...prev, problem_statement: e.target.value }))}
+                onChange={(e) => updateForm({ problem_statement: e.target.value })}
                 rows={3}
               />
             </div>
             <div>
-              <Label htmlFor="solution_summary">Solution Summary</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="solution_summary">Solution Summary</Label>
+                <AIGenerateButton
+                  fieldName="solution_summary"
+                  fieldLabel="Solution Summary"
+                  contentType="project"
+                  context={{ title: form.title, description: form.description, problem: form.problem_statement }}
+                  currentValue={form.solution_summary}
+                  onGenerated={(value) => updateForm({ solution_summary: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="solution_summary"
                 value={form.solution_summary}
-                onChange={(e) => setForm(prev => ({ ...prev, solution_summary: e.target.value }))}
+                onChange={(e) => updateForm({ solution_summary: e.target.value })}
                 rows={3}
               />
             </div>
@@ -565,12 +774,148 @@ const ProjectEditor = () => {
           </div>
         </ComicPanel>
 
+        {/* Financial Tracking */}
+        <ComicPanel className="p-6 bg-pop-gold/10">
+          <div className="flex items-center gap-2 mb-4">
+            <DollarSign className="w-6 h-6" />
+            <h2 className="text-xl font-display">Financial Tracking</h2>
+          </div>
+          
+          {/* Expenses */}
+          <div className="mb-6">
+            <Label className="text-lg font-bold mb-3 block">Expenses</Label>
+            {form.expenses.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {form.expenses.map((expense, i) => (
+                  <div key={i} className="flex items-center gap-2 p-3 bg-background border-2 border-foreground">
+                    <span className="font-bold text-sm">{expense.category}</span>
+                    <span className="flex-grow text-sm text-muted-foreground">{expense.description}</span>
+                    <span className="font-bold">${expense.amount.toLocaleString()}</span>
+                    <button onClick={() => removeExpense(i)} className="p-1 hover:text-destructive">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <div className="text-right font-bold text-lg border-t-2 border-foreground pt-2">
+                  Total: ${totalExpenses.toLocaleString()}
+                </div>
+              </div>
+            )}
+            <div className="grid md:grid-cols-4 gap-2">
+              <Input
+                value={newExpense.category}
+                onChange={(e) => setNewExpense(prev => ({ ...prev, category: e.target.value }))}
+                placeholder="Category"
+              />
+              <Input
+                value={newExpense.description}
+                onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Description"
+                className="md:col-span-2"
+              />
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={newExpense.amount}
+                  onChange={(e) => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="Amount"
+                />
+                <button onClick={addExpense} className="p-2 bg-muted hover:bg-accent border-2 border-foreground">
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Income Data */}
+          <div>
+            <Label className="text-lg font-bold mb-3 block">Income & Metrics</Label>
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label htmlFor="revenue">Revenue ($)</Label>
+                <Input
+                  id="revenue"
+                  type="number"
+                  value={form.income_data.revenue || ""}
+                  onChange={(e) => updateForm({
+                    income_data: { ...form.income_data, revenue: e.target.value ? parseFloat(e.target.value) : undefined }
+                  })}
+                  placeholder="Total revenue generated"
+                />
+              </div>
+              <div>
+                <Label htmlFor="user_count">User Count</Label>
+                <Input
+                  id="user_count"
+                  type="number"
+                  value={form.income_data.user_count || ""}
+                  onChange={(e) => updateForm({
+                    income_data: { ...form.income_data, user_count: e.target.value ? parseInt(e.target.value) : undefined }
+                  })}
+                  placeholder="Number of users"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Revenue Sources</Label>
+              <div className="flex flex-wrap gap-2 mb-2 mt-1">
+                {(form.income_data.sources || []).map((source) => (
+                  <span key={source} className="inline-flex items-center gap-1 px-3 py-1 bg-muted border-2 border-foreground text-sm">
+                    {source}
+                    <button onClick={() => removeIncomeSource(source)} className="hover:text-destructive">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newIncomeSource}
+                  onChange={(e) => setNewIncomeSource(e.target.value)}
+                  placeholder="e.g., Subscriptions, Ads, Sales"
+                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addIncomeSource())}
+                />
+                <button onClick={addIncomeSource} className="p-2 bg-muted hover:bg-accent border-2 border-foreground">
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </ComicPanel>
+
+        {/* Technical Notes */}
+        <ComicPanel className="p-6">
+          <h2 className="text-xl font-display mb-4">Technical Notes</h2>
+          <div className="grid gap-4">
+            <div>
+              <Label htmlFor="architecture_notes">Architecture Notes</Label>
+              <Textarea
+                id="architecture_notes"
+                value={form.architecture_notes}
+                onChange={(e) => updateForm({ architecture_notes: e.target.value })}
+                rows={3}
+                placeholder="System architecture, design decisions, patterns used..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="accessibility_notes">Accessibility Notes</Label>
+              <Textarea
+                id="accessibility_notes"
+                value={form.accessibility_notes}
+                onChange={(e) => updateForm({ accessibility_notes: e.target.value })}
+                rows={3}
+                placeholder="Accessibility features, WCAG compliance, screen reader support..."
+              />
+            </div>
+          </div>
+        </ComicPanel>
+
         {/* Admin Notes */}
         <ComicPanel className="p-6 bg-pop-yellow/10">
           <h2 className="text-xl font-display mb-4">Admin Notes (Private)</h2>
           <Textarea
             value={form.admin_notes}
-            onChange={(e) => setForm(prev => ({ ...prev, admin_notes: e.target.value }))}
+            onChange={(e) => updateForm({ admin_notes: e.target.value })}
             rows={4}
             placeholder="Internal notes, next steps, ideas..."
           />
