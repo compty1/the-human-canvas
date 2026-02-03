@@ -42,8 +42,9 @@ interface FormState {
   slug: string;
   description: string;
   long_description: string;
-  status: "live" | "in_progress" | "planned" | "finishing_stages" | "final_review";
+  status: "live" | "in_progress" | "planned" | "final_review";
   external_url: string;
+  logo_url: string;
   github_url: string;
   image_url: string;
   tech_stack: string[];
@@ -75,6 +76,7 @@ const ProjectEditor = () => {
     long_description: "",
     status: "planned",
     external_url: "",
+    logo_url: "",
     github_url: "",
     image_url: "",
     tech_stack: [],
@@ -165,13 +167,16 @@ const ProjectEditor = () => {
 
   useEffect(() => {
     if (project) {
+      // Handle legacy finishing_stages status by mapping to in_progress
+      const projectStatus = project.status === 'finishing_stages' ? 'in_progress' : project.status;
       const initialForm: FormState = {
         title: project.title || "",
         slug: project.slug || "",
         description: project.description || "",
         long_description: project.long_description || "",
-        status: project.status || "planned",
+        status: (projectStatus as FormState['status']) || "planned",
         external_url: project.external_url || "",
+        logo_url: project.logo_url || "",
         github_url: (project as Record<string, unknown>).github_url as string || "",
         image_url: project.image_url || "",
         tech_stack: project.tech_stack || [],
@@ -207,6 +212,7 @@ const ProjectEditor = () => {
         long_description: form.long_description,
         status: form.status,
         external_url: form.external_url,
+        logo_url: form.logo_url,
         github_url: form.github_url,
         image_url: form.image_url,
         tech_stack: form.tech_stack,
@@ -270,6 +276,7 @@ const ProjectEditor = () => {
           features: data.features || form.features,
           problem_statement: data.problem_statement || form.problem_statement,
           solution_summary: data.solution_summary || form.solution_summary,
+          logo_url: data.logo_url || form.logo_url, // Auto-fetch logo
         });
         toast.success("Site analyzed! Fields updated.");
       }
@@ -616,7 +623,6 @@ const ProjectEditor = () => {
                 >
                   <option value="planned">Planned</option>
                   <option value="in_progress">In Progress</option>
-                  <option value="finishing_stages">Finishing Stages</option>
                   <option value="final_review">Final Review</option>
                   <option value="live">Live</option>
                 </select>
@@ -653,6 +659,27 @@ const ProjectEditor = () => {
                   onChange={(e) => updateForm({ end_date: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground mt-1">When was it completed or launched?</p>
+              </div>
+            </div>
+
+            {/* Project Logo */}
+            <div>
+              <Label>Project Logo</Label>
+              <p className="text-xs text-muted-foreground mb-2">Auto-fetched from URL or upload manually</p>
+              <div className="flex gap-4 items-start">
+                {form.logo_url && (
+                  <div className="w-16 h-16 border-2 border-foreground p-1 flex-shrink-0">
+                    <img src={form.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <ImageUploader
+                    value={form.logo_url}
+                    onChange={(url) => updateForm({ logo_url: url })}
+                    label=""
+                    folder="projects/logos"
+                  />
+                </div>
               </div>
             </div>
 
