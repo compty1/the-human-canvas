@@ -58,6 +58,13 @@ export const streamingPlatforms: Record<string, StreamingPlatform> = {
     urlPrefix: ["https://www.amazon.com/", "https://www.primevideo.com/"],
     category: 'video'
   },
+  prime_video: {
+    name: "Prime Video",
+    icon: "📦",
+    color: "#00A8E1",
+    urlPrefix: ["https://www.amazon.com/gp/video/", "https://www.primevideo.com/"],
+    category: 'video'
+  },
   disney_plus: {
     name: "Disney+",
     icon: "✨",
@@ -72,11 +79,25 @@ export const streamingPlatforms: Record<string, StreamingPlatform> = {
     urlPrefix: "https://www.max.com/",
     category: 'video'
   },
+  max: {
+    name: "Max",
+    icon: "🎭",
+    color: "#002BE7",
+    urlPrefix: "https://www.max.com/",
+    category: 'video'
+  },
   apple_tv: {
     name: "Apple TV+",
     icon: "📱",
     color: "#000000",
     urlPrefix: "https://tv.apple.com/",
+    category: 'video'
+  },
+  youtube: {
+    name: "YouTube",
+    icon: "▶️",
+    color: "#FF0000",
+    urlPrefix: ["https://www.youtube.com/", "https://youtube.com/"],
     category: 'video'
   },
   // Podcast Platforms
