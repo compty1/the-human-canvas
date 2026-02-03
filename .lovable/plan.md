@@ -1,340 +1,330 @@
 
-# Comprehensive Enhancement Plan
 
-## Overview
+# Visual Aesthetic Overhaul Plan
 
-This plan addresses multiple feature requests to enhance the portfolio platform:
+## Analysis of Current Design
 
-1. **Multiple images for inspirations** with admin multi-upload support
-2. **Auto-generate/regenerate AI buttons** across all content editors
-3. **Undo/Redo functionality** for content editing
-4. **New project statuses**: "Finishing Stages" and "Final Review"
-5. **Drag-to-reorder** inspirations with automatic order swapping
+### Current Color Palette
+The existing palette uses classic pop art colors:
+- **Primary**: Bright yellow (`50 99% 49%`) - electric, attention-grabbing
+- **Secondary**: Cyan (`188 100% 50%`) - vibrant blue
+- **Accent**: Magenta (`328 100% 54%`) - hot pink
+- **Background**: Near-white (`0 0% 98%`)
+- **Foreground**: Near-black (`0 0% 5%`)
 
----
+### Current Typography
+- **Display/Headings**: Bangers (comic book style)
+- **Secondary Headings**: Bebas Neue (condensed sans)
+- **Body**: Inter (clean sans-serif)
 
-## 1. Multiple Images for Inspirations
+### Uploaded Artwork Analysis
+Based on the 10 uploaded images, I see a cohesive aesthetic:
 
-### Database Migration
+1. **Anarchist King** - Bold red/gold throne portrait with regal contrast
+2. **Blue Shirt** - Muted blues, earthy warmth
+3. **Crack or Tweak** - Surrealist with earth tones and rust
+4. **Masked Figure** - Dark, moody, contemplative
+5. **Peace Love Collage** - Vibrant collage with mixed media feel
+6. **Waving Portrait** - Warm sepia and vintage tones
+7. **Medusa Hair** - Organic, flowing, earthy greens and browns
+8. **Flower Pot Head** - Surreal, botanical, terracotta and green
+9. **Bandage Face** - Raw, textured, cream and earth tones
+10. **Ribbon Feet** - Soft, ethereal, muted pastels
 
-Add `images` array column to the `inspirations` table:
-
-```sql
-ALTER TABLE inspirations ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
-```
-
-The existing `image_url` column will remain for backward compatibility (used as primary/cover image), while `images` stores additional images.
-
-### Admin Editor Changes
-
-**File: `src/pages/admin/InspirationEditor.tsx`**
-
-- Add `MultiImageUploader` component alongside the existing single ImageUploader
-- Update form state to include `images: []`
-- Save both `image_url` (cover) and `images` (gallery) to database
-
-### Public Page Changes
-
-**File: `src/pages/InspirationDetail.tsx`**
-
-- Display image gallery when multiple images exist
-- Create a scrollable gallery or grid layout
+### Observed Color Themes in Artwork
+The artwork features:
+- **Earth tones**: Terracotta, rust, ochre, sienna
+- **Warm neutrals**: Cream, beige, parchment
+- **Deep accents**: Burgundy, forest green, navy
+- **Vintage quality**: Aged paper, sepia undertones
 
 ---
 
-## 2. AI Auto-Generate/Regenerate Buttons
+## Proposed Color Palette Revision
 
-### New Component: `AIGenerateButton.tsx`
+### New "Gallery Warmth" Palette
 
-**File: `src/components/admin/AIGenerateButton.tsx`**
-
-A reusable component that:
-- Shows "Generate" for empty fields, "Regenerate" if content exists
-- Calls the AI assistant edge function with field-specific prompts
-- Displays loading state during generation
-- Returns generated content via callback
+Shifting from pure pop art primaries to a more sophisticated, artwork-aligned palette that still maintains energy:
 
 ```text
-+-------------------------------------------+
-| [Sparkles icon] Generate Description      |
-+-------------------------------------------+
+┌─────────────────────────────────────────────────────────┐
+│  PROPOSED COLOR SYSTEM                                  │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  PRIMARY: Warm Gold         #E8A838 (38 78% 56%)       │
+│  ████████████████████████                              │
+│  (Replaces electric yellow - warmer, more refined)     │
+│                                                         │
+│  SECONDARY: Deep Teal       #2A7B7B (180 50% 32%)      │
+│  ████████████████████████                              │
+│  (Replaces bright cyan - moodier, artistic)            │
+│                                                         │
+│  ACCENT: Terracotta         #C45D3A (15 55% 50%)       │
+│  ████████████████████████                              │
+│  (Replaces magenta - earthy, warm, matches art)        │
+│                                                         │
+│  HIGHLIGHT: Cream           #FAF6E9 (45 50% 95%)       │
+│  ████████████████████████                              │
+│  (Background with warm undertone)                      │
+│                                                         │
+│  CONTRAST: Rich Navy        #1A2A3A (210 40% 17%)      │
+│  ████████████████████████                              │
+│  (Deep shadow color for drama)                         │
+│                                                         │
+│  POP ACCENTS (for highlights):                         │
+│  - Rust:      #B54729                                  │
+│  - Ochre:     #D4A843                                  │
+│  - Sage:      #7A9B76                                  │
+│  - Burgundy:  #722F37                                  │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Integration Points
+### Typography Enhancement
 
-Add the AIGenerateButton to these content editors:
+Keep the current fonts but adjust usage:
+- **Bangers**: Reserved for major headlines only (Hero, section titles)
+- **Bebas Neue**: Subheadings, captions, labels
+- **Inter**: Body text (unchanged)
 
-| Editor | Fields to Auto-Generate |
-|--------|------------------------|
-| `InspirationEditor.tsx` | description, detailed_content |
-| `ArticleEditor.tsx` | excerpt, content |
-| `ProjectEditor.tsx` | description, long_description, problem_statement, solution_summary |
-| `ExperienceEditor.tsx` | description, long_description |
-| `CertificationEditor.tsx` | description |
-| `FavoriteEditor.tsx` | description, impact_statement |
-| `UpdateEditor.tsx` | content |
-
-### Edge Function Enhancement
-
-**File: `supabase/functions/ai-assistant/index.ts`**
-
-Add a `generateField` action type that accepts:
-- `fieldName`: which field to generate
-- `context`: existing form data for context
-- `contentType`: type of content being edited
-
-Returns field-specific generated text.
+Add a new accent font option:
+- **Playfair Display**: For quotes, pullouts, and editorial moments (adds sophistication)
 
 ---
 
-## 3. Undo/Redo Functionality
+## Visual Component Enhancements
 
-### Approach: Form History Stack
+### 1. Hero Background Redesign
 
-Create a custom hook that tracks form state changes:
-
-**File: `src/hooks/useFormHistory.ts`**
-
-```typescript
-export const useFormHistory = <T>(initialState: T) => {
-  const [history, setHistory] = useState<T[]>([initialState]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  
-  const canUndo = currentIndex > 0;
-  const canRedo = currentIndex < history.length - 1;
-  
-  const undo = () => { ... };
-  const redo = () => { ... };
-  const pushState = (newState: T) => { ... };
-  
-  return { current, canUndo, canRedo, undo, redo, pushState };
-};
-```
-
-### UI Component: `UndoRedoControls.tsx`
-
-**File: `src/components/admin/UndoRedoControls.tsx`**
-
-A simple toolbar component:
+**Current**: All 10 images floating randomly with low opacity
+**Proposed**: Curated, intentional collage layout
 
 ```text
-+--------+--------+
-| [Undo] | [Redo] |
-+--------+--------+
+┌────────────────────────────────────────────────────────────┐
+│  HERO SECTION                                              │
+│                                                            │
+│   ┌─────────┐                          ┌─────────┐        │
+│   │  Large  │   ┌──────────────────┐   │ Tilted  │        │
+│   │ Feature │   │                  │   │  Frame  │        │
+│   │  Image  │   │   LECOMPTE       │   └────┬────┘        │
+│   │ (70%    │   │   Main Title     │        │             │
+│   │  opacity│   │                  │   ┌────┴────┐        │
+│   └─────────┘   │   Tagline Text   │   │ Polaroid│        │
+│                 └──────────────────┘   │  Style  │        │
+│   ┌───────┐ ┌───────┐                  └─────────┘        │
+│   │ Small │ │ Small │    Floating dot pattern overlay     │
+│   └───────┘ └───────┘                                     │
+│                                                            │
+│   Gradient: Cream → Warm Gold (subtle, 10-20%)            │
+└────────────────────────────────────────────────────────────┘
 ```
 
-- Disabled states when at beginning/end of history
-- Keyboard shortcuts: Ctrl+Z for undo, Ctrl+Shift+Z for redo
+### 2. Polaroid Frame Component
 
-### Integration
-
-Add `UndoRedoControls` to editor headers in:
-- InspirationEditor
-- ArticleEditor
-- ProjectEditor
-- ExperienceEditor
-- CertificationEditor
-- FavoriteEditor
-- UpdateEditor
-
----
-
-## 4. New Project Statuses
-
-### Database Migration
-
-The `projects.status` column currently uses a text type with values: `planned`, `in_progress`, `live`.
-
-Add new status values:
-
-```sql
--- No migration needed - the column is TEXT type, not an enum
--- Simply update the UI to include new options
-```
-
-### UI Updates
-
-**File: `src/pages/admin/ProjectEditor.tsx`**
-
-Update the status dropdown options:
-
-```typescript
-const statusOptions = [
-  { value: "planned", label: "Planned" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "finishing_stages", label: "Finishing Stages" },
-  { value: "final_review", label: "Final Review" },
-  { value: "live", label: "Live" },
-];
-```
-
-**File: `src/pages/Projects.tsx`** and related files
-
-Update status display colors:
-
-| Status | Color |
-|--------|-------|
-| planned | Gray/Muted |
-| in_progress | Yellow |
-| finishing_stages | Orange |
-| final_review | Purple |
-| live | Green |
-
----
-
-## 5. Drag-to-Reorder Inspirations with Auto-Swap
-
-### Library
-
-Use native HTML5 drag-and-drop (no additional dependencies needed).
-
-### Admin Manager Changes
-
-**File: `src/pages/admin/InspirationsManager.tsx`**
-
-Add drag-and-drop functionality:
-
-1. Make each inspiration row draggable
-2. Show visual indicators during drag (drop zones)
-3. On drop: swap `order_index` values between dragged item and target
-4. Persist to database immediately
+New component for displaying artwork with vintage photo aesthetic:
 
 ```text
-+--------------------------------------------------+
-| [:::] #1 | Inspiration A          | [Edit] [Del] |
-+--------------------------------------------------+
-| [:::] #2 | Inspiration B (dragging)| [Edit] [Del] |
-+--------------------------------------------------+
-| [:::] #3 | Inspiration C           | [Edit] [Del] |
-+--------------------------------------------------+
-       ^
-       |-- Drop zone indicator
+┌─────────────────────────────┐
+│                             │
+│   ┌───────────────────┐     │
+│   │                   │     │
+│   │      IMAGE        │     │
+│   │                   │     │
+│   └───────────────────┘     │
+│                             │
+│   Title of Artwork          │
+│   2024                      │
+│                             │
+└─────────────────────────────┘
+     ↑ Slight rotation, drop shadow
 ```
 
-### Swap Logic
+### 3. Section Dividers
 
-When dragging item A to position of item B:
-- Item A gets B's `order_index`
-- Item B gets A's `order_index`
-- Both are updated in a single database transaction
+Replace `ArtStrip` with more sophisticated dividers:
+- **Filmstrip style**: Images in perforated film frame
+- **Gallery rope**: Decorative rope line with floating images
+- **Torn paper edge**: Organic transition between sections
 
-```typescript
-const handleDrop = async (draggedId: string, targetId: string) => {
-  const draggedItem = inspirations.find(i => i.id === draggedId);
-  const targetItem = inspirations.find(i => i.id === targetId);
-  
-  // Swap order indices
-  await supabase.from("inspirations").update({ order_index: targetItem.order_index }).eq("id", draggedId);
-  await supabase.from("inspirations").update({ order_index: draggedItem.order_index }).eq("id", targetId);
-  
-  // Refetch to update UI
-  queryClient.invalidateQueries(["admin-inspirations"]);
-};
-```
+### 4. Page Background Textures
 
-### Editor Order Field Enhancement
-
-**File: `src/pages/admin/InspirationEditor.tsx`**
-
-When changing `order_index` manually:
-- Show current item in that position (if any)
-- Prompt: "This will swap with [Item Name]. Continue?"
-- Auto-swap on confirmation
+Add subtle texture overlays throughout:
+- Paper grain texture (5% opacity)
+- Halftone patterns in warm colors
+- Subtle noise for depth
 
 ---
 
-## File Summary
+## Page-by-Page Enhancements
 
-### New Files
+### Homepage (Index.tsx)
 
-| File | Purpose |
-|------|---------|
-| `src/components/admin/AIGenerateButton.tsx` | Reusable AI content generation button |
-| `src/components/admin/UndoRedoControls.tsx` | Undo/redo toolbar component |
-| `src/hooks/useFormHistory.ts` | Form state history management hook |
+1. **Hero Section**:
+   - Restructure floating images into deliberate collage
+   - Add 2-3 polaroid-style featured works
+   - Warm gradient background (cream to soft gold)
+   - Reduce overlay opacity for artwork visibility
 
-### Modified Files
+2. **Navigation Panels**:
+   - Replace solid pop colors with warm tones
+   - Add subtle texture to panel backgrounds
+   - Include small artwork thumbnails as icons
+
+3. **Mission Statement**:
+   - Dark section with featured artwork as background (low opacity)
+   - Typography hierarchy improvement
+
+4. **Featured Projects**:
+   - Add photography from `/photography/` folder as backgrounds
+   - Comic panels with warm accent borders
+
+### Art Gallery (ArtGallery.tsx)
+
+1. **Gallery Grid**:
+   - Add polaroid option for display
+   - Masonry layout with varied frame styles
+   - Hover effect: lift and slight rotation
+
+2. **Detail Modal**:
+   - Museum-style presentation
+   - Dark background with spotlight effect
+   - Artwork info card with warm cream background
+
+### Projects (Projects.tsx)
+
+1. **Hero**:
+   - Add decorative artwork in background
+   - Photography from Hollywood/California collection
+
+2. **Project Cards**:
+   - Subtle texture backgrounds
+   - Warm status badge colors
+
+### About (About.tsx)
+
+1. **Hero Portrait**:
+   - Larger, more prominent
+   - Gallery wall effect around it
+
+2. **Story Section**:
+   - Pull quotes in decorative frames
+   - Scattered small artwork pieces
+
+---
+
+## New Components to Create
+
+### 1. PolaroidFrame Component
+```typescript
+// src/components/pop-art/PolaroidFrame.tsx
+interface PolaroidFrameProps {
+  src: string;
+  alt: string;
+  title?: string;
+  date?: string;
+  rotation?: number; // -5 to 5 degrees
+  className?: string;
+}
+```
+
+### 2. FilmStrip Component
+```typescript
+// src/components/home/FilmStrip.tsx
+interface FilmStripProps {
+  images: string[];
+  direction?: 'left' | 'right';
+  speed?: number;
+}
+```
+
+### 3. GalleryWall Component
+```typescript
+// src/components/home/GalleryWall.tsx
+// Displays multiple artworks in museum-style arrangement
+```
+
+### 4. TexturedSection Component
+```typescript
+// src/components/layout/TexturedSection.tsx
+// Wrapper with paper texture and warm background options
+```
+
+---
+
+## Implementation Files
+
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/admin/InspirationEditor.tsx` | Add multi-image upload, AI buttons, undo/redo |
-| `src/pages/admin/InspirationsManager.tsx` | Add drag-and-drop reordering |
-| `src/pages/admin/ProjectEditor.tsx` | Add new status options, AI buttons, undo/redo |
-| `src/pages/admin/ArticleEditor.tsx` | Add AI buttons, undo/redo |
-| `src/pages/admin/ExperienceEditor.tsx` | Add AI buttons, undo/redo |
-| `src/pages/admin/CertificationEditor.tsx` | Add AI buttons, undo/redo |
-| `src/pages/admin/FavoriteEditor.tsx` | Add AI buttons, undo/redo |
-| `src/pages/admin/UpdateEditor.tsx` | Add AI buttons, undo/redo |
-| `src/pages/InspirationDetail.tsx` | Display multiple images gallery |
-| `src/pages/Projects.tsx` | Display new status colors |
-| `supabase/functions/ai-assistant/index.ts` | Add field generation endpoint |
+| `src/index.css` | Update CSS variables with new palette, add textures |
+| `tailwind.config.ts` | Update color tokens, add new keyframes |
+| `src/components/home/HeroBackground.tsx` | Restructure collage layout |
+| `src/components/home/DecorativeArt.tsx` | Add new variants, filmstrip |
+| `src/pages/Index.tsx` | Implement new hero design, warm sections |
+| `src/pages/ArtGallery.tsx` | Add polaroid display option |
+| `src/pages/About.tsx` | Gallery wall hero, texture backgrounds |
+| `src/pages/Projects.tsx` | Add photography backgrounds |
+| `src/components/layout/Header.tsx` | Warm color nav styling |
+| `src/components/layout/Footer.tsx` | Dark section with artwork accents |
 
-### Database Migration
+### New Files to Create
 
-```sql
--- Add images array to inspirations
-ALTER TABLE inspirations ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
+| File | Purpose |
+|------|---------|
+| `src/components/pop-art/PolaroidFrame.tsx` | Vintage photo frame component |
+| `src/components/home/FilmStrip.tsx` | Animated film strip divider |
+| `src/components/home/GalleryWall.tsx` | Museum-style artwork arrangement |
+| `src/components/layout/TexturedSection.tsx` | Section wrapper with texture |
+
+---
+
+## Color Variable Updates
+
+```css
+/* Updated CSS Variables */
+:root {
+  /* New Warm Palette */
+  --pop-gold: 38 78% 56%;      /* E8A838 - Warm gold */
+  --pop-teal: 180 50% 32%;     /* 2A7B7B - Deep teal */
+  --pop-terracotta: 15 55% 50%; /* C45D3A - Earthy accent */
+  --pop-cream: 45 50% 95%;     /* FAF6E9 - Warm background */
+  --pop-navy: 210 40% 17%;     /* 1A2A3A - Deep contrast */
+  --pop-rust: 15 60% 44%;      /* B54729 */
+  --pop-ochre: 43 62% 55%;     /* D4A843 */
+  --pop-sage: 112 15% 54%;     /* 7A9B76 */
+  --pop-burgundy: 355 45% 32%; /* 722F37 */
+  
+  /* Map to semantic tokens */
+  --primary: var(--pop-gold);
+  --secondary: var(--pop-teal);
+  --accent: var(--pop-terracotta);
+  --background: var(--pop-cream);
+}
 ```
 
 ---
 
-## Technical Details
+## Visual Summary
 
-### Drag-and-Drop Implementation
+```text
+BEFORE                              AFTER
+──────                              ─────
+Electric Yellow #F7D101    →    Warm Gold #E8A838
+Bright Cyan #00D4FF        →    Deep Teal #2A7B7B
+Hot Magenta #FF2E9A        →    Terracotta #C45D3A
+Pure White #FAFAFA         →    Cream #FAF6E9
+Pure Black #0D0D0D         →    Rich Navy #1A2A3A
 
-Using native HTML5 APIs:
-
-```typescript
-<div
-  draggable
-  onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
-  onDragOver={(e) => e.preventDefault()}
-  onDrop={(e) => handleDrop(e.dataTransfer.getData("text/plain"), item.id)}
->
-  {/* Inspiration content */}
-</div>
+Random floating images     →    Curated collage
+Flat colored backgrounds   →    Textured sections
+Comic panels only          →    Polaroids + panels
+Stark contrasts            →    Warm, gallery feel
 ```
 
-### AI Generation Prompt Templates
+This creates a sophisticated "Gallery Warmth" aesthetic that:
+- Honors the pop art energy you love
+- Aligns with the earthy, vintage quality of your artwork
+- Feels like walking through a curated art gallery
+- Maintains brand recognition while adding depth
 
-For each field type, use specific prompts:
-
-```typescript
-const prompts = {
-  description: `Write a compelling 1-2 sentence description for this ${contentType}...`,
-  long_description: `Write a detailed 2-3 paragraph description...`,
-  excerpt: `Write a brief teaser excerpt (under 160 characters)...`,
-  impact_statement: `Write a personal impact statement explaining how this influenced you...`,
-};
-```
-
-### Undo/Redo Keyboard Shortcuts
-
-```typescript
-useEffect(() => {
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-      if (e.shiftKey && canRedo) redo();
-      else if (canUndo) undo();
-      e.preventDefault();
-    }
-  };
-  window.addEventListener('keydown', handleKeyDown);
-  return () => window.removeEventListener('keydown', handleKeyDown);
-}, [canUndo, canRedo]);
-```
-
----
-
-## Implementation Order
-
-1. Database migration (add `images` column)
-2. Create `useFormHistory` hook
-3. Create `UndoRedoControls` component
-4. Create `AIGenerateButton` component
-5. Update edge function for field generation
-6. Update `InspirationEditor` with all features
-7. Update `InspirationsManager` with drag-and-drop
-8. Update `ProjectEditor` with new statuses
-9. Update remaining editors with AI + undo/redo
-10. Update public pages for new data display
