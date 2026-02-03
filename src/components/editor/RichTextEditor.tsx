@@ -4,7 +4,7 @@ import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorToolbar } from "./EditorToolbar";
-import { useRef } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -20,6 +20,41 @@ export const RichTextEditor = ({
   placeholder = "Start writing...",
 }: RichTextEditorProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    // Upload to Supabase storage
+    const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const { data, error } = await supabase.storage
+      .from("content-images")
+      .upload(fileName, file);
+
+    if (error) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from("content-images")
+      .getPublicUrl(data.path);
+
+    return urlData.publicUrl;
+  };
 
   const editor = useEditor({
     extensions: [
@@ -52,6 +87,52 @@ export const RichTextEditor = ({
         class:
           "prose prose-lg max-w-none min-h-[300px] p-4 border-2 border-foreground bg-background focus:outline-none",
       },
+      // Handle paste events for images
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        for (const item of items) {
+          if (item.type.startsWith("image/")) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (file) {
+              uploadImage(file).then((url) => {
+                if (url && editor) {
+                  editor.chain().focus().setImage({ src: url }).run();
+                  toast({
+                    title: "Image uploaded",
+                    description: "Image pasted and uploaded successfully.",
+                  });
+                }
+              });
+            }
+            return true;
+          }
+        }
+        return false;
+      },
+      // Handle drop events for images
+      handleDrop: (view, event) => {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+
+        const file = files[0];
+        if (file.type.startsWith("image/")) {
+          event.preventDefault();
+          uploadImage(file).then((url) => {
+            if (url && editor) {
+              editor.chain().focus().setImage({ src: url }).run();
+              toast({
+                title: "Image uploaded",
+                description: "Image dropped and uploaded successfully.",
+              });
+            }
+          });
+          return true;
+        }
+        return false;
+      },
     },
   });
 
@@ -63,47 +144,24 @@ export const RichTextEditor = ({
     const file = e.target.files?.[0];
     if (!file || !editor) return;
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload an image file.",
-        variant: "destructive",
-      });
-      return;
+    const url = await uploadImage(file);
+    if (url) {
+      editor.chain().focus().setImage({ src: url }).run();
     }
-
-    // Upload to Supabase storage
-    const fileName = `${Date.now()}-${file.name}`;
-    const { data, error } = await supabase.storage
-      .from("content-images")
-      .upload(fileName, file);
-
-    if (error) {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from("content-images")
-      .getPublicUrl(data.path);
-
-    // Insert image into editor
-    editor.chain().focus().setImage({ src: urlData.publicUrl }).run();
 
     // Reset input
     e.target.value = "";
   };
 
   return (
-    <div className="rich-text-editor">
+    <div className="rich-text-editor" ref={editorContainerRef}>
       <EditorToolbar editor={editor} onImageUpload={handleImageUpload} />
-      <EditorContent editor={editor} />
+      <div className="relative">
+        <EditorContent editor={editor} />
+        <div className="absolute bottom-2 right-2 text-xs text-muted-foreground pointer-events-none">
+          Paste or drop images
+        </div>
+      </div>
       <input
         type="file"
         ref={fileInputRef}

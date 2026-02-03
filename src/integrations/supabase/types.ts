@@ -325,6 +325,60 @@ export type Database = {
         }
         Relationships: []
       }
+      content_templates: {
+        Row: {
+          content_type: string
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          template_data: Json
+        }
+        Insert: {
+          content_type: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          template_data?: Json
+        }
+        Update: {
+          content_type?: string
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          template_data?: Json
+        }
+        Relationships: []
+      }
+      content_versions: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          version_data: Json
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          version_data: Json
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          version_data?: Json
+        }
+        Relationships: []
+      }
       contributions: {
         Row: {
           amount: number
@@ -1126,6 +1180,42 @@ export type Database = {
         }
         Relationships: []
       }
+      media_library: {
+        Row: {
+          alt_text: string | null
+          file_size: number | null
+          filename: string
+          height: number | null
+          id: string
+          tags: string[] | null
+          uploaded_at: string | null
+          url: string
+          width: number | null
+        }
+        Insert: {
+          alt_text?: string | null
+          file_size?: number | null
+          filename: string
+          height?: number | null
+          id?: string
+          tags?: string[] | null
+          uploaded_at?: string | null
+          url: string
+          width?: number | null
+        }
+        Update: {
+          alt_text?: string | null
+          file_size?: number | null
+          filename?: string
+          height?: number | null
+          id?: string
+          tags?: string[] | null
+          uploaded_at?: string | null
+          url?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       page_views: {
         Row: {
           city: string | null
@@ -1485,6 +1575,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      quick_entries: {
+        Row: {
+          aggregated_to_update_id: string | null
+          content: string
+          created_at: string | null
+          id: string
+          mood: string | null
+          tags: string[] | null
+        }
+        Insert: {
+          aggregated_to_update_id?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          mood?: string | null
+          tags?: string[] | null
+        }
+        Update: {
+          aggregated_to_update_id?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          mood?: string | null
+          tags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_entries_aggregated_to_update_id_fkey"
+            columns: ["aggregated_to_update_id"]
+            isOneToOne: false
+            referencedRelation: "updates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sales_data: {
         Row: {

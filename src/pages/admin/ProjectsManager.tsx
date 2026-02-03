@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { 
@@ -159,6 +160,7 @@ const ProjectsManager = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
+                        <DuplicateButton id={project.id} type="project" />
                         <Link 
                           to={`/admin/projects/${project.id}/edit`}
                           className="p-2 hover:bg-muted rounded"
