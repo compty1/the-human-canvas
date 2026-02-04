@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Heart, Music, Film, Book, Palette, Users, Star, Loader2, MapPin, Tv, Mic, Calendar } from "lucide-react";
 import { streamingPlatforms, getAvailableStreamingLinks } from "@/lib/streamingPlatforms";
+import { getStreamingIcon } from "@/components/icons/StreamingIcons";
 
 interface Favorite {
   id: string;
@@ -114,9 +115,11 @@ const Favorites = () => {
                         )}
                       </div>
                       <h3 className="font-display text-lg">{fav.title}</h3>
-                      {(fav.artist_name || fav.creator_name) && (
+                      {fav.type === 'music' && fav.artist_name ? (
+                        <p className="text-sm text-muted-foreground">{fav.artist_name}</p>
+                      ) : (fav.artist_name || fav.creator_name) ? (
                         <p className="text-sm text-muted-foreground">by {fav.artist_name || fav.creator_name}</p>
-                      )}
+                      ) : null}
                     </ComicPanel>
                   </Link>
                 );
@@ -205,7 +208,11 @@ const Favorites = () => {
                       
                       {(fav.artist_name || fav.creator_name) && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <span>by {fav.artist_name || fav.creator_name}</span>
+                          {fav.type === 'music' && fav.artist_name ? (
+                            <span>{fav.artist_name}</span>
+                          ) : (
+                            <span>by {fav.artist_name || fav.creator_name}</span>
+                          )}
                           {fav.release_year && (
                             <>
                               <span>•</span>
@@ -261,19 +268,26 @@ const Favorites = () => {
                             {fav.type === 'music' || fav.type === 'podcast' ? 'Listen:' : 'Watch:'}
                           </span>
                           <div className="flex gap-1">
-                            {streamingLinks.map(({ key, url, platform }) => (
-                              <a
-                                key={key}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-8 h-8 flex items-center justify-center rounded hover:scale-110 transition-transform"
-                                style={{ backgroundColor: `${platform.color}20` }}
-                                title={platform.name}
-                              >
-                                <span className="text-sm">{platform.icon}</span>
-                              </a>
-                            ))}
+                              {streamingLinks.map(({ key, url, platform }) => {
+                                const IconComponent = getStreamingIcon(key);
+                                return (
+                                  <a
+                                    key={key}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-8 h-8 flex items-center justify-center rounded hover:scale-110 transition-transform"
+                                    style={{ backgroundColor: `${platform.color}20` }}
+                                    title={platform.name}
+                                  >
+                                    {IconComponent ? (
+                                      <IconComponent size={16} className="text-foreground" />
+                                    ) : (
+                                      <span className="text-sm">{platform.icon}</span>
+                                    )}
+                                  </a>
+                                );
+                              })}
                           </div>
                         </div>
                       )}
