@@ -1,102 +1,272 @@
-# Comprehensive Verification and Enhancement Plan
 
-## ✅ COMPLETED - All 6 Items Implemented
+# Comprehensive Enhancement Plan
 
----
+## Summary
 
-## Implementation Status
-
-### 1. Contact Page ✅ DONE
-- Created `src/pages/Contact.tsx` with form (name, email, subject, message)
-- Added `/contact` route to `src/App.tsx`
-- Added "Contact" nav link to `src/components/layout/Header.tsx`
-- Created `contact_inquiries` table with RLS policies:
-  - Public can INSERT (submit form)
-  - Admins can SELECT/UPDATE
-
-### 2. AI Text Paste/Analyze (BulkTextImporter) ✅ FIXED
-- Added comprehensive console logging for debugging
-- Improved response format handling (data.extracted, data.content, direct response)
-- Better error messages distinguishing between extraction failures
-- Reports number of fields extracted in success toast
-
-### 3. Artwork Sketch Category ✅ DONE
-- Added `<option value="sketch">Sketch</option>` to `ArtworkEditor.tsx`
-- Added `<option value="colored">Colored</option>` to `ArtworkEditor.tsx`
-- Added `sketch`, `colored`, `pop_art`, `graphic_design` to `BulkArtworkUploader.tsx` categories
-
-### 4. Analytics Data Accuracy ✅ VERIFIED
-- Analytics data is REAL and ACCURATE (verified 778+ page views)
-- `useAnalytics.tsx` hook properly tracks page views, sessions, and link clicks
-- Dashboard and Analytics pages display accurate counts
-- `time_on_page_seconds` = 0 for quick navigations is expected behavior
-
-### 5. Multiple File Selection ✅ VERIFIED
-- `MediaLibrary.tsx` - Has `multiple` attribute ✓
-- `MultiImageUploader.tsx` - Has `multiple` attribute ✓
-- `BulkArtworkUploader.tsx` - Has `multiple` attribute ✓
-- `ImageUploader.tsx` - Single file by design (correct for primary image fields)
-
-### 6. Non-Working Functions Audit ✅ VERIFIED/FIXED
-| Function | Status | Notes |
-|----------|--------|-------|
-| BulkTextImporter | ✅ Fixed | Improved error handling and response parsing |
-| CommandPalette | ✅ Works | Uses cmdk, searches across content types |
-| useAutosave | ✅ Works | Saves to localStorage every 30s |
-| DraftRecoveryBanner | ✅ Works | Shows when draft exists |
-| VersionHistory | ✅ Works | Saves/restores versions to content_versions table |
-| TemplateSelector | ✅ Works | Loads templates from content_templates table |
-| QuickEntryWidget | ✅ Works | Saves quick entries, AI aggregation functional |
+This plan addresses 5 specific issues:
+1. Create a comprehensive Files/Media page with usage tracking and cropping
+2. Add quick options dropdown for artwork cards
+3. Fix bulk upload issue (only 4 images uploading)
+4. Improve music favorites display (title + artist formatting)
+5. Fix streaming platform logos (use SVG icons instead of emojis)
 
 ---
 
-## Database Tables Added
+## Issue Analysis
 
-### contact_inquiries
-```sql
-CREATE TABLE public.contact_inquiries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  subject TEXT,
-  message TEXT NOT NULL,
-  status TEXT DEFAULT 'new',
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+### 1. Files/Media Library Enhancement
+**Current State:**
+- `MediaLibrary.tsx` exists at `/admin/media-library`
+- Only shows items from `media_library` table (currently empty)
+- Files uploaded via content editors go to `content-images` bucket but are NOT tracked in `media_library`
+- Missing: usage tracking, crop functionality, comprehensive view
+
+**Solution:**
+- Enhance MediaLibrary to also scan `content-images` storage bucket
+- Add "In Use" indicator by cross-referencing URLs in content tables
+- Add image cropping functionality using a canvas-based cropper
+
+### 2. Artwork Quick Options
+**Current State:**
+- ArtworkManager shows Edit/Delete on hover overlay
+- No quick way to change category from the grid view
+
+**Solution:**
+- Add a dropdown menu (three-dot icon) on each artwork card
+- Include: Quick category change, Edit, Delete, View on site
+
+### 3. Bulk Upload Only 4 Images
+**Current State:**
+- Sequential upload uses `Date.now()` for filename
+- Multiple uploads within same millisecond may cause filename collisions
+- No error logging shown for individual failures
+
+**Solution:**
+- Add delay or unique suffix to prevent filename collisions
+- Improve error handling and logging
+- Use UUID-based filenames instead of timestamp
+
+### 4. Music Favorites Display
+**Current State:**
+- Title shown as `<h3>{fav.title}</h3>`
+- Artist shown as `<span>by {fav.artist_name || fav.creator_name}</span>`
+
+**Solution:**
+- For music type: Show title in larger text, artist in smaller text underneath (no "by" prefix)
+- Keep everything else unchanged
+
+### 5. Streaming Platform Logos
+**Current State:**
+- `Favorites.tsx` line 274: Uses `{platform.icon}` (emoji like "🟢", "🍎")
+- `StreamingIcons.tsx` has proper SVG icons
+- `FavoriteDetail.tsx` correctly uses `getStreamingIcon()` but Favorites.tsx does not
+
+**Solution:**
+- Import and use `getStreamingIcon` in Favorites.tsx
+- Display SVG icons when available, fallback to emoji
+
+---
+
+## Implementation Details
+
+### Phase 1: Enhanced Media Library
+
+**Modified Files:**
+- `src/pages/admin/MediaLibrary.tsx`
+
+**New Features:**
+1. **Storage Bucket Scanning**: Query `content-images` bucket directly
+2. **Usage Detection**: Cross-reference URLs against:
+   - `artwork.image_url`
+   - `projects.image_url`, `projects.gallery_images`
+   - `articles.cover_image`
+   - `favorites.image_url`
+   - `products.images`
+   - etc.
+3. **Image Cropping**: Add crop dialog with aspect ratio options
+4. **Better Filtering**: Filter by in-use/unused, file type, date
+
+**UI Additions:**
+```text
++------------------------------------------------------------------+
+| Files & Media                              [Upload] [Scan Storage]|
++------------------------------------------------------------------+
+| [Search...] | [All ▼] [In Use ▼] [Date ▼]                        |
++------------------------------------------------------------------+
+| [img]         [img]          [img]          [img]                |
+| filename.jpg  header.png     logo.svg       photo.webp           |
+| 245 KB        1.2 MB        12 KB           890 KB               |
+| ● In Use     ○ Unused       ● In Use       ○ Unused             |
+| [Crop] [Copy] [Delete]                                           |
++------------------------------------------------------------------+
 ```
 
 ---
 
-## Files Modified
+### Phase 2: Artwork Quick Options
+
+**Modified Files:**
+- `src/pages/admin/ArtworkManager.tsx`
+
+**Implementation:**
+- Add dropdown menu to each artwork card (top-right corner)
+- Use existing dropdown component from shadcn/ui
+- Options:
+  1. Quick category submenu with all category options
+  2. Edit (link to editor)
+  3. View on site (link to public page)
+  4. Delete (with confirmation)
+
+**UI Change:**
+```text
+Artwork Card (hover):
++------------------------+
+| [●●●] <- dropdown     |
+|  +------------------+  |
+|  | Category ►       |  |
+|  |   ├ Portrait     |  |
+|  |   ├ Landscape    |  |
+|  |   ├ Sketch       |  |
+|  |   └ Colored      |  |
+|  | Edit             |  |
+|  | View on Site     |  |
+|  | Delete           |  |
+|  +------------------+  |
++------------------------+
+```
+
+---
+
+### Phase 3: Fix Bulk Upload Issue
+
+**Modified Files:**
+- `src/components/admin/BulkArtworkUploader.tsx`
+
+**Changes:**
+1. Use crypto UUID instead of timestamp for unique filenames
+2. Add small delay between uploads to prevent rate limiting
+3. Improve error logging with specific failure reasons
+4. Add retry logic for failed uploads
+
+**Key Code Change:**
+```typescript
+// Before:
+const filename = `${Date.now()}-${img.id}.${ext}`;
+
+// After:
+const uniqueId = crypto.randomUUID();
+const filename = `${uniqueId}.${ext}`;
+```
+
+---
+
+### Phase 4: Music Favorites Display
+
+**Modified Files:**
+- `src/pages/Favorites.tsx`
+
+**Changes (lines 202-228):**
+For items where `fav.type === 'music'`:
+- Title in main heading
+- Artist in smaller text below WITHOUT "by" prefix
+- Keep all other types unchanged
+
+**Before:**
+```tsx
+<h3>{fav.title}</h3>
+{(fav.artist_name || fav.creator_name) && (
+  <span>by {fav.artist_name || fav.creator_name}</span>
+)}
+```
+
+**After:**
+```tsx
+<h3>{fav.title}</h3>
+{fav.type === 'music' && fav.artist_name && (
+  <p className="text-sm text-muted-foreground">{fav.artist_name}</p>
+)}
+{fav.type !== 'music' && (fav.artist_name || fav.creator_name) && (
+  <span>by {fav.artist_name || fav.creator_name}</span>
+)}
+```
+
+---
+
+### Phase 5: Fix Streaming Platform Logos
+
+**Modified Files:**
+- `src/pages/Favorites.tsx`
+
+**Changes:**
+1. Import `getStreamingIcon` from StreamingIcons
+2. Replace emoji display with SVG icon component
+
+**Code Change (line 264-276):**
+```tsx
+// Before:
+<span className="text-sm">{platform.icon}</span>
+
+// After:
+{(() => {
+  const IconComponent = getStreamingIcon(key);
+  return IconComponent ? (
+    <IconComponent size={16} style={{ color: platform.color }} />
+  ) : (
+    <span className="text-sm">{platform.icon}</span>
+  );
+})()}
+```
+
+---
+
+## Files Summary
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `src/pages/Contact.tsx` | CREATE | New contact page |
-| `src/App.tsx` | MODIFY | Add /contact route + import |
-| `src/components/layout/Header.tsx` | MODIFY | Add Contact nav link |
-| `src/pages/admin/ArtworkEditor.tsx` | MODIFY | Add sketch/colored categories |
-| `src/components/admin/BulkTextImporter.tsx` | MODIFY | Fix error handling + logging |
-| `src/components/admin/BulkArtworkUploader.tsx` | MODIFY | Add more category options |
+| `src/pages/admin/MediaLibrary.tsx` | MODIFY | Add storage scanning, usage tracking, cropping |
+| `src/pages/admin/ArtworkManager.tsx` | MODIFY | Add quick options dropdown |
+| `src/components/admin/BulkArtworkUploader.tsx` | MODIFY | Fix filename collision, add delays |
+| `src/pages/Favorites.tsx` | MODIFY | Fix music display, fix streaming icons |
 
 ---
 
-## Technical Verification Checklist
+## Technical Notes
 
-- [x] Contact page loads at /contact
-- [x] Contact form has proper validation
-- [x] contact_inquiries table created with RLS
-- [x] BulkTextImporter has improved logging
-- [x] Artwork editor shows sketch/colored categories
-- [x] BulkArtworkUploader shows all categories
-- [x] Analytics data verified accurate
-- [x] Multiple file selection works in MediaLibrary
-- [x] Multiple file selection works in BulkArtworkUploader
-- [x] All admin functions audited and working
+### Storage Bucket Scanning
+```typescript
+// Fetch files from content-images bucket
+const { data: storageFiles } = await supabase.storage
+  .from("content-images")
+  .list("", { limit: 1000 });
+```
+
+### Usage Detection Query
+```typescript
+// Check if URL is used in any content
+const usedUrls = await Promise.all([
+  supabase.from("artwork").select("image_url"),
+  supabase.from("projects").select("image_url, gallery_images"),
+  supabase.from("articles").select("cover_image"),
+  // etc.
+]);
+```
+
+### Image Cropping
+- Use HTML5 Canvas for client-side cropping
+- Upload cropped version as new file
+- Options: 1:1, 16:9, 4:3, Free
 
 ---
 
-## Notes
+## Verification Checklist
 
-- The RLS "permissive" warning for contact_inquiries INSERT is expected - public contact forms require public insert access
-- Analytics data is real user data, not mock data
-- Edge function `generate-copy` works correctly (tested)
+After implementation:
+- [ ] Files page shows all content-images from storage
+- [ ] "In Use" badge appears on files referenced in content
+- [ ] Crop tool works and saves cropped version
+- [ ] Artwork cards have quick options dropdown
+- [ ] Category can be changed from dropdown
+- [ ] Bulk upload successfully uploads 10+ images
+- [ ] Music favorites show title with artist below (no "by")
+- [ ] Spotify, Apple Music, YouTube show SVG logos
+- [ ] All existing functionality remains unchanged
