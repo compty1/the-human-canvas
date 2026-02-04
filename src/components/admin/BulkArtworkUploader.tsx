@@ -177,10 +177,15 @@ export const BulkArtworkUploader = ({ onComplete, onCancel }: BulkArtworkUploade
       );
 
       try {
-        // Generate unique filename
+        // Generate unique filename using UUID to prevent collisions
         const ext = img.file.name.split(".").pop();
-        const filename = `${Date.now()}-${img.id}.${ext}`;
+        const uniqueId = crypto.randomUUID();
+        const filename = `${uniqueId}.${ext}`;
         const filePath = `artwork/${filename}`;
+
+        // Small delay between uploads to prevent rate limiting
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
 
         // Upload to storage
         const { error: uploadError } = await supabase.storage
@@ -210,13 +215,21 @@ export const BulkArtworkUploader = ({ onComplete, onCancel }: BulkArtworkUploade
           prev.map(p => p.id === img.id ? { ...p, status: "success" } : p)
         );
         successCount++;
+        }
       } catch (error) {
-        // Update status to error
+        console.error(`Upload failed for ${img.file.name}:`, error);
+        // Update status to error with detailed message
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message: unknown }).message)
+            : "Upload failed";
+        
         setImages(prev => 
           prev.map(p => p.id === img.id ? { 
             ...p, 
             status: "error",
-            error: error instanceof Error ? error.message : "Upload failed"
+            error: errorMessage
           } : p)
         );
         errorCount++;

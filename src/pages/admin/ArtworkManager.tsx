@@ -5,8 +5,18 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, Search, Image, Upload } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Image, Upload, MoreVertical, ExternalLink, ChevronRight } from "lucide-react";
 import { BulkArtworkUploader } from "@/components/admin/BulkArtworkUploader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 // Local asset imports for resolving paths
@@ -49,6 +59,21 @@ const localAssetMap: Record<string, string> = {
   "/src/assets/artwork/bandaged-portrait.png": bandagedPortrait,
 };
 
+// All available categories
+const ALL_CATEGORIES = [
+  "portrait",
+  "landscape",
+  "photography",
+  "mixed",
+  "abstract",
+  "digital",
+  "traditional",
+  "sketch",
+  "colored",
+  "pop_art",
+  "graphic_design",
+];
+
 // Resolve image URL - converts local asset paths to imported modules
 const resolveImageUrl = (url: string): string => {
   return localAssetMap[url] || url;
@@ -87,6 +112,23 @@ const ArtworkManager = () => {
     },
   });
 
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, category }: { id: string; category: string }) => {
+      const { error } = await supabase
+        .from("artwork")
+        .update({ category })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-artwork"] });
+      toast.success("Category updated");
+    },
+    onError: () => {
+      toast.error("Failed to update category");
+    },
+  });
+
   const categories = artwork 
     ? ["all", ...new Set(artwork.map(a => a.category || "uncategorized"))]
     : ["all"];
@@ -118,14 +160,16 @@ const ArtworkManager = () => {
             <h1 className="text-4xl font-display">Artwork</h1>
             <p className="text-muted-foreground">Manage your art gallery</p>
           </div>
-          <Link to="/admin/artwork/new">
-            <PopButton>
-              <Plus className="w-4 h-4 mr-2" /> Add Artwork
+          <div className="flex gap-2">
+            <PopButton variant="secondary" onClick={() => setShowBulkUpload(true)}>
+              <Upload className="w-4 h-4 mr-2" /> Bulk Upload
             </PopButton>
-          </Link>
-          <PopButton variant="secondary" onClick={() => setShowBulkUpload(true)}>
-            <Upload className="w-4 h-4 mr-2" /> Bulk Upload
-          </PopButton>
+            <Link to="/admin/artwork/new">
+              <PopButton>
+                <Plus className="w-4 h-4 mr-2" /> Add Artwork
+              </PopButton>
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}
@@ -173,29 +217,75 @@ const ArtworkManager = () => {
                   className="w-full aspect-square object-cover"
                 />
                 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-foreground/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4">
-                  <h3 className="text-background font-display text-center mb-1">{art.title}</h3>
-                  <span className="text-xs text-background/70 uppercase mb-4">{art.category}</span>
-                  
-                  <div className="flex gap-2">
-                    <Link 
-                      to={`/admin/artwork/${art.id}/edit`}
-                      className="p-2 bg-background text-foreground hover:bg-pop-cyan"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Link>
-                    <button 
-                      onClick={() => {
-                        if (confirm("Delete this artwork?")) {
-                          deleteMutation.mutate(art.id);
-                        }
-                      }}
-                      className="p-2 bg-background text-destructive hover:bg-destructive hover:text-background"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                {/* Quick Options Dropdown */}
+                <div className="absolute top-2 right-2 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2 bg-background/90 hover:bg-background border-2 border-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <ChevronRight className="w-4 h-4 mr-2" />
+                          Change Category
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {ALL_CATEGORIES.map((cat) => (
+                            <DropdownMenuItem
+                              key={cat}
+                              onClick={() => updateCategoryMutation.mutate({ id: art.id, category: cat })}
+                              className={art.category === cat ? "bg-muted" : ""}
+                            >
+                              {cat.charAt(0).toUpperCase() + cat.slice(1).replace("_", " ")}
+                              {art.category === cat && " ✓"}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to={`/admin/artwork/${art.id}/edit`} className="flex items-center">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={`/gallery?artwork=${art.id}`} target="_blank" className="flex items-center">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          View on Site
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (confirm("Delete this artwork?")) {
+                            deleteMutation.mutate(art.id);
+                          }
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Category Badge */}
+                <div className="absolute top-2 left-2">
+                  <span className="px-2 py-1 text-xs font-bold uppercase bg-background/90 border border-foreground">
+                    {art.category || "uncategorized"}
+                  </span>
+                </div>
+                
+                {/* Title Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <h3 className="text-white font-display text-center">{art.title}</h3>
                 </div>
               </ComicPanel>
             ))}
