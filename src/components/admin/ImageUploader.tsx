@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, X, Loader2, Image, Link } from "lucide-react";
+import { Upload, X, Loader2, Image, Link, FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { MediaLibraryPicker } from "./MediaLibraryPicker";
 
 interface ImageUploaderProps {
   value: string;
@@ -27,7 +28,8 @@ export const ImageUploader = ({
 }: ImageUploaderProps) => {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [mode, setMode] = useState<"upload" | "url">("upload");
+  const [mode, setMode] = useState<"upload" | "url" | "library">("upload");
+  const [showLibraryPicker, setShowLibraryPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadFile = async (file: File) => {
@@ -132,10 +134,60 @@ export const ImageUploader = ({
             <Link className="w-3 h-3 inline mr-1" />
             URL
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("library");
+              setShowLibraryPicker(true);
+            }}
+            className={cn(
+              "px-2 py-1 text-xs font-bold border-2 border-foreground transition-colors",
+              mode === "library" ? "bg-primary text-primary-foreground" : "bg-background"
+            )}
+          >
+            <FolderOpen className="w-3 h-3 inline mr-1" />
+            Library
+          </button>
         </div>
       </div>
 
-      {mode === "upload" ? (
+      {mode === "library" ? (
+        <div className="space-y-2">
+          <div
+            className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:border-primary transition-colors"
+            onClick={() => setShowLibraryPicker(true)}
+          >
+            <FolderOpen className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">
+              Click to select from media library
+            </p>
+          </div>
+          {value && (
+            <div className="relative">
+              <img
+                src={value}
+                alt="Preview"
+                className="w-full h-48 object-cover rounded-md border-2 border-muted"
+              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/80"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <MediaLibraryPicker
+            open={showLibraryPicker}
+            onClose={() => setShowLibraryPicker(false)}
+            onSelect={(url) => {
+              onChange(url);
+              setShowLibraryPicker(false);
+            }}
+          />
+        </div>
+      ) : mode === "upload" ? (
         <div
           className={cn(
             "relative border-2 border-dashed rounded-md transition-colors",

@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Calendar, Clock, Tag, Plus } from "lucide-react";
 import { format } from "date-fns";
 
-type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research";
+type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research" | "metaphysics";
 
 interface Article {
   id: string;
@@ -30,6 +30,7 @@ const categoryLabels: Record<WritingCategory, string> = {
   cultural: "Cultural",
   ux_review: "UX Review",
   research: "Research",
+  metaphysics: "Metaphysics",
 };
 
 const categoryColors: Record<WritingCategory, string> = {
@@ -38,6 +39,7 @@ const categoryColors: Record<WritingCategory, string> = {
   cultural: "bg-pop-yellow text-foreground",
   ux_review: "bg-secondary",
   research: "bg-pop-orange",
+  metaphysics: "bg-purple-600",
 };
 
 const Articles = () => {

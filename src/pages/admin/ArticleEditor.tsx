@@ -27,7 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 
-type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research";
+type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research" | "metaphysics";
 
 interface FormState {
   title: string;
@@ -47,6 +47,7 @@ const categoryOptions: { value: WritingCategory; label: string }[] = [
   { value: "cultural", label: "Cultural" },
   { value: "ux_review", label: "UX Review" },
   { value: "research", label: "Research" },
+  { value: "metaphysics", label: "Metaphysics" },
 ];
 
 const ArticleEditor = () => {

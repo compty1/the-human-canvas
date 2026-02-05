@@ -445,6 +445,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_subscribers: {
+        Row: {
+          confirmation_token: string | null
+          confirmed: boolean | null
+          email: string
+          id: string
+          name: string | null
+          source: string | null
+          subscribed_at: string | null
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          confirmation_token?: string | null
+          confirmed?: boolean | null
+          email: string
+          id?: string
+          name?: string | null
+          source?: string | null
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          confirmation_token?: string | null
+          confirmed?: boolean | null
+          email?: string
+          id?: string
+          name?: string | null
+          source?: string | null
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+        }
+        Relationships: []
+      }
       experiences: {
         Row: {
           admin_notes: string | null
@@ -454,8 +487,10 @@ export type Database = {
           created_at: string | null
           description: string | null
           end_date: string | null
+          experimentation_goal: string | null
           id: string
           image_url: string | null
+          is_experimentation: boolean | null
           is_ongoing: boolean | null
           key_achievements: string[] | null
           lessons_learned: string[] | null
@@ -481,8 +516,10 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           end_date?: string | null
+          experimentation_goal?: string | null
           id?: string
           image_url?: string | null
+          is_experimentation?: boolean | null
           is_ongoing?: boolean | null
           key_achievements?: string[] | null
           lessons_learned?: string[] | null
@@ -508,8 +545,10 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           end_date?: string | null
+          experimentation_goal?: string | null
           id?: string
           image_url?: string | null
+          is_experimentation?: boolean | null
           is_ongoing?: boolean | null
           key_achievements?: string[] | null
           lessons_learned?: string[] | null
@@ -1983,6 +2022,7 @@ export type Database = {
         | "cultural"
         | "ux_review"
         | "research"
+        | "metaphysics"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2137,6 +2177,7 @@ export const Constants = {
         "cultural",
         "ux_review",
         "research",
+        "metaphysics",
       ],
     },
   },
