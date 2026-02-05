@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { PopButton } from "@/components/pop-art";
-import { FileText, Loader2, Sparkles, Upload, X } from "lucide-react";
+import { FileText, Loader2, Sparkles, Upload, X, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 
@@ -96,23 +96,20 @@ export const BulkTextImporter = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validTypes = [
-      "text/plain",
-      "text/markdown",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-
-    if (!validTypes.includes(file.type) && !file.name.endsWith(".md") && !file.name.endsWith(".txt")) {
-      toast.error("Please upload a .txt, .md, or .docx file");
+    const supportedExtensions = [".txt", ".md", ".pdf", ".docx"];
+    const ext = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
+    
+    if (!supportedExtensions.includes(ext)) {
+      toast.error("Please upload a .txt, .md, .pdf, or .docx file");
       return;
     }
 
     setUploadedFile(file);
 
     try {
-      if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        // For .docx files, we'd need a library - for now, show message
-        toast.info("For .docx files, please copy and paste the text content directly");
+      // Handle PDF and DOCX with a note about limitations
+      if (ext === ".pdf" || ext === ".docx") {
+        toast.info(`For ${ext} files, please copy and paste the text content directly for best results. File uploaded as reference.`);
         setUploadedFile(null);
         return;
       }
@@ -276,7 +273,7 @@ export const BulkTextImporter = ({
           type="file"
           ref={fileInputRef}
           onChange={handleFileUpload}
-          accept=".txt,.md,.docx"
+          accept=".txt,.md,.pdf,.docx"
           className="hidden"
         />
         <div className="flex items-center gap-2">
@@ -284,7 +281,7 @@ export const BulkTextImporter = ({
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 px-3 py-2 text-sm border-2 border-foreground hover:bg-muted"
           >
-            <Upload className="w-4 h-4" />
+            <FileUp className="w-4 h-4" />
             Upload File
           </button>
           {uploadedFile && (
@@ -297,7 +294,9 @@ export const BulkTextImporter = ({
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-1">Supports .txt and .md files</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Supports .txt and .md files. For PDFs and Word docs, copy and paste text directly.
+        </p>
       </div>
 
       <Textarea

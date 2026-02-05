@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { Heart, Mail, ExternalLink } from "lucide-react";
+import { SubscribeForm } from "@/components/newsletter/SubscribeForm";
 
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
   return (
@@ -103,6 +104,9 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
                 </Link>
               </li>
             </ul>
+            <div className="mt-4 pt-4 border-t border-pop-cream/20">
+              <SubscribeForm compact source="footer" />
+            </div>
           </div>
         </div>
 

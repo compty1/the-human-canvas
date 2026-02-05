@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Save, ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -58,6 +59,8 @@ const ExperienceEditor = () => {
     admin_notes: "",
     order_index: 0,
     published: true,
+    is_experimentation: false,
+    experimentation_goal: "",
   });
 
   const [newItem, setNewItem] = useState<Record<string, string>>({
@@ -142,6 +145,8 @@ const ExperienceEditor = () => {
         admin_notes: experience.admin_notes || "",
         order_index: experience.order_index || 0,
         published: experience.published ?? true,
+        is_experimentation: experience.is_experimentation || false,
+        experimentation_goal: experience.experimentation_goal || "",
       });
     }
   }, [experience]);
@@ -160,6 +165,8 @@ const ExperienceEditor = () => {
         description: form.description || null,
         long_description: form.long_description || null,
         admin_notes: form.admin_notes || null,
+        is_experimentation: form.is_experimentation,
+        experimentation_goal: form.experimentation_goal || null,
       };
 
       if (isEditing) {
@@ -326,6 +333,36 @@ const ExperienceEditor = () => {
                 rows={2}
                 placeholder="Brief overview of this experience"
               />
+            </div>
+
+            {/* Experimentation Toggle */}
+            <div className="border-2 border-muted p-4 rounded space-y-3">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="is_experimentation"
+                  checked={form.is_experimentation}
+                  onCheckedChange={(checked) => updateForm({ is_experimentation: checked })}
+                />
+                <Label htmlFor="is_experimentation" className="font-bold">
+                  This was personal experimentation (not a business venture)
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Check this if you were learning, experimenting, or figuring things out rather than running a formal business.
+              </p>
+              {form.is_experimentation && (
+                <div className="mt-3">
+                  <Label htmlFor="experimentation_goal">What were you trying to figure out?</Label>
+                  <Textarea
+                    id="experimentation_goal"
+                    value={form.experimentation_goal}
+                    onChange={(e) => updateForm({ experimentation_goal: e.target.value })}
+                    placeholder="e.g., Learning how to make pottery, Testing if I could build an audience, Figuring out how to price handmade items..."
+                    rows={2}
+                    className="mt-1"
+                  />
+                </div>
+              )}
             </div>
 
             <div>

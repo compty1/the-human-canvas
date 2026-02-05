@@ -5,7 +5,22 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ImageCropper } from "@/components/admin/ImageCropper";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   Upload,
@@ -18,15 +33,21 @@ import {
   RefreshCw,
   Crop,
   ExternalLink,
+  Plus,
+  Palette,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+const artworkCategories = [
+  { value: "mixed", label: "Mixed Media" },
+  { value: "drawing", label: "Drawing" },
+  { value: "painting", label: "Painting" },
+  { value: "photography", label: "Photography" },
+  { value: "digital", label: "Digital Art" },
+  { value: "collage", label: "Collage" },
+  { value: "sculpture", label: "Sculpture" },
+  { value: "other", label: "Other" },
+];
 
 interface MediaItem {
   id: string;
@@ -51,6 +72,13 @@ const MediaLibrary = () => {
   const [scanning, setScanning] = useState(false);
   const [usageFilter, setUsageFilter] = useState<"all" | "used" | "unused">("all");
   const [cropItem, setCropItem] = useState<MediaItem | null>(null);
+  const [addToArtworkModal, setAddToArtworkModal] = useState(false);
+  const [artworkForm, setArtworkForm] = useState({
+    category: "mixed",
+    title: "",
+    description: "",
+  });
+  const [addingToArtwork, setAddingToArtwork] = useState(false);
 
   // Fetch media from library table
   const { data: libraryMedia = [], isLoading: libraryLoading } = useQuery({
@@ -319,6 +347,41 @@ const MediaLibrary = () => {
     );
   };
 
+  // Add selected items to artwork
+  const handleAddToArtwork = async () => {
+    if (selectedItems.length === 0) return;
+    
+    setAddingToArtwork(true);
+    try {
+      const selectedMedia = allMedia.filter(m => selectedItems.includes(m.id));
+      
+      for (let i = 0; i < selectedMedia.length; i++) {
+        const media = selectedMedia[i];
+        const title = selectedItems.length === 1 && artworkForm.title 
+          ? artworkForm.title 
+          : media.filename.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        
+        await supabase.from("artwork").insert({
+          title,
+          image_url: media.url,
+          category: artworkForm.category,
+          description: selectedItems.length === 1 ? artworkForm.description : null,
+        });
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["admin-artwork"] });
+      toast.success(`Added ${selectedMedia.length} item(s) to artwork`);
+      setAddToArtworkModal(false);
+      setSelectedItems([]);
+      setArtworkForm({ category: "mixed", title: "", description: "" });
+    } catch (error) {
+      console.error("Failed to add to artwork:", error);
+      toast.error("Failed to add to artwork");
+    } finally {
+      setAddingToArtwork(false);
+    }
+  };
+
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "Unknown";
     if (bytes < 1024) return `${bytes} B`;
@@ -404,6 +467,13 @@ const MediaLibrary = () => {
           {selectedItems.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-muted border-2 border-foreground">
               <span className="text-sm font-bold">{selectedItems.length} selected</span>
+              <button
+                onClick={() => setAddToArtworkModal(true)}
+                className="p-1 text-primary hover:bg-primary/10 rounded"
+                title="Add to Artwork"
+              >
+                <Palette className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => deleteMutation.mutate(selectedItems)}
                 className="p-1 text-destructive"
@@ -534,6 +604,74 @@ const MediaLibrary = () => {
             onCropComplete={handleCropComplete}
           />
         )}
+
+        {/* Add to Artwork Dialog */}
+        <Dialog open={addToArtworkModal} onOpenChange={setAddToArtworkModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add to Artwork Gallery</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Adding {selectedItems.length} item(s) to the artwork gallery
+              </p>
+              
+              <div>
+                <Label>Category</Label>
+                <Select 
+                  value={artworkForm.category} 
+                  onValueChange={(v) => setArtworkForm(prev => ({ ...prev, category: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {artworkCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {selectedItems.length === 1 && (
+                <>
+                  <div>
+                    <Label>Title (optional)</Label>
+                    <Input
+                      value={artworkForm.title}
+                      onChange={(e) => setArtworkForm(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Leave blank to use filename"
+                    />
+                  </div>
+                  <div>
+                    <Label>Description (optional)</Label>
+                    <Textarea
+                      value={artworkForm.description}
+                      onChange={(e) => setArtworkForm(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+                </>
+              )}
+              
+              <div className="flex justify-end gap-2">
+                <PopButton variant="outline" onClick={() => setAddToArtworkModal(false)}>
+                  Cancel
+                </PopButton>
+                <PopButton onClick={handleAddToArtwork} disabled={addingToArtwork}>
+                  {addingToArtwork ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-2" />
+                  )}
+                  Add to Artwork
+                </PopButton>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

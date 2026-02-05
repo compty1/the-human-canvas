@@ -17,7 +17,8 @@ import {
   Calendar,
   Clock,
   CheckCircle,
-  MoreVertical
+  MoreVertical,
+  Copy
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -312,6 +313,14 @@ const ContentLibrary = () => {
                         <DropdownMenuItem asChild>
                           <Link to={getEditUrl(item)} className="flex items-center gap-2">
                             <Edit className="w-4 h-4" /> Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link 
+                            to={`/admin/${item.type === "article" ? "articles" : item.type === "update" ? "updates" : "projects"}/new?clone=${item.id}`} 
+                            className="flex items-center gap-2"
+                          >
+                            <Copy className="w-4 h-4" /> Duplicate
                           </Link>
                         </DropdownMenuItem>
                         {item.status !== "published" && (

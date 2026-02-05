@@ -40,6 +40,7 @@ import {
   ShoppingBag,
   Gift,
   Command,
+  ExternalLink,
 } from "lucide-react";
 import { PopButton } from "@/components/pop-art";
 import { toast } from "@/hooks/use-toast";
@@ -260,6 +261,15 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
         {/* Command Palette Trigger & Sign Out */}
         <div className="absolute bottom-0 left-0 right-0 p-2 border-t-2 border-background/20 space-y-1">
+          <Link
+            to="/"
+            target="_blank"
+            className="flex items-center gap-3 px-3 py-2 w-full rounded hover:bg-background/10 transition-colors"
+            title={collapsed ? "View Site" : undefined}
+          >
+            <ExternalLink className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && <span>View Site</span>}
+          </Link>
           <button
             onClick={() => setCommandOpen(true)}
             className="flex items-center gap-3 px-3 py-2 w-full rounded hover:bg-background/10 transition-colors"
