@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.scheduled-publisher]
 verify_jwt = false
+
+[functions.ai-content-hub]
+verify_jwt = false

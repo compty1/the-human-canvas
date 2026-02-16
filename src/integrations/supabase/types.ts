@@ -91,6 +91,115 @@ export type Database = {
           },
         ]
       }
+      ai_change_history: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          new_data: Json
+          plan_id: string | null
+          previous_data: Json | null
+          record_id: string
+          reverted: boolean
+          table_name: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          new_data: Json
+          plan_id?: string | null
+          previous_data?: Json | null
+          record_id: string
+          reverted?: boolean
+          table_name: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          new_data?: Json
+          plan_id?: string | null
+          previous_data?: Json | null
+          record_id?: string
+          reverted?: boolean
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_change_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "ai_content_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_content_plans: {
+        Row: {
+          actions: Json
+          conversation_id: string | null
+          created_at: string
+          description: string | null
+          executed_at: string | null
+          id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          actions?: Json
+          conversation_id?: string | null
+          created_at?: string
+          description?: string | null
+          executed_at?: string | null
+          id?: string
+          status?: string
+          title: string
+        }
+        Update: {
+          actions?: Json
+          conversation_id?: string | null
+          created_at?: string
+          description?: string | null
+          executed_at?: string | null
+          id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_content_plans_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          messages: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       articles: {
         Row: {
           admin_notes: string | null
