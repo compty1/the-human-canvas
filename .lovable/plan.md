@@ -1,373 +1,210 @@
 
-# Multi-Feature Enhancement Plan
+# AI Content Dashboard - Full Implementation Plan
 
-## Summary
+## Overview
 
-This plan implements 10 distinct features to enhance the admin experience:
-
-1. **File upload analysis for content creation** - Allow PDF/doc file uploads alongside text pasting
-2. **Post media from media library to artwork** - Add bulk selection to artwork from media library
-3. **GitHub link auto-fill for projects** - Already exists, verify and enhance
-4. **Media library selection everywhere** - Add "Select from Library" option to all image uploaders
-5. **Metaphysics writing category** - Add new category to ArticleEditor
-6. **Content library selection for new content** - Allow selecting and editing existing content
-7. **Experience experimentation toggle** - Mark experiences as personal experimentation vs business
-8. **Email notification for site updates** - New subscriber system for update notifications
-9. **Leave admin to go back to normal site** - Add navigation link to public site
+Build a new "AI Content Hub" page at `/admin/content-hub` that serves as a central command center for managing all site content through an AI-powered chat interface. The AI reads actual database content, generates actionable plans with one-click implementation, tracks all changes with undo/revert capability, and supports pasting raw content for AI-assisted placement.
 
 ---
 
-## Phase 1: File Upload Analysis Enhancement
+## Architecture
 
-**Files to Modify:**
-- `src/components/admin/BulkTextImporter.tsx`
+The system has 4 major components:
 
-**Current State:**
-- Only supports `.txt` and `.md` files
-- Shows "copy and paste for .docx" message
-- No PDF support
+1. **AI Content Hub page** - Split-panel layout with chat on right, dashboard on left
+2. **Enhanced edge function** - New `ai-content-hub` function that receives full site context and returns structured action plans
+3. **Database tables** - Store conversations, plans, and change history
+4. **Action executor** - Client-side logic that reads AI plans and executes database operations
 
-**Changes:**
-1. Add PDF support using the document parsing tool
-2. Enhance file type detection and parsing
-3. Support more document formats
+---
 
-**Implementation:**
-```typescript
-// Add to BulkTextImporter.tsx
-const handleFileUpload = async (file: File) => {
-  // Extended file type support
-  const textTypes = ["text/plain", "text/markdown"];
-  const docTypes = ["application/pdf"];
-  
-  if (file.type === "application/pdf") {
-    // Parse PDF and extract text
-    // Upload to temporary storage, call parsing function
+## Database Changes
+
+### New Tables
+
+**`ai_conversations`** - Stores chat sessions
+- `id` (UUID, PK)
+- `title` (text) - auto-generated from first message
+- `messages` (JSONB) - array of {role, content, timestamp}
+- `created_at`, `updated_at` (timestamptz)
+
+**`ai_content_plans`** - Stores generated plans (pending, saved, executed)
+- `id` (UUID, PK)
+- `conversation_id` (UUID, FK to ai_conversations)
+- `title` (text)
+- `description` (text)
+- `actions` (JSONB) - array of {type: "create"|"update"|"delete", table, id?, data, field_changes}
+- `status` (text) - "pending" | "saved" | "executed" | "reverted"
+- `executed_at` (timestamptz, nullable)
+- `created_at` (timestamptz)
+
+**`ai_change_history`** - Tracks every change made through the AI hub for undo
+- `id` (UUID, PK)
+- `plan_id` (UUID, FK to ai_content_plans)
+- `action_type` (text) - "create" | "update" | "delete"
+- `table_name` (text)
+- `record_id` (UUID)
+- `previous_data` (JSONB, nullable) - snapshot before change
+- `new_data` (JSONB) - what was applied
+- `reverted` (boolean, default false)
+- `created_at` (timestamptz)
+
+All tables have RLS policies allowing only admin users.
+
+---
+
+## New Files
+
+### 1. `src/pages/admin/ContentHub.tsx` - Main page
+
+Split-panel layout:
+- **Left panel (60%)**: Dashboard showing recent changes, saved plans, content overview stats
+- **Right panel (40%)**: AI chat interface with conversation history
+
+**Left Panel Sections:**
+- **Recent Changes** - List of all AI-made changes with "Revert" buttons
+- **Saved Plans** - Plans saved for later with "Execute", "Edit", "Delete" buttons  
+- **Content Overview** - Quick stats of all content types with counts
+
+**Right Panel (AI Chat):**
+- Conversation selector (dropdown of past conversations + "New" button)
+- Chat messages with markdown rendering
+- Paste area that accepts raw text/content
+- AI responses include structured plans rendered as cards with:
+  - What will change (field-by-field diff preview)
+  - "Execute Plan" button
+  - "Save for Later" button
+  - "Edit Plan" button (opens editable version)
+
+### 2. `src/components/admin/ContentHubChat.tsx` - Chat component
+
+- Sends messages to `ai-content-hub` edge function
+- Passes full site content summary as context on each request
+- Parses AI responses for embedded plan JSON blocks
+- Renders plans as interactive cards
+- Supports pasting content with "Where should this go?" prompt
+
+### 3. `src/components/admin/ContentPlanCard.tsx` - Plan display/execution
+
+- Shows each action in the plan with before/after preview
+- Color-coded: green for create, yellow for update, red for delete
+- "Execute" runs all actions sequentially, saving snapshots to change_history
+- "Edit" makes fields editable before execution
+- Progress indicator during execution
+
+### 4. `src/components/admin/ChangeHistoryPanel.tsx` - Change tracking
+
+- Lists all changes grouped by plan
+- Each change shows: table, field, old value, new value, timestamp
+- "Revert" button per-change or per-plan (batch revert)
+- "Revert All" for entire plan
+
+### 5. `src/hooks/useContentActions.ts` - Database action executor
+
+Core hook that:
+- Executes create/update/delete operations on any content table
+- Snapshots existing data before updates/deletes
+- Saves all changes to `ai_change_history`
+- Provides revert functionality (restores previous_data)
+- Invalidates relevant React Query caches after changes
+
+### 6. `supabase/functions/ai-content-hub/index.ts` - Enhanced AI edge function
+
+**Key differences from existing `ai-assistant`:**
+- Receives a `siteContent` parameter containing summaries of all content tables
+- System prompt instructs AI to return structured plans in a specific JSON format
+- Uses tool calling to return structured action plans
+- Plans specify exact table, field, and value changes
+- AI can suggest where pasted content should go (which table, which fields)
+
+**Tool definition for structured output:**
+```
+{
+  name: "content_plan",
+  parameters: {
+    actions: [{ 
+      type: "create" | "update" | "delete",
+      table: string,
+      record_id: string | null,
+      data: object,
+      description: string
+    }],
+    summary: string
   }
-  // ... existing logic
-};
+}
 ```
 
 ---
 
-## Phase 2: Post Media to Artwork from Media Library
+## How the AI Gets Site Context
 
-**Files to Modify:**
-- `src/pages/admin/MediaLibrary.tsx`
-- `src/pages/admin/ArtworkEditor.tsx` (new mode for quick add)
+Before each message, the frontend fetches lightweight summaries:
+- Count of each content type
+- Last 5 items from each major table (title, id, status only)
+- Current content of the item being discussed (if any)
 
-**New Features:**
-1. Add "Add to Artwork" button in MediaLibrary for selected items
-2. Show quick modal to select category and add description
-3. Support bulk selection to artwork
-
-**Implementation:**
-
-Add to MediaLibrary.tsx:
-```typescript
-// New state for artwork modal
-const [addToArtworkModal, setAddToArtworkModal] = useState(false);
-const [artworkCategory, setArtworkCategory] = useState("mixed");
-const [artworkDetails, setArtworkDetails] = useState({ title: "", description: "" });
-
-// Add button in bulk actions bar
-<PopButton onClick={() => setAddToArtworkModal(true)} disabled={selectedItems.length === 0}>
-  <Plus className="w-4 h-4 mr-2" /> Add to Artwork ({selectedItems.length})
-</PopButton>
-
-// Modal with category selector and details form
-<Dialog open={addToArtworkModal}>
-  {/* Category dropdown */}
-  {/* Title/description fields */}
-  {/* Submit to create artwork entries */}
-</Dialog>
-```
+This context is sent as part of the message body so the AI knows what exists on the site and can reference real content by ID.
 
 ---
 
-## Phase 3: Verify GitHub Link Auto-Fill
+## Route & Navigation
 
-**Current State:**
-- `analyze-github` edge function exists and works
-- ProjectEditor already has `analyzeGitHub()` function
-- GitHub URL field and analyze button already present
-
-**Verification Complete:**
-- GitHub URL field exists at ProjectEditor line 216
-- `analyzeGitHub()` function at line 340-373
-- AI analysis extracts: title, description, tech_stack, features, problem_statement, solution_summary
-
-**No changes needed** - Feature is fully implemented
+- Add route: `/admin/content-hub` in `App.tsx`
+- Add nav item in `AdminLayout.tsx` under "Tools" group: `{ label: "AI Content Hub", href: "/admin/content-hub", icon: Sparkles }`
 
 ---
 
-## Phase 4: Media Library Selection in All Uploaders
+## Content Tables the AI Can Manage
 
-**Files to Modify:**
-- `src/components/admin/ImageUploader.tsx`
+The action executor supports all existing content tables:
+- `articles` (create, update, delete)
+- `updates` (create, update, delete)
+- `projects` (create, update, delete)
+- `artwork` (create, update, delete)
+- `experiments` (create, update, delete)
+- `favorites` (create, update, delete)
+- `inspirations` (create, update, delete)
+- `experiences` (create, update, delete)
+- `certifications` (create, update, delete)
+- `client_projects` (create, update, delete)
+- `skills` (create, update, delete)
 
-**Current State:**
-- ImageUploader has Upload and URL modes
-- No "Select from Library" option
-
-**Changes:**
-1. Add third mode: "Library"
-2. Show a modal/dialog with MediaLibrary picker
-3. Allow selecting existing images from storage
-
-**Implementation:**
-```typescript
-// Add to ImageUploader
-const [showLibraryPicker, setShowLibraryPicker] = useState(false);
-
-// Add Library button alongside Upload/URL
-<button onClick={() => setMode("library")}>
-  <FolderOpen className="w-3 h-3" /> Library
-</button>
-
-// Library picker component (inline or modal)
-{mode === "library" && (
-  <MediaLibraryPicker
-    onSelect={(url) => {
-      onChange(url);
-      setMode("upload");
-    }}
-  />
-)}
-```
-
-**New Component:**
-- `src/components/admin/MediaLibraryPicker.tsx` - Reusable picker for selecting from library
+Required fields and slug generation are handled automatically by the executor.
 
 ---
 
-## Phase 5: Add Metaphysics Writing Category
+## Paste Content Flow
 
-**Files to Modify:**
-- `src/pages/admin/ArticleEditor.tsx`
-- `src/pages/Writing.tsx`
-
-**Current Categories:**
-- philosophy, narrative, cultural, ux_review, research
-
-**Changes:**
-1. Add "metaphysics" to `WritingCategory` type
-2. Add to `categoryOptions` array
-3. Add color mapping in Writing.tsx
-
-**Implementation:**
-```typescript
-// ArticleEditor.tsx
-type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research" | "metaphysics";
-
-const categoryOptions = [
-  // ... existing
-  { value: "metaphysics", label: "Metaphysics" },
-];
-
-// Writing.tsx
-const categoryColors = {
-  // ... existing
-  metaphysics: "bg-purple-600",
-};
-```
+1. User pastes text into the chat input
+2. If text is long (>200 chars), UI shows: "Looks like you pasted content. Want me to suggest where to add this?"
+3. AI analyzes the content and suggests:
+   - Which content type it best fits (article, update, project, etc.)
+   - Suggested title, category, tags
+   - A structured plan to create the content
+4. User can execute, edit, or save the plan
 
 ---
 
-## Phase 6: Content Library Selection for New Content
+## Plan Editing Flow
 
-**Files to Modify:**
-- `src/pages/admin/ContentLibrary.tsx`
-- Various editors (ArticleEditor, UpdateEditor, ProjectEditor)
-
-**Current State:**
-- ContentLibrary lists existing content
-- "Edit" link goes to the editor with the item loaded
-- No "New from Existing" flow
-
-**Changes:**
-1. Add "Duplicate" option in ContentLibrary dropdown
-2. When creating new content, add option to "Start from Existing"
-3. Use existing `?clone=` parameter pattern
-
-**Implementation:**
-```typescript
-// ContentLibrary.tsx - Add duplicate option
-<DropdownMenuItem asChild>
-  <Link to={`${getEditUrl(item).replace('/edit', '/new')}?clone=${item.id}`}>
-    <Copy className="w-4 h-4 mr-2" /> Duplicate
-  </Link>
-</DropdownMenuItem>
-```
+1. AI generates a plan with specific field values
+2. User clicks "Edit Plan"
+3. Plan card expands to show editable fields for each action
+4. User modifies values as needed
+5. User clicks "Execute Edited Plan"
+6. Changes are applied with the edited values
 
 ---
 
-## Phase 7: Experience Experimentation Toggle
+## Revert Flow
 
-**Files to Modify:**
-- `src/pages/admin/ExperienceEditor.tsx`
-- Database migration for `is_experimentation` column
-
-**Current State:**
-- Experiences are assumed to be business activities
-- No flag for personal experimentation/learning
-
-**Changes:**
-1. Add `is_experimentation` boolean field
-2. Add toggle in editor: "This was experimentation/learning (not a business)"
-3. Add description field for "What I was figuring out"
-
-**Implementation:**
-```typescript
-// ExperienceEditor form state
-const [form, setForm] = useState({
-  // ... existing
-  is_experimentation: false,
-  experimentation_goal: "",
-});
-
-// UI toggle
-<div className="flex items-center gap-2">
-  <Switch
-    id="is_experimentation"
-    checked={form.is_experimentation}
-    onCheckedChange={(checked) => setForm(prev => ({ ...prev, is_experimentation: checked }))}
-  />
-  <Label htmlFor="is_experimentation">
-    This was personal experimentation (not a business venture)
-  </Label>
-</div>
-
-{form.is_experimentation && (
-  <div>
-    <Label>What I was trying to figure out</Label>
-    <Textarea
-      value={form.experimentation_goal}
-      onChange={(e) => setForm(prev => ({ ...prev, experimentation_goal: e.target.value }))}
-      placeholder="e.g., Learning how to make pottery, Testing a new technique..."
-    />
-  </div>
-)}
-```
-
----
-
-## Phase 8: Email Notification for Site Updates
-
-**New Files:**
-- `src/components/newsletter/SubscribeForm.tsx`
-- `supabase/functions/send-update-notification/index.ts`
-
-**Database Changes:**
-- New `email_subscribers` table
-
-**Implementation:**
-
-1. Create subscribers table:
-```sql
-CREATE TABLE public.email_subscribers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  subscribed_at TIMESTAMPTZ DEFAULT now(),
-  confirmed BOOLEAN DEFAULT false,
-  confirmation_token UUID DEFAULT gen_random_uuid(),
-  unsubscribed_at TIMESTAMPTZ,
-  source TEXT DEFAULT 'website'
-);
-
--- RLS policies
-ALTER TABLE email_subscribers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can subscribe" ON email_subscribers FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins can view subscribers" ON email_subscribers FOR SELECT USING (public.has_role(auth.uid(), 'admin'));
-```
-
-2. Create subscribe form component:
-```typescript
-// SubscribeForm.tsx
-const SubscribeForm = () => {
-  const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    // Insert into email_subscribers
-    // Show success toast
-  };
-  
-  return (
-    <form onSubmit={handleSubmit}>
-      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <Button type="submit">Subscribe</Button>
-    </form>
-  );
-};
-```
-
-3. Add subscribe form to Footer or Updates page
-
----
-
-## Phase 9: Leave Admin to Go Back to Site
-
-**Files to Modify:**
-- `src/components/admin/AdminLayout.tsx`
-
-**Current State:**
-- Sidebar has Dashboard, Content, Tools, Account sections
-- Sign Out button at bottom
-- No link to public site
-
-**Changes:**
-1. Add "View Site" link in sidebar
-2. Add icon and styling
-
-**Implementation:**
-```typescript
-// Add to AdminLayout.tsx sidebar, above Sign Out button
-<Link
-  to="/"
-  target="_blank"
-  className="flex items-center gap-3 px-3 py-2 w-full rounded hover:bg-background/10 transition-colors"
-  title={collapsed ? "View Site" : undefined}
->
-  <ExternalLink className="w-5 h-5 flex-shrink-0" />
-  {!collapsed && <span>View Site</span>}
-</Link>
-```
-
----
-
-## Database Migrations Required
-
-### Migration 1: Experience experimentation fields
-```sql
-ALTER TABLE public.experiences 
-ADD COLUMN IF NOT EXISTS is_experimentation BOOLEAN DEFAULT false,
-ADD COLUMN IF NOT EXISTS experimentation_goal TEXT;
-```
-
-### Migration 2: Email subscribers table
-```sql
-CREATE TABLE public.email_subscribers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  subscribed_at TIMESTAMPTZ DEFAULT now(),
-  confirmed BOOLEAN DEFAULT false,
-  confirmation_token UUID DEFAULT gen_random_uuid(),
-  unsubscribed_at TIMESTAMPTZ,
-  source TEXT DEFAULT 'website'
-);
-
-ALTER TABLE email_subscribers ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can subscribe" ON email_subscribers 
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Admins can view and manage subscribers" ON email_subscribers 
-  FOR ALL USING (public.has_role(auth.uid(), 'admin'));
-```
+1. All executed changes are stored in `ai_change_history` with `previous_data`
+2. Dashboard shows changes grouped by plan with timestamps
+3. "Revert" on a single change: restores `previous_data` to the record
+4. "Revert Plan" on a group: reverts all changes in that plan in reverse order
+5. For created records: revert means delete
+6. For deleted records: revert means re-insert with original data
+7. Reverted changes are marked `reverted = true`
 
 ---
 
@@ -375,38 +212,22 @@ CREATE POLICY "Admins can view and manage subscribers" ON email_subscribers
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `src/components/admin/BulkTextImporter.tsx` | MODIFY | Add PDF/doc file analysis support |
-| `src/pages/admin/MediaLibrary.tsx` | MODIFY | Add "Add to Artwork" bulk action with category selection |
-| `src/components/admin/ImageUploader.tsx` | MODIFY | Add "Library" mode for selecting from media library |
-| `src/components/admin/MediaLibraryPicker.tsx` | CREATE | Reusable media library picker component |
-| `src/pages/admin/ArticleEditor.tsx` | MODIFY | Add "metaphysics" category |
-| `src/pages/Writing.tsx` | MODIFY | Add metaphysics category display |
-| `src/pages/admin/ContentLibrary.tsx` | MODIFY | Add duplicate/clone option |
-| `src/pages/admin/ExperienceEditor.tsx` | MODIFY | Add experimentation toggle and fields |
-| `src/components/newsletter/SubscribeForm.tsx` | CREATE | Email subscription form component |
-| `src/components/layout/Footer.tsx` | MODIFY | Add subscribe form |
-| `src/components/admin/AdminLayout.tsx` | MODIFY | Add "View Site" link |
+| `src/pages/admin/ContentHub.tsx` | CREATE | Main AI content hub page |
+| `src/components/admin/ContentHubChat.tsx` | CREATE | Chat interface with context |
+| `src/components/admin/ContentPlanCard.tsx` | CREATE | Plan display and execution |
+| `src/components/admin/ChangeHistoryPanel.tsx` | CREATE | Change tracking and revert UI |
+| `src/hooks/useContentActions.ts` | CREATE | Database action executor with snapshots |
+| `supabase/functions/ai-content-hub/index.ts` | CREATE | AI function with structured plans |
+| `src/App.tsx` | MODIFY | Add /admin/content-hub route |
+| `src/components/admin/AdminLayout.tsx` | MODIFY | Add nav item for Content Hub |
+| Database migration | CREATE | 3 new tables with RLS |
 
 ---
 
 ## Technical Notes
 
-### File Upload Enhancement
-- Use the browser's FileReader API for text extraction
-- PDF parsing would need a client-side library or backend processing
-- Consider using edge function for complex document parsing
-
-### Media Library Picker
-- Create a reusable component that can be embedded inline or shown in a dialog
-- Support single and multi-select modes
-- Show thumbnails with in-use indicators
-
-### Email Notifications
-- Start with basic subscription storage
-- Email sending can be added later via an edge function
-- Consider using a service like Resend or SendGrid for production
-
-### GitHub Analysis
-- Already fully implemented and working
-- Uses Lovable AI to analyze README content
-- Extracts tech stack from package.json
+- The edge function uses Lovable AI (`google/gemini-3-flash-preview`) with tool calling for structured plan output
+- All database operations go through the Supabase client with proper RLS (admin-only)
+- React Query cache invalidation ensures all admin dashboards reflect changes immediately
+- Conversation history is persisted so you can return to previous chats
+- The system never modifies content outside what's specified in the plan - each action is explicit
