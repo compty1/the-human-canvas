@@ -96,6 +96,7 @@ const navGroups: NavGroup[] = [
   {
     title: "Tools",
     items: [
+      { label: "AI Content Hub", href: "/admin/content-hub", icon: Sparkles },
       { label: "Quick Capture", href: "/admin/quick-capture", icon: Sparkles },
       { label: "Media Library", href: "/admin/media-library", icon: Image },
       { label: "Content Library", href: "/admin/content-library", icon: FileText },
