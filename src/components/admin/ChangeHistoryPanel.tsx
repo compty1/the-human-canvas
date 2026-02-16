@@ -1,10 +1,47 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useContentActions } from "@/hooks/useContentActions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Undo2, RotateCcw } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Undo2, RotateCcw, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+
+const FieldDiff = ({ previous, current }: { previous: any; current: any }) => {
+  if (!previous && !current) return null;
+  const prev = (previous && typeof previous === "object") ? previous : {};
+  const curr = (current && typeof current === "object") ? current : {};
+  const allKeys = Array.from(new Set([...Object.keys(prev), ...Object.keys(curr)]));
+  const changedKeys = allKeys.filter(
+    (k) => JSON.stringify(prev[k]) !== JSON.stringify(curr[k])
+  );
+  if (changedKeys.length === 0) return <span className="text-muted-foreground text-[10px]">No field changes</span>;
+
+  return (
+    <div className="space-y-0.5 mt-1">
+      {changedKeys.slice(0, 6).map((key) => (
+        <div key={key} className="text-[10px] flex gap-1 items-start">
+          <span className="font-mono font-bold min-w-[70px]">{key}:</span>
+          {prev[key] != null && (
+            <span className="line-through text-red-600/70 max-w-[120px] truncate">
+              {String(typeof prev[key] === "object" ? JSON.stringify(prev[key]) : prev[key])}
+            </span>
+          )}
+          {prev[key] != null && curr[key] != null && <span>→</span>}
+          {curr[key] != null && (
+            <span className="text-green-700 max-w-[120px] truncate">
+              {String(typeof curr[key] === "object" ? JSON.stringify(curr[key]) : curr[key])}
+            </span>
+          )}
+        </div>
+      ))}
+      {changedKeys.length > 6 && (
+        <span className="text-[10px] text-muted-foreground">+{changedKeys.length - 6} more</span>
+      )}
+    </div>
+  );
+};
 
 export const ChangeHistoryPanel = () => {
   const { revertPlan, revertSingleChange } = useContentActions();
@@ -98,41 +135,55 @@ export const ChangeHistoryPanel = () => {
             {planChanges.length > 0 && (
               <div className="space-y-1">
                 {planChanges.map((change) => (
-                  <div
-                    key={change.id}
-                    className={`flex items-center justify-between text-xs p-2 rounded ${
-                      change.reverted ? "bg-muted/30 line-through opacity-50" : "bg-muted/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={
-                          change.action_type === "create"
-                            ? "default"
-                            : change.action_type === "delete"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        className="text-[10px] px-1.5 py-0"
-                      >
-                        {change.action_type}
-                      </Badge>
-                      <span className="font-mono">{change.table_name}</span>
-                      <span className="text-muted-foreground">
-                        {change.record_id.slice(0, 8)}...
-                      </span>
+                  <Collapsible key={change.id}>
+                    <div
+                      className={`text-xs p-2 rounded ${
+                        change.reverted ? "bg-muted/30 opacity-50" : "bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              change.action_type === "create"
+                                ? "default"
+                                : change.action_type === "delete"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {change.action_type}
+                          </Badge>
+                          <span className="font-mono">{change.table_name}</span>
+                          <span className="text-muted-foreground">
+                            {change.record_id.slice(0, 8)}...
+                          </span>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                              <ChevronDown className="w-3 h-3" />
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
+                        {!change.reverted && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => handleRevertChange(change.id)}
+                          >
+                            <Undo2 className="w-3 h-3 mr-1" /> Undo
+                          </Button>
+                        )}
+                      </div>
+                      <CollapsibleContent>
+                        <FieldDiff
+                          previous={change.previous_data}
+                          current={change.new_data}
+                        />
+                      </CollapsibleContent>
                     </div>
-                    {!change.reverted && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => handleRevertChange(change.id)}
-                      >
-                        <Undo2 className="w-3 h-3 mr-1" /> Undo
-                      </Button>
-                    )}
-                  </div>
+                  </Collapsible>
                 ))}
               </div>
             )}

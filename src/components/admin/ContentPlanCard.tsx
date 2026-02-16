@@ -1,11 +1,23 @@
 import { useState } from "react";
 import { ContentPlan, ContentAction, useContentActions } from "@/hooks/useContentActions";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Play, Save, Pencil, Check, X, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Play, Save, Pencil, Check, X, Loader2, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface ContentPlanCardProps {
@@ -15,6 +27,8 @@ interface ContentPlanCardProps {
   onSaved?: (planId: string) => void;
 }
 
+type CurrentDataMap = Record<number, Record<string, any> | null>;
+
 export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: ContentPlanCardProps) => {
   const { executePlan, savePlanForLater } = useContentActions();
   const [executing, setExecuting] = useState(false);
@@ -22,13 +36,49 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
   const [editing, setEditing] = useState(false);
   const [editedActions, setEditedActions] = useState<ContentAction[]>(plan.actions);
   const [done, setDone] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [loadingReview, setLoadingReview] = useState(false);
+  const [currentData, setCurrentData] = useState<CurrentDataMap>({});
+
+  const actionCounts = editedActions.reduce(
+    (acc, a) => {
+      acc[a.type] = (acc[a.type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  const fetchCurrentData = async () => {
+    setLoadingReview(true);
+    const dataMap: CurrentDataMap = {};
+    for (let i = 0; i < editedActions.length; i++) {
+      const action = editedActions[i];
+      if ((action.type === "update" || action.type === "delete") && action.record_id) {
+        const { data } = await supabase
+          .from(action.table as any)
+          .select("*")
+          .eq("id", action.record_id)
+          .maybeSingle();
+        dataMap[i] = data;
+      } else {
+        dataMap[i] = null;
+      }
+    }
+    setCurrentData(dataMap);
+    setLoadingReview(false);
+  };
+
+  const toggleReview = async () => {
+    if (!reviewing) {
+      await fetchCurrentData();
+    }
+    setReviewing(!reviewing);
+  };
 
   const handleExecute = async () => {
     setExecuting(true);
     setProgress(0);
     const total = editedActions.length;
-
-    // Simulate per-action progress
     const interval = setInterval(() => {
       setProgress((p) => Math.min(p + 100 / total, 95));
     }, 300);
@@ -99,6 +149,17 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
       <div className="p-4 bg-muted/30 border-b border-border">
         <h4 className="font-bold text-base">{plan.title}</h4>
         <p className="text-sm text-muted-foreground mt-1">{plan.summary}</p>
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {actionCounts.create && (
+            <Badge variant="default" className="text-xs">{actionCounts.create} create{actionCounts.create > 1 ? "s" : ""}</Badge>
+          )}
+          {actionCounts.update && (
+            <Badge variant="secondary" className="text-xs">{actionCounts.update} update{actionCounts.update > 1 ? "s" : ""}</Badge>
+          )}
+          {actionCounts.delete && (
+            <Badge variant="destructive" className="text-xs">{actionCounts.delete} delete{actionCounts.delete > 1 ? "s" : ""}</Badge>
+          )}
+        </div>
       </div>
 
       <div className="p-4 space-y-3">
@@ -115,30 +176,90 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
             </div>
             <p className="text-sm mb-2">{action.description}</p>
 
-            {action.data && (
+            {/* Review diff for update/delete */}
+            {reviewing && currentData[idx] && action.data && (
+              <div className="mb-2 space-y-1 bg-background/50 rounded p-2 text-xs">
+                <p className="font-bold text-muted-foreground mb-1">Changes:</p>
+                {Object.entries(action.data).map(([key, newVal]) => {
+                  const oldVal = currentData[idx]?.[key];
+                  const changed = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+                  return (
+                    <div key={key} className="flex items-start gap-1">
+                      <span className="font-mono font-bold min-w-[100px]">{key}:</span>
+                      {changed ? (
+                        <span>
+                          <span className="line-through text-red-600/70">{oldVal != null ? String(typeof oldVal === "object" ? JSON.stringify(oldVal) : oldVal) : "(empty)"}</span>
+                          <span className="mx-1">→</span>
+                          <span className="text-green-700 font-medium">{String(typeof newVal === "object" ? JSON.stringify(newVal) : newVal)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">{String(typeof newVal === "object" ? JSON.stringify(newVal) : newVal)} (unchanged)</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Review for create: show all new fields */}
+            {reviewing && action.type === "create" && action.data && (
+              <div className="mb-2 space-y-1 bg-background/50 rounded p-2 text-xs">
+                <p className="font-bold text-green-700 mb-1">New record:</p>
+                {Object.entries(action.data).map(([key, val]) => (
+                  <div key={key} className="flex items-start gap-1">
+                    <span className="font-mono font-bold min-w-[100px]">{key}:</span>
+                    <span className="text-green-700">{typeof val === "object" ? JSON.stringify(val) : String(val)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Review for delete: show existing data */}
+            {reviewing && action.type === "delete" && currentData[idx] && (
+              <div className="mb-2 space-y-1 bg-red-500/5 rounded p-2 text-xs">
+                <p className="font-bold text-red-700 mb-1">Will be deleted:</p>
+                {Object.entries(currentData[idx]!).slice(0, 8).map(([key, val]) => (
+                  <div key={key} className="flex items-start gap-1">
+                    <span className="font-mono font-bold min-w-[100px]">{key}:</span>
+                    <span className="line-through text-red-600/70">{typeof val === "object" ? JSON.stringify(val) : String(val ?? "")}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Edit mode fields */}
+            {editing && action.data && (
               <div className="space-y-1">
                 {Object.entries(action.data).map(([key, val]) => (
                   <div key={key} className="flex items-start gap-2 text-xs">
                     <span className="font-mono font-bold min-w-[100px]">{key}:</span>
-                    {editing ? (
-                      typeof val === "string" && val.length > 60 ? (
-                        <Textarea
-                          value={String(editedActions[idx]?.data?.[key] ?? val)}
-                          onChange={(e) => updateActionData(idx, key, e.target.value)}
-                          className="text-xs min-h-[60px]"
-                        />
-                      ) : (
-                        <Input
-                          value={String(editedActions[idx]?.data?.[key] ?? val)}
-                          onChange={(e) => updateActionData(idx, key, e.target.value)}
-                          className="text-xs h-7"
-                        />
-                      )
+                    {typeof val === "string" && val.length > 60 ? (
+                      <Textarea
+                        value={String(editedActions[idx]?.data?.[key] ?? val)}
+                        onChange={(e) => updateActionData(idx, key, e.target.value)}
+                        className="text-xs min-h-[60px]"
+                      />
                     ) : (
-                      <span className="break-all">
-                        {typeof val === "object" ? JSON.stringify(val) : String(val)}
-                      </span>
+                      <Input
+                        value={String(editedActions[idx]?.data?.[key] ?? val)}
+                        onChange={(e) => updateActionData(idx, key, e.target.value)}
+                        className="text-xs h-7"
+                      />
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Default non-editing, non-reviewing data display */}
+            {!editing && !reviewing && action.data && (
+              <div className="space-y-1">
+                {Object.entries(action.data).map(([key, val]) => (
+                  <div key={key} className="flex items-start gap-2 text-xs">
+                    <span className="font-mono font-bold min-w-[100px]">{key}:</span>
+                    <span className="break-all">
+                      {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -155,14 +276,53 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
       )}
 
       <div className="p-4 border-t border-border flex gap-2 flex-wrap">
-        <Button onClick={handleExecute} disabled={executing} size="sm">
-          {executing ? (
+        {/* Review button */}
+        <Button
+          onClick={toggleReview}
+          variant={reviewing ? "secondary" : "outline"}
+          size="sm"
+          disabled={executing || loadingReview}
+        >
+          {loadingReview ? (
             <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+          ) : reviewing ? (
+            <ChevronUp className="w-4 h-4 mr-1" />
           ) : (
-            <Play className="w-4 h-4 mr-1" />
+            <Eye className="w-4 h-4 mr-1" />
           )}
-          {editing ? "Execute Edited Plan" : "Execute Plan"}
+          {reviewing ? "Hide Review" : "Review Changes"}
         </Button>
+
+        {/* Execute with confirmation */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" disabled={executing}>
+              {executing ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-1" />
+              )}
+              {editing ? "Execute Edited Plan" : "Execute Plan"}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Execute Plan: {plan.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {editedActions.length} action{editedActions.length !== 1 ? "s" : ""} will be performed:
+                {actionCounts.create ? ` ${actionCounts.create} create${actionCounts.create > 1 ? "s" : ""},` : ""}
+                {actionCounts.update ? ` ${actionCounts.update} update${actionCounts.update > 1 ? "s" : ""},` : ""}
+                {actionCounts.delete ? ` ${actionCounts.delete} delete${actionCounts.delete > 1 ? "s" : ""}` : ""}
+                . This can be reverted from the change history.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleExecute}>Execute</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <Button onClick={handleSave} variant="outline" size="sm" disabled={executing}>
           <Save className="w-4 h-4 mr-1" /> Save for Later
         </Button>
