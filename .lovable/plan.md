@@ -1,108 +1,88 @@
 
+# Plan: Artwork Multi-Image, Per-Item AI Chat, and Media Library "Add to Content"
 
-# Plan: Media Library Organization, Client Work Types, and Inline Renaming
+## 1. Multiple Images for Artwork
 
-## 1. Media Library -- Inline Quick Rename
-
-Add the ability to rename a file directly from the media grid card by clicking an edit/pencil icon.
-
-### How it works
-- Each media card in the grid gets a small pencil icon button in the hover overlay
-- Clicking it enters an "edit mode" for that card: the filename text at the bottom becomes an editable input field
-- Pressing Enter or clicking a checkmark saves the new name to the `media_library` table
-- Pressing Escape cancels the edit
-- Only items that exist in the `media_library` table (source = "library") can be renamed; storage-only items will show the button disabled or hidden
-
-### Technical changes
-- **File:** `src/pages/admin/MediaLibrary.tsx`
-  - Add `editingId` and `editingName` state variables
-  - On the media card, when `editingId === item.id`, replace the filename text with an `<Input>` field
-  - On save, call `supabase.from("media_library").update({ filename: newName }).eq("id", editingId)`
-  - Invalidate the media-library-table query on success
-  - Add pencil icon button to the hover overlay actions
-
----
-
-## 2. Media Library -- Organize by Tags / Grouped View
-
-Add a "Group by Tag" view mode that visually organizes images into collapsible category sections based on their tags.
-
-### How it works
-- Add a view toggle (Grid / Grouped) next to the existing filters
-- In Grouped view, images are sorted by their first tag and displayed under collapsible section headers
-- Images with no tags appear under an "Uncategorized" group
-- Add a "Tag Selected" bulk action button that opens a popover to assign one or more tags to all selected images
-- Add an "Auto-Categorize" button that sends selected image URLs to an edge function powered by Lovable AI, which returns suggested tags
-
-### Technical changes
-
-**Media Library UI** (`src/pages/admin/MediaLibrary.tsx`):
-- Add `viewMode` state: `"grid" | "grouped"`
-- Add `tagFilter` state for filtering by a specific tag
-- In grouped mode, compute groups from `filteredMedia` by first tag
-- Render each group as a collapsible section with header showing tag name and count
-- Add "Tag Selected" button in the selection toolbar that opens a Popover with a text input for adding/removing tags
-- Tag updates call `supabase.from("media_library").update({ tags }).eq("id", id)` for each selected item
-
-**Edge Function** (`supabase/functions/categorize-images/index.ts`):
-- Accepts `{ urls: string[] }` in the request body
-- Uses Lovable AI (Gemini 2.5 Flash) to analyze the images and return suggested category tags for each
-- Returns `{ results: [{ url: string, tags: string[] }] }`
-
----
-
-## 3. Client Work -- Project Type System
-
-Add a `project_type` field and `type_metadata` JSONB field to `client_projects`, then show type-specific form sections in the editor and type badges on listing pages.
-
-### Supported project types
-- **Web Design / Development** -- tech stack, features, live URL (uses existing fields)
-- **Logo / Branding** -- brand colors, font choices, logo variations count, brand guidelines URL
-- **Business Plan** -- industry, executive summary, key sections list, deliverable format
-- **Copywriting** -- content type (blog, web, ad, email), word count, tone/voice, sample excerpt
-- **Product Design** -- materials, dimensions, design tools used, prototype images
-- **Product Review / Analysis** -- product name, rating, key findings, methodology
-- **Consulting / Strategy** -- focus area, recommendations, outcome metrics, duration
-- **Social Media** -- platforms, campaign type, reach/engagement metrics
-- **Photography / Video** -- equipment used, deliverables count, style/genre
-- **Other** -- freeform notes
+Currently each artwork entry has only a single `image_url` field. This adds an `images` text array column for process photos, stages, etc.
 
 ### Database migration
 ```sql
-ALTER TABLE client_projects
-  ADD COLUMN project_type text NOT NULL DEFAULT 'web_design',
-  ADD COLUMN type_metadata jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE artwork ADD COLUMN images text[] DEFAULT '{}'::text[];
 ```
 
-### Technical changes
+### Changes
+- **`src/pages/admin/ArtworkEditor.tsx`**: Add `EnhancedImageManager` component below the main image uploader for managing the `images` array (drag-reorder, add from library, set as main). Import existing `EnhancedImageManager` and `MediaLibraryPicker` components already built in Phase 1.
+- **`src/pages/ArtGallery.tsx`** (or artwork detail view): Show additional images in a small gallery/thumbnail row when viewing an artwork piece.
+- **`src/components/admin/AddToContentModal.tsx`**: Update the artwork config to include the new `images` array field so media library can target it, and change artwork from "create new entry" mode to also support "add to existing artwork" with both `image_url` (single) and `images` (array) fields.
 
-**ClientProjectEditor** (`src/pages/admin/ClientProjectEditor.tsx`):
-- Add project type dropdown at the top of the form (before client name)
-- Based on selected type, render additional type-specific field sections in a new ComicPanel
-- Type-specific fields read from and write to `form.type_metadata`
-- Existing fields (tech_stack, features, testimonial) remain available for all types but are most relevant for web design
-- Save `project_type` and `type_metadata` alongside existing fields
+---
 
-**ClientWork listing** (`src/pages/ClientWork.tsx`):
-- Add project type badge on each card (next to status badge)
-- Add type filter buttons alongside existing status filters
+## 2. Per-Item AI Chat with Saved Conversations and Knowledge Base Integration
 
-**ClientWorkManager** (`src/pages/admin/ClientWorkManager.tsx`):
-- Add type badge on each card
-- Add a type filter dropdown
+Add a dedicated AI chat panel to each individual content editor (projects, experiences, life periods, experiments, artwork, articles, client projects, etc.) that:
+- Persists conversations in the `ai_conversations` table linked to the entity
+- Allows re-accessing past conversations
+- Has a "Save to Knowledge Base" button on each AI message to add insights to the `knowledge_entries` table for that item
 
-**ClientProjectDetail** (`src/pages/ClientProjectDetail.tsx`):
-- Show project type badge in the hero section
-- Render type-specific metadata sections (e.g., "Brand Colors" for logo projects, "Content Details" for copywriting)
+### New component
+- **`src/components/admin/ItemAIChatPanel.tsx`**: A new component wrapping the existing `AIChatAssistant` pattern but with:
+  - Conversation persistence: loads/saves messages from `ai_conversations` table using metadata to filter by entity type + entity ID
+  - Conversation list: shows past conversations for this item, ability to switch between them or start a new one
+  - "Add to Knowledge Base" button on each assistant message that creates a `knowledge_entries` record linked to the current entity
+  - Props: `entityType`, `entityId`, `entityTitle`, `context`
+
+### Database changes
+- Add `entity_type` (text, nullable) and `entity_id` (uuid, nullable) columns to `ai_conversations` table so conversations can be linked to specific items.
+
+```sql
+ALTER TABLE ai_conversations 
+  ADD COLUMN entity_type text,
+  ADD COLUMN entity_id uuid;
+```
+
+### Editor integrations
+Add `ItemAIChatPanel` to the following editors (alongside or replacing the existing `AIChatAssistant`):
+- `ExperimentEditor.tsx`
+- `ProjectEditor.tsx`
+- `ExperienceEditor.tsx`
+- `ClientProjectEditor.tsx`
+- `ArtworkEditor.tsx`
+- `ArticleEditor.tsx`
+- `LifePeriodEditor.tsx`
+- `ProductReviewEditor.tsx`
+- `FavoriteEditor.tsx`
+- `InspirationEditor.tsx`
+- `CertificationEditor.tsx`
+- `UpdateEditor.tsx`
+
+Each editor will pass its entity type, ID, title, and relevant form context to the chat panel.
+
+---
+
+## 3. Media Library "Add to Content" -- Full Wiring
+
+The `AddToContentModal` component already exists and supports 12 content types. The needed improvements:
+
+### Changes to `src/components/admin/AddToContentModal.tsx`
+- Update the `artwork` config entry: instead of only creating new artwork entries, support both "Create new artwork entry" AND "Add to existing artwork" (using the new `images` array field)
+- Add `updates` content type config (if not already present) with any image fields
+
+### Changes to `src/pages/admin/MediaLibrary.tsx`
+- The "Add to Content" button and modal are already wired. Verify the flow works end-to-end: select images, click "Add to Content", pick content type, pick record, pick field, save. No new code needed here beyond ensuring the button is visible and functional in the selection toolbar.
 
 ---
 
 ## Implementation Order
 
-1. Database migration (add project_type + type_metadata columns)
-2. Media Library inline rename feature
-3. Client Work Editor -- project type selector + conditional fields
-4. Client Work public pages -- type badges + detail rendering
-5. Media Library grouped view + bulk tagging
-6. Auto-categorize edge function
+1. Database migration (artwork.images + ai_conversations entity columns)
+2. `ArtworkEditor.tsx` -- add `EnhancedImageManager` for multi-image support
+3. `AddToContentModal.tsx` -- update artwork config for existing entries + images array
+4. `ItemAIChatPanel.tsx` -- new component with persistence and knowledge base integration
+5. Integrate `ItemAIChatPanel` into all editors
 
+## Technical Notes
+
+- The `EnhancedImageManager` component (already built) handles drag-reorder, "set as main", library picker, and upload -- it will be reused directly for artwork.
+- The `ai_conversations` table already exists with `messages` jsonb and `title` fields. Adding `entity_type` and `entity_id` allows filtering conversations per item.
+- The `knowledge_entries` table already exists with `entity_type`, `entity_id`, `title`, `content`, `category`, and `tags` fields -- perfect for storing AI-generated insights.
+- The `AddToContentModal` already handles both "single" (replace) and "array" (append) field types, so adding artwork's `images` array is straightforward.
