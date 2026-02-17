@@ -207,7 +207,7 @@ const ClientProjectDetail = () => {
                 <ArrowLeft className="w-4 h-4 mr-2" /> All Client Work
               </PopButton>
             </Link>
-            <Link to="/support">
+            <Link to="/contact">
               <PopButton variant="primary">
                 Work With Me
               </PopButton>

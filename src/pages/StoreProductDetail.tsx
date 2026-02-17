@@ -18,7 +18,7 @@ const StoreProductDetail = () => {
         .select("*")
         .eq("slug", slug)
         .eq("status", "active")
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -117,11 +117,11 @@ const StoreProductDetail = () => {
             <h1 className="text-4xl font-display">{product.name}</h1>
 
             <div className="flex items-center gap-4">
-              <span className="text-3xl font-bold">${product.price}</span>
+              <span className="text-3xl font-bold">${product.price.toFixed(2)}</span>
               {product.compare_at_price && product.compare_at_price > product.price && (
                 <>
                   <span className="text-xl text-muted-foreground line-through">
-                    ${product.compare_at_price}
+                    ${product.compare_at_price.toFixed(2)}
                   </span>
                   <SpeechBubble className="text-sm">
                     Save ${(product.compare_at_price - product.price).toFixed(2)}!

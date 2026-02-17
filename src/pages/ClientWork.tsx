@@ -111,6 +111,7 @@ const ClientWork = () => {
                       <img 
                         src={project.image_url} 
                         alt={project.project_name}
+                        loading="lazy"
                         className="w-full h-48 object-cover border-b-4 border-foreground"
                       />
                     </Link>
@@ -197,7 +198,7 @@ const ClientWork = () => {
           <p className="text-lg opacity-80 max-w-xl mx-auto mb-8">
             I'm available for freelance projects. Let's build something amazing.
           </p>
-          <Link to="/support">
+          <Link to="/contact">
             <PopButton variant="accent" size="lg">
               Get in Touch
             </PopButton>

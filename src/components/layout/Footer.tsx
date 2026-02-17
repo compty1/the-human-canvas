@@ -39,6 +39,16 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
                   Writing
                 </Link>
               </li>
+              <li>
+                <Link to="/experiments" className="hover:text-pop-gold transition-colors">
+                  Experiments
+                </Link>
+              </li>
+              <li>
+                <Link to="/experiences" className="hover:text-pop-gold transition-colors">
+                  Experiences
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -96,8 +106,8 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
                 </Link>
               </li>
               <li>
-                <Link
-                  to="/about"
+              <Link
+                  to="/contact"
                   className="hover:text-pop-teal transition-colors inline-flex items-center gap-1"
                 >
                   <Mail className="w-4 h-4" /> Contact

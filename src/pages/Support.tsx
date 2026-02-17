@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { FundingCard, FundingModal } from "@/components/funding";
@@ -29,6 +29,7 @@ interface LearningGoal {
 const donationAmounts = [5, 10, 25, 50, 100];
 
 const Support = () => {
+  const queryClient = useQueryClient();
   const [selectedDonation, setSelectedDonation] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedLearning, setSelectedLearning] = useState<string | null>(null);
@@ -293,9 +294,9 @@ const Support = () => {
             </p>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {contributions.map((contributor, index) => (
+               {contributions.map((contributor, index) => (
                 <div
-                  key={index}
+                  key={`contribution-${index}-${contributor.created_at}`}
                   className="p-4 border-2 border-background text-center"
                 >
                   <div className="text-2xl font-display text-pop-cyan mb-2">
@@ -374,6 +375,7 @@ const Support = () => {
         title="Make a Donation"
         description="Your contribution supports ongoing projects and creative work."
         contributionType="general"
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["thank-you-wall"] })}
       />
 
       {/* Learning Goal Modal */}
