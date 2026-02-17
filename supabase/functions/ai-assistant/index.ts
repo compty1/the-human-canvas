@@ -75,6 +75,9 @@ Your role:
 - Generate ideas for new content
 - Maintain an authentic, bold, engaging tone
 - Be concise but impactful
+- When existing content from the same section is provided, match the tone, style, and length
+- Avoid duplicating themes or phrasing already used in sibling content
+- Reference and build connections to existing content when relevant
 
 ${contentType ? `Current content type: ${contentType}` : ""}
 ${context ? `Current content context:\n${context}` : ""}

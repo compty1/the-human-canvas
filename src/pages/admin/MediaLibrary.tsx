@@ -35,8 +35,10 @@ import {
   ExternalLink,
   Plus,
   Palette,
+  FolderPlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AddToContentModal } from "@/components/admin/AddToContentModal";
 
 const artworkCategories = [
   { value: "mixed", label: "Mixed Media" },
@@ -73,6 +75,7 @@ const MediaLibrary = () => {
   const [usageFilter, setUsageFilter] = useState<"all" | "used" | "unused">("all");
   const [cropItem, setCropItem] = useState<MediaItem | null>(null);
   const [addToArtworkModal, setAddToArtworkModal] = useState(false);
+  const [addToContentModal, setAddToContentModal] = useState(false);
   const [artworkForm, setArtworkForm] = useState({
     category: "mixed",
     title: "",
@@ -468,6 +471,13 @@ const MediaLibrary = () => {
             <div className="flex items-center gap-2 px-3 py-2 bg-muted border-2 border-foreground">
               <span className="text-sm font-bold">{selectedItems.length} selected</span>
               <button
+                onClick={() => setAddToContentModal(true)}
+                className="p-1 text-primary hover:bg-primary/10 rounded"
+                title="Add to Content"
+              >
+                <FolderPlus className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => setAddToArtworkModal(true)}
                 className="p-1 text-primary hover:bg-primary/10 rounded"
                 title="Add to Artwork"
@@ -672,6 +682,17 @@ const MediaLibrary = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Add to Content Modal */}
+        <AddToContentModal
+          open={addToContentModal}
+          onOpenChange={setAddToContentModal}
+          selectedMedia={allMedia.filter(m => selectedItems.includes(m.id)).map(m => ({ id: m.id, url: m.url, filename: m.filename }))}
+          onSuccess={() => {
+            setSelectedItems([]);
+            queryClient.invalidateQueries({ queryKey: ["media-usage"] });
+          }}
+        />
       </div>
     </AdminLayout>
   );

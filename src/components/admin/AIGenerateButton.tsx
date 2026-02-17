@@ -27,6 +27,23 @@ const fieldPrompts: Record<string, string> = {
   childhood_impact: "Describe what this instilled or taught during childhood",
 };
 
+// Map contentType to DB table name for fetching siblings
+const contentTypeToTable: Record<string, string> = {
+  article: "articles", articles: "articles",
+  project: "projects", projects: "projects",
+  experiment: "experiments", experiments: "experiments",
+  experience: "experiences", experiences: "experiences",
+  favorite: "favorites", favorites: "favorites",
+  inspiration: "inspirations", inspirations: "inspirations",
+  life_period: "life_periods", life_periods: "life_periods",
+  certification: "certifications", certifications: "certifications",
+  product_review: "product_reviews", product_reviews: "product_reviews",
+  client_project: "client_projects", client_projects: "client_projects",
+  artwork: "artwork",
+  product: "products", products: "products",
+  update: "updates", updates: "updates",
+};
+
 export const AIGenerateButton = ({
   fieldName,
   fieldLabel,
@@ -49,15 +66,33 @@ export const AIGenerateButton = ({
         .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
         .join("\n");
 
+      // Fetch sibling content for style/tone reference
+      let siblingContext = "";
+      const tableName = contentTypeToTable[contentType];
+      if (tableName) {
+        try {
+          const titleField = ["experiments", "products", "artwork"].includes(tableName) ? "name" : "title";
+          const selectFields = `id, ${titleField}, description`;
+          const { data: siblings } = await (supabase.from(tableName as any) as any)
+            .select(selectFields)
+            .order("created_at", { ascending: false })
+            .limit(5);
+          if (siblings && siblings.length > 0) {
+            siblingContext = "\n\nExisting content in this section (for tone/style reference):\n" +
+              siblings.map((s: any) => `- "${s[titleField] || s.name || s.title}": ${s.description || "(no description)"}`).join("\n");
+          }
+        } catch { /* ignore */ }
+      }
+
       const { data, error } = await supabase.functions.invoke("ai-assistant", {
         body: {
           messages: [
             {
               role: "user",
-              content: `${prompt} for this ${contentType}.\n\nContext:\n${contextStr}\n\nGenerate only the ${fieldLabel} content, nothing else. Be concise and impactful.`,
+              content: `${prompt} for this ${contentType}.\n\nContext:\n${contextStr}${siblingContext}\n\nGenerate only the ${fieldLabel} content, nothing else. Be concise and impactful. Match the tone of existing content.`,
             },
           ],
-          context: contextStr,
+          context: contextStr + siblingContext,
           contentType,
         },
       });

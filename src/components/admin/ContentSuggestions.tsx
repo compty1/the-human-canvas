@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ADMIN_ROUTES, PUBLISHABLE_TABLES, CONTENT_FIELDS } from "@/lib/adminRoutes";
-import { AlertTriangle, FileText, Clock, Eye, Sparkles, ExternalLink, FolderOpen } from "lucide-react";
+import { AlertTriangle, FileText, Clock, Eye, Sparkles, FolderOpen, RefreshCw, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Suggestion {
@@ -21,10 +21,21 @@ interface ContentSuggestionsProps {
   onSendToChat?: (prompt: string) => void;
 }
 
+// Base fields that exist on most tables
+const BASE_FIELDS = ["id", "title", "name", "slug", "updated_at", "published", "review_status"];
+
+// Build per-table select strings using only columns that actually exist
+function getSelectFields(table: string): string {
+  const contentFields = CONTENT_FIELDS[table] || [];
+  const allFields = [...new Set([...BASE_FIELDS, ...contentFields])];
+  return allFields.join(", ");
+}
+
 export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const { data: suggestions, isLoading } = useQuery({
+  const { data: suggestions, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["content-suggestions"],
     queryFn: async () => {
       const results: Suggestion[] = [];
@@ -35,8 +46,8 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
       await Promise.all(
         tables.map(async (table) => {
           try {
-            // Check for empty tables
-            const { data: allData } = await (supabase.from(table as any) as any).select("id, title, name, slug, updated_at, published, review_status, description, content, excerpt, image_url, featured_image, summary, tags, images, features");
+            const selectStr = getSelectFields(table);
+            const { data: allData } = await (supabase.from(table as any) as any).select(selectStr);
             const items = allData || [];
 
             if (items.length === 0) {
@@ -69,10 +80,12 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
               }
             }
 
-            // Check missing content fields
+            // Check missing content fields - only for fields that exist in this table's CONTENT_FIELDS
             const fields = CONTENT_FIELDS[table] || [];
             for (const field of fields) {
               const missing = items.filter((i: any) => {
+                // Only check if the field key actually exists in the returned data
+                if (!(field in i)) return false;
                 const val = i[field];
                 if (val === null || val === undefined) return true;
                 if (typeof val === "string" && val.trim() === "") return true;
@@ -113,13 +126,18 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
         })
       );
 
-      // Sort: high severity first
       const order = { high: 0, medium: 1, low: 2 };
       results.sort((a, b) => order[a.severity] - order[b.severity]);
       return results;
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["content-suggestions"] });
+    refetch();
+  };
 
   const severityIcon = (s: string) => {
     if (s === "high") return <AlertTriangle className="w-4 h-4 text-destructive" />;
@@ -138,6 +156,7 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
   if (isLoading) {
     return (
       <div className="text-center text-muted-foreground py-8">
+        <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" />
         <p>Analyzing content...</p>
       </div>
     );
@@ -149,13 +168,23 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
         <Sparkles className="w-8 h-8 mx-auto mb-2" />
         <p className="font-medium">All content looks great!</p>
         <p className="text-sm mt-1">No suggestions at this time.</p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={handleRefresh} disabled={isFetching}>
+          {isFetching ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+          Refresh
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">{suggestions.length} suggestions found</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{suggestions.length} suggestions found</p>
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleRefresh} disabled={isFetching}>
+          {isFetching ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+          Refresh
+        </Button>
+      </div>
       {suggestions.map((s) => (
         <div key={s.id} className="border rounded-lg p-4 bg-card">
           <div className="flex items-start gap-3">
@@ -218,4 +247,13 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
       ))}
     </div>
   );
+};
+
+/** Export suggestion count for external use */
+export const useSuggestionsCount = () => {
+  const { data } = useQuery({
+    queryKey: ["content-suggestions"],
+    enabled: false, // Don't refetch, just read from cache
+  });
+  return (data as Suggestion[] | undefined)?.length ?? 0;
 };
