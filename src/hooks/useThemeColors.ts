@@ -70,7 +70,7 @@ export function useThemeColors() {
         .from("site_content")
         .select("content_value")
         .eq("section_key", "theme_colors")
-        .single();
+        .maybeSingle();
       if (error) return null;
       try {
         return JSON.parse(data?.content_value || "null");

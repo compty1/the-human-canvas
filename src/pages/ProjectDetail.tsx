@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, LikeButton } from "@/components/pop-art";
@@ -407,7 +408,7 @@ const ProjectDetail = () => {
                   <h2 className="text-4xl font-display mb-8">Case Study</h2>
                   <div 
                     className="prose prose-lg max-w-none font-sans"
-                    dangerouslySetInnerHTML={{ __html: project.case_study }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(project.case_study) }}
                   />
                 </div>
               )}

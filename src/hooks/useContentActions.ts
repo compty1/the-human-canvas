@@ -102,7 +102,7 @@ export function useContentActions() {
           const { data: existing } = await (supabase.from(action.table) as any)
             .select("*")
             .eq("id", action.record_id)
-            .single();
+            .maybeSingle();
 
           const { data: updated, error } = await (supabase.from(action.table) as any)
             .update(action.data || {})
@@ -124,7 +124,7 @@ export function useContentActions() {
           const { data: existing } = await (supabase.from(action.table) as any)
             .select("*")
             .eq("id", action.record_id)
-            .single();
+            .maybeSingle();
 
           const { error } = await (supabase.from(action.table) as any)
             .delete()
@@ -225,7 +225,7 @@ export function useContentActions() {
       .from("ai_change_history")
       .select("*")
       .eq("id", changeId)
-      .single();
+      .maybeSingle();
 
     if (!change || !isAllowedTable(change.table_name)) return;
 

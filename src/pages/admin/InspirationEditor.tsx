@@ -118,7 +118,7 @@ const InspirationEditor = () => {
         .from("inspirations")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

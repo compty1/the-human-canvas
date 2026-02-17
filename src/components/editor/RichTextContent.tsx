@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface RichTextContentProps {
   content: string;
@@ -22,7 +23,7 @@ export const RichTextContent = ({ content, className }: RichTextContentProps) =>
         "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-primary/80",
         className
       )}
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
     />
   );
 };

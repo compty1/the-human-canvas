@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, SpeechBubble } from "@/components/pop-art";
@@ -16,7 +17,7 @@ const ExperimentDetail = () => {
         .from("experiments")
         .select("*")
         .eq("slug", slug)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -182,7 +183,7 @@ const ExperimentDetail = () => {
                 <h2 className="text-2xl font-display mb-4">Case Study</h2>
                 <div 
                   className="prose prose-lg max-w-none"
-                  dangerouslySetInnerHTML={{ __html: experiment.case_study }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(experiment.case_study) }}
                 />
               </ComicPanel>
             )}

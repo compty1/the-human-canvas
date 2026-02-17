@@ -25,22 +25,23 @@ export const PUBLISHABLE_TABLES = ["articles", "updates", "projects", "experimen
 /** Tables that have a `review_status` column */
 export const REVIEWABLE_TABLES = ["articles", "experiments", "product_reviews", "projects"];
 
-/** Tables with text fields to check for completeness */
+/** Tables with text fields to check for completeness. 
+ * Only truly important fields are listed — optional fields like image_url, tags, themes are excluded 
+ * to reduce false-positive noise in suggestions. */
 export const CONTENT_FIELDS: Record<string, string[]> = {
-  articles: ["content", "excerpt", "featured_image", "tags"],
-  projects: ["description", "image_url", "features"],
+  articles: ["content", "excerpt"],
+  projects: ["description"],
   updates: ["content"],
-  artwork: ["description"],
-  experiments: ["description", "image_url"],
-  favorites: ["description", "image_url"],
-  inspirations: ["description", "image_url"],
-  experiences: ["description", "image_url"],
+  artwork: [],
+  experiments: ["description"],
+  favorites: ["description"],
+  inspirations: ["description"],
+  experiences: ["description"],
   certifications: ["description"],
-  client_projects: ["description", "image_url"],
-  products: ["description", "images"],
-  product_reviews: ["content", "summary", "featured_image"],
-  life_periods: ["description", "detailed_content", "image_url", "themes"],
+  client_projects: ["description"],
+  products: ["description"],
+  product_reviews: ["content", "summary"],
+  life_periods: ["description"],
   learning_goals: ["description"],
   funding_campaigns: ["description"],
-  supplies_needed: ["description", "image_url"],
 };

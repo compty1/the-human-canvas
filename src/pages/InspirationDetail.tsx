@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -145,7 +146,7 @@ const InspirationDetail = () => {
             <div className="max-w-3xl mx-auto">
               <div 
                 className="prose prose-lg max-w-none font-sans"
-                dangerouslySetInnerHTML={{ __html: inspiration.detailed_content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(inspiration.detailed_content) }}
               />
             </div>
           </div>
