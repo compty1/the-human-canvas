@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 
 const ArtworkEditor = () => {
   const { id } = useParams();
@@ -230,6 +231,12 @@ const ArtworkEditor = () => {
             maxImages={20}
           />
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget
+          entityType="artwork"
+          entityId={isEditing ? id : undefined}
+        />
 
         {/* AI Chat */}
         <ItemAIChatPanel

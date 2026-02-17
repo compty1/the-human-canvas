@@ -1315,6 +1315,7 @@ export type Database = {
       }
       life_periods: {
         Row: {
+          category: string | null
           created_at: string | null
           description: string | null
           detailed_content: string | null
@@ -1330,6 +1331,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           detailed_content?: string | null
@@ -1345,6 +1347,7 @@ export type Database = {
           title: string
         }
         Update: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           detailed_content?: string | null
@@ -1420,6 +1423,7 @@ export type Database = {
           alt_text: string | null
           file_size: number | null
           filename: string
+          folder: string | null
           height: number | null
           id: string
           tags: string[] | null
@@ -1431,6 +1435,7 @@ export type Database = {
           alt_text?: string | null
           file_size?: number | null
           filename: string
+          folder?: string | null
           height?: number | null
           id?: string
           tags?: string[] | null
@@ -1442,6 +1447,7 @@ export type Database = {
           alt_text?: string | null
           file_size?: number | null
           filename?: string
+          folder?: string | null
           height?: number | null
           id?: string
           tags?: string[] | null

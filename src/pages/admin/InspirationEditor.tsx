@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Loader2, Plus, X, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 
 interface RelatedLink {
   title: string;
@@ -412,6 +413,12 @@ const InspirationEditor = () => {
             <Plus className="w-4 h-4 mr-2" /> Add Link
           </PopButton>
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget
+          entityType="inspiration"
+          entityId={isEditing ? id : undefined}
+        />
 
         {/* AI Chat */}
         <ItemAIChatPanel

@@ -113,6 +113,11 @@ const LifePeriodDetail = () => {
                 <Star className="w-4 h-4" /> Current Period
               </span>
             )}
+            {(period as any).category && (period as any).category !== "uncategorized" && (
+              <span className="px-3 py-1 text-sm font-bold bg-primary/20 text-primary capitalize">
+                {(period as any).category}
+              </span>
+            )}
           </div>
 
           <h1 className="text-5xl md:text-7xl font-display gradient-text mb-4">

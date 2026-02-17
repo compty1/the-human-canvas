@@ -25,11 +25,11 @@ import { toast } from "sonner";
 const ENTITY_TYPES = [
   "experiment", "project", "experience", "article", "client_project",
   "product_review", "product", "certification", "favorite", "inspiration",
-  "life_period", "general",
+  "life_period", "update", "artwork", "general",
 ];
 
 const CATEGORIES = [
-  "general", "brand-info", "progress-note", "research", "lesson", "process", "reference",
+  "general", "brand-info", "progress-note", "research", "lesson", "process", "reference", "ai_generated",
 ];
 
 const KnowledgeBase = () => {

@@ -14,6 +14,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Loader2, Plus, X, Image } from "lucide-react";
 import { toast } from "sonner";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+
+const LIFE_PERIOD_CATEGORIES = [
+  "Creative", "Professional", "Personal", "Educational", "Transitional", "Uncategorized",
+];
 
 const LifePeriodEditor = () => {
   const { id } = useParams();
@@ -30,9 +35,10 @@ const LifePeriodEditor = () => {
     themes: [] as string[],
     key_works: [] as string[],
     image_url: "",
-    images: [] as string[], // Multiple images for gallery
+    images: [] as string[],
     is_current: false,
     order_index: 0,
+    category: "uncategorized",
   });
 
   const [newTheme, setNewTheme] = useState("");
@@ -92,6 +98,7 @@ const LifePeriodEditor = () => {
         images: (period as Record<string, unknown>).images as string[] || [],
         is_current: period.is_current || false,
         order_index: period.order_index || 0,
+        category: (period as Record<string, unknown>).category as string || "uncategorized",
       });
     }
   }, [period]);
@@ -119,6 +126,7 @@ const LifePeriodEditor = () => {
         images: form.images,
         is_current: form.is_current,
         order_index: form.order_index,
+        category: form.category,
       };
 
       if (isEditing) {
@@ -256,6 +264,20 @@ const LifePeriodEditor = () => {
               <Label htmlFor="is_current">This is the current period</Label>
             </div>
 
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <select
+                id="category"
+                value={form.category}
+                onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full h-10 px-3 border-2 border-input bg-background"
+              >
+                {LIFE_PERIOD_CATEGORIES.map((c) => (
+                  <option key={c.toLowerCase()} value={c.toLowerCase()}>{c}</option>
+                ))}
+              </select>
+            </div>
+
             <ImageUploader
               value={form.image_url}
               onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
@@ -380,6 +402,12 @@ const LifePeriodEditor = () => {
           entityId={isEditing ? id : undefined}
           entityTitle={form.title || "New Life Period"}
           context={`Dates: ${form.start_date} - ${form.end_date || "Present"}\nDescription: ${form.description}`}
+        />
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget
+          entityType="life_period"
+          entityId={isEditing ? id : undefined}
         />
 
         {/* Save */}

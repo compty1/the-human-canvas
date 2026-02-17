@@ -57,6 +57,8 @@ import {
   GripVertical,
   ArrowUpDown,
   AlertTriangle,
+  Eye,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AddToContentModal } from "@/components/admin/AddToContentModal";
@@ -85,6 +87,7 @@ interface MediaItem {
   source: "library" | "storage";
   inUse: boolean;
   usedIn?: string[];
+  folder: string | null;
 }
 
 const MediaLibrary = () => {
@@ -106,6 +109,9 @@ const MediaLibrary = () => {
   const [editResults, setEditResults] = useState<Array<{ originalUrl: string; editedBlob: Blob; filename: string }>>([]);
   const [showEditPreview, setShowEditPreview] = useState(false);
   const [processingEdit, setProcessingEdit] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<Array<{ url: string; description: string; alt_text: string; details: string; suggested_tags: string[] }> | null>(null);
+  const [folderFilter, setFolderFilter] = useState<string>("all");
 
   // New state for inline rename
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -149,24 +155,27 @@ const MediaLibrary = () => {
     },
   });
 
-  // Fetch files directly from storage bucket
+  // Fetch files directly from storage bucket (scan all known subfolders)
   const { data: storageFiles = [], isLoading: storageLoading, refetch: refetchStorage } = useQuery({
     queryKey: ["media-storage-bucket"],
     queryFn: async () => {
-      const { data, error } = await supabase.storage
-        .from("content-images")
-        .list("", { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
+      const folders = ["", "artwork", "edited", "experiences", "life-periods", "experiments", "uploads", "artwork/process", "life-periods/gallery", "inspirations", "inspirations/gallery", "favorites", "certifications", "content"];
+      const allFiles: any[] = [];
       
-      if (error) throw error;
-      
-      const { data: artworkData } = await supabase.storage
-        .from("content-images")
-        .list("artwork", { limit: 1000 });
-      
-      const allFiles = [
-        ...(data || []).filter(f => f.name && !f.id?.includes("folder")),
-        ...(artworkData || []).map(f => ({ ...f, name: `artwork/${f.name}` })).filter(f => f.name),
-      ];
+      for (const folder of folders) {
+        try {
+          const { data } = await supabase.storage
+            .from("content-images")
+            .list(folder, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
+          
+          if (data) {
+            const prefix = folder ? `${folder}/` : "";
+            data.filter(f => f.name && !f.id?.includes("folder")).forEach(f => {
+              allFiles.push({ ...f, name: `${prefix}${f.name}` });
+            });
+          }
+        } catch {}
+      }
       
       return allFiles;
     },
@@ -178,8 +187,11 @@ const MediaLibrary = () => {
     queryFn: async () => {
       const urls: { url: string; source: string }[] = [];
       
-      const { data: artwork } = await supabase.from("artwork").select("image_url, title");
-      artwork?.forEach(a => a.image_url && urls.push({ url: a.image_url, source: `Artwork: ${a.title}` }));
+      const { data: artwork } = await supabase.from("artwork").select("image_url, images, title");
+      artwork?.forEach(a => {
+        if (a.image_url) urls.push({ url: a.image_url, source: `Artwork: ${a.title}` });
+        ((a as any).images || []).forEach((img: string) => urls.push({ url: img, source: `Artwork: ${a.title}` }));
+      });
       
       const { data: projects } = await supabase.from("projects").select("image_url, screenshots, title");
       projects?.forEach(p => {
@@ -209,6 +221,33 @@ const MediaLibrary = () => {
         if (e.image_url) urls.push({ url: e.image_url, source: `Experience: ${e.title}` });
         e.screenshots?.forEach((s: string) => urls.push({ url: s, source: `Experience: ${e.title}` }));
       });
+
+      const { data: lifePeriods } = await supabase.from("life_periods").select("image_url, images, title");
+      lifePeriods?.forEach(lp => {
+        if (lp.image_url) urls.push({ url: lp.image_url, source: `Life Period: ${lp.title}` });
+        ((lp as any).images || []).forEach((img: string) => urls.push({ url: img, source: `Life Period: ${lp.title}` }));
+      });
+
+      const { data: certifications } = await supabase.from("certifications").select("image_url, name");
+      certifications?.forEach(c => c.image_url && urls.push({ url: c.image_url, source: `Certification: ${c.name}` }));
+
+      const { data: clientProjects } = await supabase.from("client_projects").select("image_url, screenshots, project_name");
+      clientProjects?.forEach(cp => {
+        if (cp.image_url) urls.push({ url: cp.image_url, source: `Client Project: ${cp.project_name}` });
+        cp.screenshots?.forEach((s: string) => urls.push({ url: s, source: `Client Project: ${cp.project_name}` }));
+      });
+
+      const { data: productReviews } = await supabase.from("product_reviews").select("featured_image, screenshots, product_name");
+      productReviews?.forEach(pr => {
+        if (pr.featured_image) urls.push({ url: pr.featured_image, source: `Review: ${pr.product_name}` });
+        pr.screenshots?.forEach((s: string) => urls.push({ url: s, source: `Review: ${pr.product_name}` }));
+      });
+
+      const { data: inspirations } = await supabase.from("inspirations").select("image_url, images, title");
+      inspirations?.forEach(i => {
+        if (i.image_url) urls.push({ url: i.image_url, source: `Inspiration: ${i.title}` });
+        ((i as any).images || []).forEach((img: string) => urls.push({ url: img, source: `Inspiration: ${i.title}` }));
+      });
       
       return urls;
     },
@@ -228,6 +267,7 @@ const MediaLibrary = () => {
           source: "library",
           inUse: usedIn.length > 0,
           usedIn,
+          folder: (item as any).folder || null,
         });
       }
     });
@@ -252,6 +292,7 @@ const MediaLibrary = () => {
           source: "storage",
           inUse: usedIn.length > 0,
           usedIn,
+          folder: null,
         });
       }
     });
@@ -647,6 +688,74 @@ const MediaLibrary = () => {
     setSelectedItems([]);
   };
 
+  const handleAnalyzeSelected = async () => {
+    const selectedMedia = allMedia.filter(m => selectedItems.includes(m.id));
+    if (selectedMedia.length === 0) return;
+    setAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-media", {
+        body: { urls: selectedMedia.map(m => m.url) },
+      });
+      if (error) throw error;
+      if (data?.results) {
+        setAnalysisResults(data.results);
+        // Auto-update alt_text and tags for library items
+        let updated = 0;
+        for (const result of data.results) {
+          if (result.error) continue;
+          const item = allMedia.find(m => m.url === result.url && m.source === "library");
+          if (item) {
+            const existingTags = item.tags || [];
+            const mergedTags = Array.from(new Set([...existingTags, ...(result.suggested_tags || [])]));
+            await supabase.from("media_library").update({ 
+              alt_text: result.alt_text || item.alt_text,
+              tags: mergedTags,
+            }).eq("id", item.id);
+            updated++;
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: ["media-library-table"] });
+        toast.success(`Analyzed ${data.results.length} image(s), updated ${updated}`);
+      }
+    } catch (error) {
+      console.error("Analyze error:", error);
+      toast.error("Failed to analyze images");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleBulkDeleteDuplicates = async () => {
+    // Group duplicates by cleaned filename
+    const nameMap = new Map<string, MediaItem[]>();
+    allMedia.forEach(item => {
+      const cleanName = item.filename.replace(/^[a-f0-9-]{36,}-?/i, "").toLowerCase();
+      const items = nameMap.get(cleanName) || [];
+      items.push(item);
+      nameMap.set(cleanName, items);
+    });
+    
+    const toDelete: string[] = [];
+    nameMap.forEach(items => {
+      if (items.length > 1) {
+        // Keep the oldest (first uploaded), delete the rest
+        const sorted = items.sort((a, b) => new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime());
+        sorted.slice(1).forEach(item => toDelete.push(item.id));
+      }
+    });
+
+    if (toDelete.length === 0) {
+      toast.info("No duplicates to delete");
+      return;
+    }
+
+    if (!confirm(`Delete ${toDelete.length} duplicate(s)? The oldest version of each will be kept.`)) return;
+    deleteMutation.mutate(toDelete);
+  };
+
+  // Get unique folders for filter
+  const allFolders = Array.from(new Set(allMedia.map(m => m.folder).filter(Boolean) as string[])).sort();
+
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "Unknown";
     if (bytes < 1024) return `${bytes} B`;
@@ -1023,6 +1132,29 @@ const MediaLibrary = () => {
                 {autoCategorizing ? <Loader2 className="w-3 h-3 inline animate-spin mr-1" /> : <Sparkles className="w-3 h-3 inline mr-1" />}
                 Auto-Tag
               </button>
+
+              {/* AI Analyze */}
+              <button
+                onClick={handleAnalyzeSelected}
+                disabled={analyzing}
+                className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground"
+                title="AI analyze images"
+              >
+                {analyzing ? <Loader2 className="w-3 h-3 inline animate-spin mr-1" /> : <Eye className="w-3 h-3 inline mr-1" />}
+                Analyze
+              </button>
+
+              {/* Bulk Delete Duplicates */}
+              {duplicateCount > 0 && (
+                <button
+                  onClick={handleBulkDeleteDuplicates}
+                  className="px-2 py-1 text-xs font-bold border border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  title="Delete all duplicates (keeps oldest)"
+                >
+                  <AlertTriangle className="w-3 h-3 inline mr-1" />
+                  Delete Dupes
+                </button>
+              )}
 
               <button
                 onClick={() => setAddToContentModal(true)}
