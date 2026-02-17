@@ -1,11 +1,15 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogIn, Settings } from "lucide-react";
+import { Menu, X, User, LogIn, Settings, Sun, Moon } from "lucide-react";
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { PopButton } from "@/components/pop-art";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
-const navItems = [
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+const defaultNavItems = [
   { label: "Art", href: "/art" },
   { label: "Projects", href: "/projects" },
   { label: "Client Work", href: "/client-work" },
@@ -28,9 +32,36 @@ export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
-
-  // Check if user is admin (shared query key with AdminLayout)
   const { isAdmin } = useAdminCheck();
+  const { theme, setTheme } = useTheme();
+
+  // Fetch nav items from DB, fall back to defaults
+  const { data: dbNavItems } = useQuery({
+    queryKey: ["site-content-nav-items"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_content")
+        .select("content_value")
+        .eq("section_key", "nav_items")
+        .single();
+      if (error || !data?.content_value) return null;
+      try {
+        const parsed = JSON.parse(data.content_value);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const navItems = (dbNavItems || defaultNavItems).filter(
+    (item: { visible?: boolean }) => item.visible !== false
+  );
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-4 border-foreground">
@@ -45,7 +76,7 @@ export const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => (
+            {navItems.map((item: { label: string; href: string }) => (
               <Link
                 key={item.href}
                 to={item.href}
@@ -61,8 +92,19 @@ export const Header = () => {
             ))}
           </nav>
 
-          {/* Auth Buttons */}
+          {/* Auth Buttons + Dark Mode */}
           <div className="hidden lg:flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 border-2 border-foreground hover:bg-muted transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </button>
             {user ? (
               <div className="flex items-center gap-2">
                 {isAdmin && (
@@ -99,16 +141,29 @@ export const Header = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="lg:hidden p-2 border-2 border-foreground"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
-          </button>
+          <div className="flex lg:hidden items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 border-2 border-foreground"
+              aria-label="Toggle dark mode"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button>
+            <button
+              className="p-2 border-2 border-foreground"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -116,7 +171,7 @@ export const Header = () => {
       {mobileMenuOpen && (
         <nav className="lg:hidden bg-background border-t-2 border-foreground">
           <div className="container mx-auto px-4 py-4">
-            {navItems.map((item) => (
+            {navItems.map((item: { label: string; href: string }) => (
               <Link
                 key={item.href}
                 to={item.href}
