@@ -301,6 +301,7 @@ const ArticleEditor = () => {
       }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["articles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-articles"] });
       toast({
         title: isEditing ? "Article saved" : "Article created",
         description: form.published

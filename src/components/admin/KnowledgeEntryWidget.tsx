@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, ChevronUp, Plus, X, BookOpen } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, X, BookOpen, Edit, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ export const KnowledgeEntryWidget = ({
   const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({ title: "", content: "", category: "general", tags: "" });
 
   const { data: entries = [], isLoading } = useQuery({
@@ -44,25 +45,37 @@ export const KnowledgeEntryWidget = ({
     },
   });
 
-  const addMutation = useMutation({
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["knowledge-entries", entityType, entityId] });
+    queryClient.invalidateQueries({ queryKey: ["knowledge-base-all"] });
+  };
+
+  const saveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("knowledge_entries").insert({
+      const payload = {
         entity_type: entityType,
         entity_id: entityId || null,
         title: newEntry.title,
         content: newEntry.content || null,
         category: newEntry.category,
         tags: newEntry.tags ? newEntry.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-      });
-      if (error) throw error;
+      };
+      if (editingEntryId) {
+        const { error } = await supabase.from("knowledge_entries").update(payload).eq("id", editingEntryId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("knowledge_entries").insert(payload);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["knowledge-entries", entityType, entityId] });
-      toast.success("Knowledge entry added");
+      invalidateAll();
+      toast.success(editingEntryId ? "Entry updated" : "Knowledge entry added");
       setNewEntry({ title: "", content: "", category: "general", tags: "" });
+      setEditingEntryId(null);
       setShowAdd(false);
     },
-    onError: () => toast.error("Failed to add entry"),
+    onError: () => toast.error("Failed to save entry"),
   });
 
   const deleteMutation = useMutation({
@@ -71,10 +84,27 @@ export const KnowledgeEntryWidget = ({
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["knowledge-entries", entityType, entityId] });
+      invalidateAll();
       toast.success("Entry deleted");
     },
   });
+
+  const startEdit = (entry: any) => {
+    setNewEntry({
+      title: entry.title,
+      content: entry.content || "",
+      category: entry.category || "general",
+      tags: entry.tags?.join(", ") || "",
+    });
+    setEditingEntryId(entry.id);
+    setShowAdd(true);
+  };
+
+  const cancelEdit = () => {
+    setNewEntry({ title: "", content: "", category: "general", tags: "" });
+    setEditingEntryId(null);
+    setShowAdd(false);
+  };
 
   return (
     <div className={cn("border-2 border-foreground", className)}>
@@ -114,13 +144,22 @@ export const KnowledgeEntryWidget = ({
                         </span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => deleteMutation.mutate(entry.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(entry)}
+                        className="p-1 hover:text-primary"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteMutation.mutate(entry.id)}
+                        className="p-1 hover:text-destructive"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                   {entry.content && (
                     <p className="text-muted-foreground mt-1 line-clamp-2">{entry.content}</p>
@@ -182,15 +221,15 @@ export const KnowledgeEntryWidget = ({
               </div>
               <div className="flex gap-2">
                 <PopButton
-                  onClick={() => addMutation.mutate()}
-                  disabled={!newEntry.title || addMutation.isPending}
+                  onClick={() => saveMutation.mutate()}
+                  disabled={!newEntry.title || saveMutation.isPending}
                   className="text-xs"
                 >
-                  Save
+                  {editingEntryId ? "Update" : "Save"}
                 </PopButton>
                 <button
                   type="button"
-                  onClick={() => setShowAdd(false)}
+                  onClick={cancelEdit}
                   className="text-xs px-3 py-1 border border-foreground hover:bg-muted"
                 >
                   Cancel

@@ -193,6 +193,7 @@ const FavoriteEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-favorites"] });
+      queryClient.invalidateQueries({ queryKey: ["favorites"] });
       toast.success(isEditing ? "Favorite updated" : "Favorite added");
       navigate("/admin/favorites");
     },

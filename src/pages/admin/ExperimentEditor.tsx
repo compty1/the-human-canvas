@@ -161,6 +161,7 @@ const ExperimentEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-experiments"] });
+      queryClient.invalidateQueries({ queryKey: ["experiments"] });
       toast.success(isEditing ? "Experiment updated" : "Experiment created");
       navigate("/admin/experiments");
     },

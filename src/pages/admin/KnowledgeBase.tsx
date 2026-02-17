@@ -19,7 +19,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Plus, Trash2, BookOpen, Filter, X, Loader2, Edit } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Plus, Trash2, BookOpen, Loader2, Edit, ChevronDown, ChevronUp, SortAsc } from "lucide-react";
 import { toast } from "sonner";
 
 const ENTITY_TYPES = [
@@ -32,6 +42,8 @@ const CATEGORIES = [
   "general", "brand-info", "progress-note", "research", "lesson", "process", "reference", "ai_generated",
 ];
 
+type SortOption = "newest" | "oldest" | "title_asc" | "title_desc";
+
 const KnowledgeBase = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -39,6 +51,9 @@ const KnowledgeBase = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [form, setForm] = useState({
     title: "", content: "", entity_type: "general", category: "general", tags: "",
   });
@@ -74,6 +89,7 @@ const KnowledgeBase = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["knowledge-base-all"] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge-entries"] });
       toast.success(editingId ? "Entry updated" : "Entry created");
       resetForm();
     },
@@ -87,7 +103,9 @@ const KnowledgeBase = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["knowledge-base-all"] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge-entries"] });
       toast.success("Entry deleted");
+      setDeleteId(null);
     },
   });
 
@@ -109,18 +127,37 @@ const KnowledgeBase = () => {
     setShowAdd(true);
   };
 
-  const filtered = entries.filter((e) => {
-    const matchesSearch = !search || 
-      e.title.toLowerCase().includes(search.toLowerCase()) ||
-      e.content?.toLowerCase().includes(search.toLowerCase()) ||
-      e.tags?.some((t: string) => t.toLowerCase().includes(search.toLowerCase()));
-    const matchesType = typeFilter === "all" || e.entity_type === typeFilter;
-    const matchesCategory = categoryFilter === "all" || e.category === categoryFilter;
-    return matchesSearch && matchesType && matchesCategory;
-  });
+  const handleTagClick = (tag: string) => {
+    setSearch(tag);
+  };
+
+  const filtered = entries
+    .filter((e) => {
+      const matchesSearch = !search || 
+        e.title.toLowerCase().includes(search.toLowerCase()) ||
+        e.content?.toLowerCase().includes(search.toLowerCase()) ||
+        e.tags?.some((t: string) => t.toLowerCase().includes(search.toLowerCase()));
+      const matchesType = typeFilter === "all" || e.entity_type === typeFilter;
+      const matchesCategory = categoryFilter === "all" || e.category === categoryFilter;
+      return matchesSearch && matchesType && matchesCategory;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "oldest": return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "title_asc": return a.title.localeCompare(b.title);
+        case "title_desc": return b.title.localeCompare(a.title);
+        default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
 
   const typeCounts = entries.reduce((acc, e) => {
     acc[e.entity_type] = (acc[e.entity_type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const categoryCounts = entries.reduce((acc, e) => {
+    const cat = e.category || "general";
+    acc[cat] = (acc[cat] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
@@ -172,8 +209,22 @@ const KnowledgeBase = () => {
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectItem key={c} value={c}>
+                  {c} {categoryCounts[c] ? `(${categoryCounts[c]})` : ""}
+                </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+            <SelectTrigger className="w-36">
+              <SortAsc className="w-3 h-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
+              <SelectItem value="title_asc">Title A-Z</SelectItem>
+              <SelectItem value="title_desc">Title Z-A</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -191,48 +242,88 @@ const KnowledgeBase = () => {
           </ComicPanel>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((entry) => (
-              <ComicPanel key={entry.id} className="p-4 group">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <span className="text-[10px] px-1.5 py-0.5 bg-primary/20 text-primary font-bold uppercase">
-                      {entry.entity_type.replace(/_/g, " ")}
-                    </span>
-                    {entry.category && entry.category !== "general" && (
-                      <span className="ml-1 text-[10px] px-1.5 py-0.5 bg-muted font-bold">
-                        {entry.category}
+            {filtered.map((entry) => {
+              const isExpanded = expandedId === entry.id;
+              return (
+                <ComicPanel key={entry.id} className="p-4 group">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-[10px] px-1.5 py-0.5 bg-primary/20 text-primary font-bold uppercase">
+                        {entry.entity_type.replace(/_/g, " ")}
                       </span>
+                      {entry.category && entry.category !== "general" && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-muted font-bold">
+                          {entry.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => startEdit(entry)} className="p-1 hover:text-primary">
+                        <Edit className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => setDeleteId(entry.id)} className="p-1 hover:text-destructive">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">{entry.title}</h3>
+                  {entry.content && (
+                    <div>
+                      <p className={`text-sm text-muted-foreground ${isExpanded ? "" : "line-clamp-3"}`}>
+                        {entry.content}
+                      </p>
+                      {entry.content.length > 150 && (
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                          className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
+                        >
+                          {isExpanded ? <><ChevronUp className="w-3 h-3" /> Less</> : <><ChevronDown className="w-3 h-3" /> More</>}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {entry.tags && entry.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {entry.tags.map((tag: string, i: number) => (
+                        <button
+                          key={i}
+                          onClick={() => handleTagClick(tag)}
+                          className="text-[10px] px-1.5 py-0.5 bg-muted hover:bg-primary/20 transition-colors cursor-pointer"
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    {new Date(entry.created_at).toLocaleDateString()}
+                    {entry.updated_at && entry.updated_at !== entry.created_at && (
+                      <span className="ml-1">(edited {new Date(entry.updated_at).toLocaleDateString()})</span>
                     )}
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => startEdit(entry)} className="p-1 hover:text-primary">
-                      <Edit className="w-3 h-3" />
-                    </button>
-                    <button onClick={() => deleteMutation.mutate(entry.id)} className="p-1 hover:text-destructive">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-                <h3 className="font-bold text-sm mb-1">{entry.title}</h3>
-                {entry.content && (
-                  <p className="text-sm text-muted-foreground line-clamp-3">{entry.content}</p>
-                )}
-                {entry.tags && entry.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {entry.tags.map((tag: string, i: number) => (
-                      <span key={i} className="text-[10px] px-1.5 py-0.5 bg-muted">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  {new Date(entry.created_at).toLocaleDateString()}
-                </p>
-              </ComicPanel>
-            ))}
+                  </p>
+                </ComicPanel>
+              );
+            })}
           </div>
         )}
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Knowledge Entry?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The entry will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Add/Edit Dialog */}
         <Dialog open={showAdd} onOpenChange={(o) => !o && resetForm()}>

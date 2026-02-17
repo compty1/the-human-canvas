@@ -3,7 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
-import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { ImageUploader } from "@/components/admin/ImageUploader";
+import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
+import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
@@ -42,6 +44,40 @@ const LifePeriodEditor = () => {
   });
 
   const [newTheme, setNewTheme] = useState("");
+
+  // Undo/Redo
+  const [historyStack, setHistoryStack] = useState<typeof form[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < historyStack.length - 1;
+
+  const pushToHistory = (newForm: typeof form) => {
+    const newStack = historyStack.slice(0, historyIndex + 1);
+    newStack.push(newForm);
+    if (newStack.length > 50) newStack.shift();
+    setHistoryStack(newStack);
+    setHistoryIndex(newStack.length - 1);
+  };
+
+  const undo = () => {
+    if (canUndo) {
+      setHistoryIndex(prev => prev - 1);
+      setForm(historyStack[historyIndex - 1]);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setHistoryIndex(prev => prev + 1);
+      setForm(historyStack[historyIndex + 1]);
+    }
+  };
+
+  const updateForm = (updates: Partial<typeof form>) => {
+    const newForm = { ...form, ...updates };
+    setForm(newForm);
+    pushToHistory(newForm);
+  };
 
   // Fetch existing period
   const { data: period, isLoading } = useQuery({
@@ -142,6 +178,7 @@ const LifePeriodEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-life-periods"] });
+      queryClient.invalidateQueries({ queryKey: ["life-periods"] });
       toast.success(isEditing ? "Period updated" : "Period added");
       navigate("/admin/life-periods");
     },
@@ -190,11 +227,17 @@ const LifePeriodEditor = () => {
           <button onClick={() => navigate("/admin/life-periods")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-grow">
             <h1 className="text-3xl font-display">
               {isEditing ? "Edit Life Period" : "Add Life Period"}
             </h1>
           </div>
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+          />
         </div>
 
         {/* Bulk Text Importer */}
@@ -296,10 +339,11 @@ const LifePeriodEditor = () => {
           <p className="text-sm text-muted-foreground mb-4">
             Add multiple images to showcase this period. These will appear in a gallery on the detail page.
           </p>
-          <MultiImageUploader
-            value={form.images}
-            onChange={(urls) => setForm(prev => ({ ...prev, images: urls }))}
-            label="Period Gallery"
+          <EnhancedImageManager
+            mainImage=""
+            screenshots={form.images}
+            onMainImageChange={() => {}}
+            onScreenshotsChange={(urls) => setForm(prev => ({ ...prev, images: urls }))}
             folder="life-periods/gallery"
             maxImages={12}
           />

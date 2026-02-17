@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
+import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,53 @@ const ArtworkEditor = () => {
 
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
+  // Undo/Redo
+  const [historyStack, setHistoryStack] = useState<typeof form[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < historyStack.length - 1;
+
+  const pushToHistory = (newForm: typeof form) => {
+    const newStack = historyStack.slice(0, historyIndex + 1);
+    newStack.push(newForm);
+    if (newStack.length > 50) newStack.shift();
+    setHistoryStack(newStack);
+    setHistoryIndex(newStack.length - 1);
+  };
+
+  const undo = () => {
+    if (canUndo) {
+      setHistoryIndex(prev => prev - 1);
+      setForm(historyStack[historyIndex - 1]);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setHistoryIndex(prev => prev + 1);
+      setForm(historyStack[historyIndex + 1]);
+    }
+  };
+
+  const updateForm = (updates: Partial<typeof form>) => {
+    const newForm = { ...form, ...updates };
+    setForm(newForm);
+    pushToHistory(newForm);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey && canRedo) redo();
+        else if (!e.shiftKey && canUndo) undo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canUndo, canRedo, historyIndex, historyStack]);
+
   const { data: artwork, isLoading } = useQuery({
     queryKey: ["artwork-edit", id],
     queryFn: async () => {
@@ -48,14 +96,17 @@ const ArtworkEditor = () => {
 
   useEffect(() => {
     if (artwork) {
-      setForm({
+      const initialForm = {
         title: artwork.title || "",
         image_url: artwork.image_url || "",
         images: (artwork as any).images || [],
         category: artwork.category || "mixed",
         description: artwork.description || "",
         admin_notes: artwork.admin_notes || "",
-      });
+      };
+      setForm(initialForm);
+      setHistoryStack([initialForm]);
+      setHistoryIndex(0);
     }
   }, [artwork]);
 
@@ -74,6 +125,7 @@ const ArtworkEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-artwork"] });
+      queryClient.invalidateQueries({ queryKey: ["artwork-gallery"] });
       toast.success(isEditing ? "Artwork updated" : "Artwork added");
       navigate("/admin/artwork");
     },
@@ -103,7 +155,7 @@ const ArtworkEditor = () => {
       if (error) throw error;
 
       if (data?.content) {
-        setForm(prev => ({ ...prev, description: data.content }));
+        updateForm({ description: data.content });
         toast.success("Description generated!");
       }
     } catch (error) {
@@ -133,9 +185,15 @@ const ArtworkEditor = () => {
           <button onClick={() => navigate("/admin/artwork")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-grow">
             <h1 className="text-3xl font-display">{isEditing ? "Edit Artwork" : "Add Artwork"}</h1>
           </div>
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+          />
         </div>
 
         {/* Form */}
@@ -146,7 +204,7 @@ const ArtworkEditor = () => {
               <Input
                 id="title"
                 value={form.title}
-                onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => updateForm({ title: e.target.value })}
                 placeholder="Artwork title"
               />
             </div>
@@ -154,7 +212,7 @@ const ArtworkEditor = () => {
             {/* Image Upload */}
             <ImageUploader
               value={form.image_url}
-              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+              onChange={(url) => updateForm({ image_url: url })}
               label="Artwork Image *"
               folder="artwork"
             />
@@ -164,7 +222,7 @@ const ArtworkEditor = () => {
               <select
                 id="category"
                 value={form.category}
-                onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))}
+                onChange={(e) => updateForm({ category: e.target.value })}
                 className="w-full h-10 px-3 border-2 border-input bg-background"
               >
                 <option value="portrait">Portrait</option>
@@ -197,7 +255,7 @@ const ArtworkEditor = () => {
               <Textarea
                 id="description"
                 value={form.description}
-                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => updateForm({ description: e.target.value })}
                 rows={3}
                 placeholder="Describe this artwork..."
               />
@@ -208,7 +266,7 @@ const ArtworkEditor = () => {
               <Textarea
                 id="admin_notes"
                 value={form.admin_notes}
-                onChange={(e) => setForm(prev => ({ ...prev, admin_notes: e.target.value }))}
+                onChange={(e) => updateForm({ admin_notes: e.target.value })}
                 rows={2}
                 placeholder="Internal notes..."
               />
@@ -226,7 +284,7 @@ const ArtworkEditor = () => {
             mainImage=""
             screenshots={form.images}
             onMainImageChange={() => {}}
-            onScreenshotsChange={(urls) => setForm(prev => ({ ...prev, images: urls }))}
+            onScreenshotsChange={(urls) => updateForm({ images: urls })}
             folder="artwork/process"
             maxImages={20}
           />

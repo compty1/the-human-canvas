@@ -157,6 +157,7 @@ const CertificationEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-certifications"] });
+      queryClient.invalidateQueries({ queryKey: ["certifications"] });
       toast.success(isEditing ? "Certification updated" : "Certification created");
       navigate("/admin/certifications");
     },

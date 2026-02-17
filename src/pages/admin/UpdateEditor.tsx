@@ -162,6 +162,7 @@ const UpdateEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["updates"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-updates"] });
       toast({
         title: isEditing ? "Update saved" : "Update created",
         description: form.published
