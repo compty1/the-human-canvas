@@ -1,134 +1,108 @@
-# Implementation Plan: Image Management, Media Editing, Knowledge Base & Experiments Enhancements
 
-## Overview
-Five major feature areas to implement across the admin and public-facing site.
 
----
+# Plan: Media Library Organization, Client Work Types, and Inline Renaming
 
-## Phase 1: Enhanced Image Management in Editors (Experiments + Others)
-**Goal:** Add drag-to-reorder, set-as-main-image, multi-select from library for all editors with image fields.
+## 1. Media Library -- Inline Quick Rename
 
-### 1A. Upgrade MultiImageUploader Component
-- **File:** `src/components/admin/MultiImageUploader.tsx`
-- Add drag-and-drop reorder (already partially exists in the standalone version)
-- Add "Set as Main Image" button on each thumbnail — moves that image URL to `image_url` field and shifts previous main to screenshots
-- Add "Select from Library" button that opens `MediaLibraryPicker` in multi-select mode
-- Visual indicators: main image badge, reorder grip handles, hover actions
+Add the ability to rename a file directly from the media grid card by clicking an edit/pencil icon.
 
-### 1B. Update MediaLibraryPicker for Multi-Select
-- **File:** `src/components/admin/MediaLibraryPicker.tsx`
-- Add `multiSelect` prop (boolean)
-- When multi-select enabled, allow checking multiple images and return array of URLs
-- Add "Select All" / "Deselect All" controls
+### How it works
+- Each media card in the grid gets a small pencil icon button in the hover overlay
+- Clicking it enters an "edit mode" for that card: the filename text at the bottom becomes an editable input field
+- Pressing Enter or clicking a checkmark saves the new name to the `media_library` table
+- Pressing Escape cancels the edit
+- Only items that exist in the `media_library` table (source = "library") can be renamed; storage-only items will show the button disabled or hidden
 
-### 1C. Update All Editors Using Images
-Apply the enhanced uploader to:
-- `src/pages/admin/ExperimentEditor.tsx` — cover image + screenshots with reorder + set-as-main
-- `src/pages/admin/ProjectEditor.tsx` — same pattern
-- `src/pages/admin/ExperienceEditor.tsx` — same pattern
-- `src/pages/admin/ClientProjectEditor.tsx` — same pattern
-- `src/pages/admin/ProductReviewEditor.tsx` — same pattern
-- `src/pages/admin/ProductEditor.tsx` — same pattern
-
----
-
-## Phase 2: Media Library Photo Editing Tools
-**Goal:** Add rotate, remove background, auto-crop whitespace to media library with batch support and review/approval.
-
-### 2A. Client-Side Image Editing Utilities
-- **New file:** `src/lib/imageEditing.ts`
-- `rotateImage(url, degrees)` — uses Canvas API to rotate 90°/180°/270°
-- `removeWhitespace(url)` — uses Canvas API to detect and crop white/near-white borders
-- `flipImage(url, direction)` — horizontal/vertical flip
-
-### 2B. AI Background Removal via Edge Function
-- **New file:** `supabase/functions/remove-background/index.ts`
-- Uses canvas-based approach with tolerance-based flood fill for simple backgrounds
-- Accepts image URL, returns processed image URL stored in content-images bucket
-- Support batch processing: accept array of URLs
-- Enhancement: Use Lovable AI for complex images
-
-### 2C. Review & Approval Workflow for Edits
-- **New file:** `src/components/admin/ImageEditPreview.tsx`
-- Side-by-side before/after preview modal
-- "Approve & Save" / "Discard" buttons
-- For batch operations: carousel of before/after pairs with approve-all option
-
-### 2D. Media Library UI Integration
+### Technical changes
 - **File:** `src/pages/admin/MediaLibrary.tsx`
-- Add toolbar buttons: Rotate, Remove Background, Auto-Crop
-- Single image: right-click or hover menu with edit options
-- Multi-select: batch toolbar appears with all edit options
-- All edits go through the review/approval modal before saving
+  - Add `editingId` and `editingName` state variables
+  - On the media card, when `editingId === item.id`, replace the filename text with an `<Input>` field
+  - On save, call `supabase.from("media_library").update({ filename: newName }).eq("id", editingId)`
+  - Invalidate the media-library-table query on success
+  - Add pencil icon button to the hover overlay actions
 
 ---
 
-## Phase 3: Knowledge Base System
-**Goal:** Store rich information, data, notes on all items to build a growing knowledge base.
+## 2. Media Library -- Organize by Tags / Grouped View
 
-### 3A. Database Migration — `knowledge_entries` Table
+Add a "Group by Tag" view mode that visually organizes images into collapsible category sections based on their tags.
+
+### How it works
+- Add a view toggle (Grid / Grouped) next to the existing filters
+- In Grouped view, images are sorted by their first tag and displayed under collapsible section headers
+- Images with no tags appear under an "Uncategorized" group
+- Add a "Tag Selected" bulk action button that opens a popover to assign one or more tags to all selected images
+- Add an "Auto-Categorize" button that sends selected image URLs to an edge function powered by Lovable AI, which returns suggested tags
+
+### Technical changes
+
+**Media Library UI** (`src/pages/admin/MediaLibrary.tsx`):
+- Add `viewMode` state: `"grid" | "grouped"`
+- Add `tagFilter` state for filtering by a specific tag
+- In grouped mode, compute groups from `filteredMedia` by first tag
+- Render each group as a collapsible section with header showing tag name and count
+- Add "Tag Selected" button in the selection toolbar that opens a Popover with a text input for adding/removing tags
+- Tag updates call `supabase.from("media_library").update({ tags }).eq("id", id)` for each selected item
+
+**Edge Function** (`supabase/functions/categorize-images/index.ts`):
+- Accepts `{ urls: string[] }` in the request body
+- Uses Lovable AI (Gemini 2.5 Flash) to analyze the images and return suggested category tags for each
+- Returns `{ results: [{ url: string, tags: string[] }] }`
+
+---
+
+## 3. Client Work -- Project Type System
+
+Add a `project_type` field and `type_metadata` JSONB field to `client_projects`, then show type-specific form sections in the editor and type badges on listing pages.
+
+### Supported project types
+- **Web Design / Development** -- tech stack, features, live URL (uses existing fields)
+- **Logo / Branding** -- brand colors, font choices, logo variations count, brand guidelines URL
+- **Business Plan** -- industry, executive summary, key sections list, deliverable format
+- **Copywriting** -- content type (blog, web, ad, email), word count, tone/voice, sample excerpt
+- **Product Design** -- materials, dimensions, design tools used, prototype images
+- **Product Review / Analysis** -- product name, rating, key findings, methodology
+- **Consulting / Strategy** -- focus area, recommendations, outcome metrics, duration
+- **Social Media** -- platforms, campaign type, reach/engagement metrics
+- **Photography / Video** -- equipment used, deliverables count, style/genre
+- **Other** -- freeform notes
+
+### Database migration
 ```sql
-CREATE TABLE public.knowledge_entries (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  entity_type TEXT NOT NULL,
-  entity_id UUID,
-  title TEXT NOT NULL,
-  content TEXT,
-  category TEXT,
-  tags TEXT[] DEFAULT '{}',
-  metadata JSONB DEFAULT '{}',
-  images TEXT[] DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+ALTER TABLE client_projects
+  ADD COLUMN project_type text NOT NULL DEFAULT 'web_design',
+  ADD COLUMN type_metadata jsonb DEFAULT '{}'::jsonb;
 ```
 
-### 3B. Knowledge Base Admin UI
-- **New file:** `src/pages/admin/KnowledgeBase.tsx`
-- Searchable, filterable list of all knowledge entries
-- Filter by entity_type, category, tags
-- Rich text editor for content
-- Link to related entities
-- AI-powered analysis button
+### Technical changes
 
-### 3C. Knowledge Entry Widget in All Editors
-- **New file:** `src/components/admin/KnowledgeEntryWidget.tsx`
-- Collapsible panel at bottom of each editor
-- Shows existing knowledge entries linked to this item
-- Quick-add form for new entries
+**ClientProjectEditor** (`src/pages/admin/ClientProjectEditor.tsx`):
+- Add project type dropdown at the top of the form (before client name)
+- Based on selected type, render additional type-specific field sections in a new ComicPanel
+- Type-specific fields read from and write to `form.type_metadata`
+- Existing fields (tech_stack, features, testimonial) remain available for all types but are most relevant for web design
+- Save `project_type` and `type_metadata` alongside existing fields
 
-### 3D. Add Routes
-- Add `/admin/knowledge-base` route and nav entry
+**ClientWork listing** (`src/pages/ClientWork.tsx`):
+- Add project type badge on each card (next to status badge)
+- Add type filter buttons alongside existing status filters
 
----
+**ClientWorkManager** (`src/pages/admin/ClientWorkManager.tsx`):
+- Add type badge on each card
+- Add a type filter dropdown
 
-## Phase 4: Show Experiment Images on Listing Page
-**Goal:** Display all screenshots under each experiment's description on `/experiments`.
-
-### 4A. Update Experiments Listing Page
-- **File:** `src/pages/Experiments.tsx`
-- After description, render horizontal scrollable row of screenshot thumbnails
-- Clicking opens lightbox or navigates to detail
-
----
-
-## Phase 5: Month-Only Dates for Experiments
-**Goal:** Allow month/year dates without requiring a specific day.
-
-### 5A. Update Date Inputs in ExperimentEditor
-- **File:** `src/pages/admin/ExperimentEditor.tsx`
-- Change `type="date"` to `type="month"`
-- Store as `YYYY-MM-01` in DB, display as `YYYY-MM` in editor
-
-### 5B. Update Date Display
-- **Files:** `src/pages/Experiments.tsx`, `src/pages/ExperimentDetail.tsx`
-- Show month/year format (e.g., "Jan 2023")
+**ClientProjectDetail** (`src/pages/ClientProjectDetail.tsx`):
+- Show project type badge in the hero section
+- Render type-specific metadata sections (e.g., "Brand Colors" for logo projects, "Content Details" for copywriting)
 
 ---
 
 ## Implementation Order
-1. **Phase 5** — Month-only dates (quick win)
-2. **Phase 4** — Show images on listing page (small UI change)
-3. **Phase 1** — Image management upgrades (medium)
-4. **Phase 2** — Media library editing (complex)
-5. **Phase 3** — Knowledge base (independent)
+
+1. Database migration (add project_type + type_metadata columns)
+2. Media Library inline rename feature
+3. Client Work Editor -- project type selector + conditional fields
+4. Client Work public pages -- type badges + detail rendering
+5. Media Library grouped view + bulk tagging
+6. Auto-categorize edge function
+
