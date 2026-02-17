@@ -6,7 +6,7 @@ import { ContentHubChat } from "@/components/admin/ContentHubChat";
 import { ChangeHistoryPanel } from "@/components/admin/ChangeHistoryPanel";
 import { ContentPlanCard } from "@/components/admin/ContentPlanCard";
 import { ContentSuggestions } from "@/components/admin/ContentSuggestions";
-import { useContentActions, ContentPlan } from "@/hooks/useContentActions";
+import { useContentActions } from "@/hooks/useContentActions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,7 +15,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { Trash2, Database, ExternalLink, Sparkles } from "lucide-react";
+import { Trash2, Database, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { ADMIN_ROUTES, PUBLISHABLE_TABLES } from "@/lib/adminRoutes";
@@ -75,33 +75,9 @@ const ContentHub = () => {
     },
   });
 
-  // Suggestions count
-  const { data: suggestionsCount } = useQuery({
-    queryKey: ["content-suggestions-count"],
-    queryFn: async () => {
-      // Lightweight check - just count empty descriptions across key tables
-      let count = 0;
-      const tables = ["articles", "projects", "experiments", "experiences"];
-      await Promise.all(
-        tables.map(async (table) => {
-          try {
-            const { data } = await (supabase.from(table as any) as any)
-              .select("id, description, published")
-              .or("description.is.null,description.eq.");
-            count += (data?.length || 0);
-            if (PUBLISHABLE_TABLES.includes(table)) {
-              const { data: unpub } = await (supabase.from(table as any) as any)
-                .select("id")
-                .eq("published", false);
-              count += (unpub?.length || 0);
-            }
-          } catch {}
-        })
-      );
-      return count;
-    },
-    staleTime: 60_000,
-  });
+  // Derive suggestions count from the real suggestions cache
+  const suggestionsData = queryClient.getQueryData<any[]>(["content-suggestions"]);
+  const suggestionsCount = suggestionsData?.length ?? 0;
 
   const handleDeleteSavedPlan = async (planId: string) => {
     await supabase.from("ai_content_plans").delete().eq("id", planId);
@@ -122,7 +98,7 @@ const ContentHub = () => {
                 <TabsList>
                   <TabsTrigger value="suggestions">
                     Suggestions
-                    {suggestionsCount && suggestionsCount > 0 && (
+                    {suggestionsCount > 0 && (
                       <Badge variant="destructive" className="ml-2 text-[10px] px-1.5">
                         {suggestionsCount}
                       </Badge>

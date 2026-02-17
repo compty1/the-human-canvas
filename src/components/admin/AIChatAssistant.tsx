@@ -14,6 +14,7 @@ interface Message {
 interface AIChatAssistantProps {
   context?: string;
   contentType: string;
+  relatedContent?: string;
   onSuggestionApply?: (text: string) => void;
   className?: string;
 }
@@ -21,6 +22,7 @@ interface AIChatAssistantProps {
 export const AIChatAssistant = ({
   context,
   contentType,
+  relatedContent,
   onSuggestionApply,
   className,
 }: AIChatAssistantProps) => {
@@ -44,10 +46,16 @@ export const AIChatAssistant = ({
     setIsLoading(true);
 
     try {
+      // Build enriched context
+      const enrichedContext = [
+        context,
+        relatedContent ? `\nRelated existing content:\n${relatedContent}` : "",
+      ].filter(Boolean).join("\n");
+
       const { data, error } = await supabase.functions.invoke("ai-assistant", {
         body: {
           messages: [...messages, { role: "user", content: userMessage }],
-          context,
+          context: enrichedContext,
           contentType,
         },
       });
