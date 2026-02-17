@@ -157,7 +157,7 @@ export const ChangeHistoryPanel = () => {
                           </Badge>
                           <span className="font-mono">{change.table_name}</span>
                           <span className="text-muted-foreground">
-                            {change.record_id.slice(0, 8)}...
+                            {change.record_id ? change.record_id.slice(0, 8) + "..." : "—"}
                           </span>
                           <CollapsibleTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-5 w-5 p-0">

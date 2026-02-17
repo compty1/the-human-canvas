@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useContentActions, ContentPlan } from "@/hooks/useContentActions";
 import { ContentPlanCard } from "./ContentPlanCard";
@@ -19,6 +19,34 @@ interface ChatMessage {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-content-hub`;
 
+/** Lightweight markdown-to-HTML for AI responses */
+const renderMarkdown = (text: string): string => {
+  if (!text) return "";
+  let html = text
+    // code blocks
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-muted rounded p-2 my-2 text-xs overflow-x-auto"><code>$2</code></pre>')
+    // inline code
+    .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 rounded text-xs">$1</code>')
+    // bold
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    // italic
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    // headers
+    .replace(/^### (.+)$/gm, '<h4 class="font-bold mt-3 mb-1">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 class="font-bold text-base mt-3 mb-1">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 class="font-bold text-lg mt-3 mb-1">$1</h2>')
+    // unordered lists
+    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+    .replace(/^• (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+    // numbered lists
+    .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
+    // line breaks (double newline = paragraph)
+    .replace(/\n\n/g, "</p><p>")
+    // single newline
+    .replace(/\n/g, "<br/>");
+  return `<p>${html}</p>`;
+};
+
 export const ContentHubChat = () => {
   const queryClient = useQueryClient();
   const { fetchSiteContext } = useContentActions();
@@ -27,6 +55,7 @@ export const ContentHubChat = () => {
   const [streaming, setStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [showPasteHint, setShowPasteHint] = useState(false);
+  const [activeConversation, setActiveConversation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -43,15 +72,15 @@ export const ContentHubChat = () => {
     },
   });
 
-  // Load conversation messages
+  // Load conversation messages - only when not actively chatting
   useEffect(() => {
-    if (conversationId) {
+    if (conversationId && !streaming && !activeConversation) {
       const conv = conversations?.find((c) => c.id === conversationId);
       if (conv?.messages) {
         setMessages(conv.messages as unknown as ChatMessage[]);
       }
     }
-  }, [conversationId, conversations]);
+  }, [conversationId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -69,6 +98,7 @@ export const ContentHubChat = () => {
       role: m.role,
       content: m.content,
       timestamp: m.timestamp,
+      plans: m.plans || undefined,
     })) as unknown as Json;
 
     if (conversationId) {
@@ -85,12 +115,15 @@ export const ContentHubChat = () => {
         .single();
       if (data) setConversationId(data.id);
     }
-    refetchConversations();
+    // Don't refetch conversations immediately - we have the state we need
+    setTimeout(() => refetchConversations(), 1000);
   };
 
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || streaming) return;
+
+    setActiveConversation(true);
 
     const userMsg: ChatMessage = {
       role: "user",
@@ -139,12 +172,12 @@ export const ContentHubChat = () => {
           const last = prev[prev.length - 1];
           if (last?.role === "assistant") {
             return prev.map((m, i) =>
-              i === prev.length - 1 ? { ...m, content: text, plans: currentPlans } : m
+              i === prev.length - 1 ? { ...m, content: text, plans: currentPlans.length > 0 ? currentPlans : undefined } : m
             );
           }
           return [
             ...prev,
-            { role: "assistant", content: text, timestamp: new Date().toISOString(), plans: currentPlans },
+            { role: "assistant", content: text, timestamp: new Date().toISOString(), plans: currentPlans.length > 0 ? currentPlans : undefined },
           ];
         });
       };
@@ -205,7 +238,7 @@ export const ContentHubChat = () => {
         }
       }
 
-      // Final flush
+      // Final flush - try to parse any remaining tool call args
       if (toolCallArgs) {
         try {
           const planData = JSON.parse(toolCallArgs);
@@ -222,7 +255,7 @@ export const ContentHubChat = () => {
 
       const finalMessages: ChatMessage[] = [
         ...newMessages,
-        { role: "assistant", content: assistantText, timestamp: new Date().toISOString(), plans },
+        { role: "assistant", content: assistantText, timestamp: new Date().toISOString(), plans: plans.length > 0 ? plans : undefined },
       ];
       setMessages(finalMessages);
       await saveConversation(finalMessages);
@@ -235,6 +268,7 @@ export const ContentHubChat = () => {
       });
     } finally {
       setStreaming(false);
+      setActiveConversation(false);
     }
   };
 
@@ -242,6 +276,7 @@ export const ContentHubChat = () => {
     setConversationId(null);
     setMessages([]);
     setInput("");
+    setActiveConversation(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -259,7 +294,10 @@ export const ContentHubChat = () => {
           value={conversationId || "new"}
           onValueChange={(v) => {
             if (v === "new") startNewConversation();
-            else setConversationId(v);
+            else {
+              setActiveConversation(false);
+              setConversationId(v);
+            }
           }}
         >
           <SelectTrigger className="flex-1 h-8 text-xs">
@@ -301,7 +339,14 @@ export const ContentHubChat = () => {
                   : "bg-muted"
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+              {msg.role === "assistant" ? (
+                <div
+                  className="text-sm prose prose-sm max-w-none dark:prose-invert [&_p]:my-1 [&_li]:my-0.5 [&_pre]:my-2 [&_h2]:my-2 [&_h3]:my-2 [&_h4]:my-1"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                />
+              ) : (
+                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+              )}
 
               {msg.plans && msg.plans.length > 0 && (
                 <div className="mt-3 space-y-3">
@@ -325,7 +370,7 @@ export const ContentHubChat = () => {
           </div>
         ))}
 
-        {streaming && (
+        {streaming && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex justify-start">
             <div className="bg-muted rounded-lg p-3">
               <Loader2 className="w-4 h-4 animate-spin" />
