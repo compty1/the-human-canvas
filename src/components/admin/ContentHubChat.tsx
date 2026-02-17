@@ -6,7 +6,7 @@ import { ContentPlanCard } from "./ContentPlanCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Plus, Loader2, Clipboard } from "lucide-react";
+import { Send, Plus, Loader2, Clipboard, Search, FileText, BarChart3, Sparkles, PenTool } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -17,37 +17,41 @@ interface ChatMessage {
   plans?: ContentPlan[];
 }
 
+interface ContentHubChatProps {
+  externalPrompt?: string | null;
+  onExternalPromptConsumed?: () => void;
+}
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-content-hub`;
+
+const QUICK_ACTIONS = [
+  { label: "Audit all content", icon: Search, prompt: "Audit all site content and suggest improvements for missing fields, SEO gaps, and stale records." },
+  { label: "Find missing fields", icon: FileText, prompt: "Identify all records across every content type that have missing descriptions, excerpts, images, or tags." },
+  { label: "Generate descriptions", icon: PenTool, prompt: "Find all records missing descriptions and generate appropriate descriptions for them." },
+  { label: "Content report", icon: BarChart3, prompt: "Give me a comprehensive content report: total counts per type, published vs draft, and any issues found." },
+  { label: "Publish ready content", icon: Sparkles, prompt: "Find content that's in approved review status or looks ready to publish. Suggest a plan to publish them." },
+];
 
 /** Lightweight markdown-to-HTML for AI responses */
 const renderMarkdown = (text: string): string => {
   if (!text) return "";
   let html = text
-    // code blocks
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-muted rounded p-2 my-2 text-xs overflow-x-auto"><code>$2</code></pre>')
-    // inline code
     .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 rounded text-xs">$1</code>')
-    // bold
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // italic
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    // headers
     .replace(/^### (.+)$/gm, '<h4 class="font-bold mt-3 mb-1">$1</h4>')
     .replace(/^## (.+)$/gm, '<h3 class="font-bold text-base mt-3 mb-1">$1</h3>')
     .replace(/^# (.+)$/gm, '<h2 class="font-bold text-lg mt-3 mb-1">$1</h2>')
-    // unordered lists
     .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
     .replace(/^• (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-    // numbered lists
     .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-    // line breaks (double newline = paragraph)
     .replace(/\n\n/g, "</p><p>")
-    // single newline
     .replace(/\n/g, "<br/>");
   return `<p>${html}</p>`;
 };
 
-export const ContentHubChat = () => {
+export const ContentHubChat = ({ externalPrompt, onExternalPromptConsumed }: ContentHubChatProps) => {
   const queryClient = useQueryClient();
   const { fetchSiteContext } = useContentActions();
   const [input, setInput] = useState("");
@@ -58,6 +62,14 @@ export const ContentHubChat = () => {
   const [activeConversation, setActiveConversation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handle external prompts (from suggestions "Fix with AI")
+  useEffect(() => {
+    if (externalPrompt && !streaming) {
+      sendMessage(externalPrompt);
+      onExternalPromptConsumed?.();
+    }
+  }, [externalPrompt]);
 
   // Fetch conversations
   const { data: conversations, refetch: refetchConversations } = useQuery({
@@ -72,7 +84,6 @@ export const ContentHubChat = () => {
     },
   });
 
-  // Load conversation messages - only when not actively chatting
   useEffect(() => {
     if (conversationId && !streaming && !activeConversation) {
       const conv = conversations?.find((c) => c.id === conversationId);
@@ -82,12 +93,10 @@ export const ContentHubChat = () => {
     }
   }, [conversationId]);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Detect pasted content
   const handleInputChange = (value: string) => {
     setInput(value);
     setShowPasteHint(value.length > 200);
@@ -243,7 +252,6 @@ export const ContentHubChat = () => {
         }
       }
 
-      // Final flush - try to parse any remaining tool call args
       if (toolCallArgs) {
         try {
           const planData = JSON.parse(toolCallArgs);
@@ -325,13 +333,29 @@ export const ContentHubChat = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <div className="text-center text-muted-foreground py-12">
+          <div className="text-center text-muted-foreground py-8">
+            <Sparkles className="w-8 h-8 mx-auto mb-3 text-primary" />
             <p className="font-bold mb-2">AI Content Hub</p>
-            <p className="text-sm">
+            <p className="text-sm mb-4">
               Ask me to create, edit, or manage any content on your site.
               <br />
               You can also paste content and I'll suggest where to put it.
             </p>
+            <div className="flex flex-wrap justify-center gap-2 max-w-sm mx-auto">
+              {QUICK_ACTIONS.map((action) => (
+                <Button
+                  key={action.label}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => sendMessage(action.prompt)}
+                  disabled={streaming}
+                >
+                  <action.icon className="w-3 h-3" />
+                  {action.label}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -363,6 +387,7 @@ export const ContentHubChat = () => {
                       onExecuted={() => {
                         queryClient.invalidateQueries({ queryKey: ["ai-content-plans-history"] });
                         queryClient.invalidateQueries({ queryKey: ["ai-change-history"] });
+                        queryClient.invalidateQueries({ queryKey: ["content-suggestions"] });
                       }}
                       onSaved={() => {
                         queryClient.invalidateQueries({ queryKey: ["ai-saved-plans"] });
