@@ -263,8 +263,9 @@ export function useContentActions() {
       "articles", "updates", "projects", "artwork", "experiments",
       "favorites", "inspirations", "experiences", "certifications",
       "client_projects", "skills", "products", "product_reviews",
+      "life_periods", "learning_goals", "funding_campaigns",
     ];
-    const publishableTables = ["articles", "updates", "projects", "experiments", "product_reviews", "experiences"];
+    const publishableTables = ["articles", "updates", "projects", "experiments", "product_reviews", "experiences", "life_periods"];
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
     const context: Record<string, { count: number; published?: number; draft?: number; stale?: number; missingDescription?: number; recent: any[] }> = {};
