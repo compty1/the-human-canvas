@@ -1,96 +1,134 @@
+# Implementation Plan: Image Management, Media Editing, Knowledge Base & Experiments Enhancements
 
-
-# Fix Plan: Content Suggestions Accuracy and AI Gateway Errors
-
-## Problem 1: Suggestions Silently Failing for Many Tables
-
-**Root Cause:** `getSelectFields()` in `ContentSuggestions.tsx` builds a SELECT string using `BASE_FIELDS` which includes columns like `slug`, `updated_at`, `published`, `review_status`. Many tables don't have these columns. When PostgREST receives a select for a non-existent column, it returns a 400 error, and the `catch {}` block silently swallows it -- so those tables never get analyzed.
-
-Tables that silently fail due to missing BASE_FIELDS columns:
-- **artwork** -- no `name`, `slug`, `updated_at`, `published`, `review_status`
-- **favorites** -- no `name`, `slug`, `updated_at`, `published`, `review_status`
-- **skills** -- no `title`, `slug`, `updated_at`, `published`, `review_status`
-- **learning_goals** -- no `name`, `slug`, `updated_at`, `published`, `review_status`
-- **supplies_needed** -- no `title`, `slug`, `updated_at`, `published`, `review_status`
-- **funding_campaigns** -- no `name`, `slug`, `published`, `review_status`
-
-This means 6+ tables are completely invisible to the suggestions engine. Records that DO have content show up as "missing" because the query never returns data at all.
-
-**Fix:** Replace the shared `BASE_FIELDS` approach with a per-table column map that only selects columns that actually exist. Create a `TABLE_COLUMNS` config in `adminRoutes.ts` defining the exact columns each table has (id + title/name field + optional slug, updated_at, published, review_status).
+## Overview
+Five major feature areas to implement across the admin and public-facing site.
 
 ---
 
-## Problem 2: AI Gateway Returns 500 Internal Server Error
+## Phase 1: Enhanced Image Management in Editors (Experiments + Others)
+**Goal:** Add drag-to-reorder, set-as-main-image, multi-select from library for all editors with image fields.
 
-**Root Cause:** The edge function logs show `AI gateway error: 500 {"type":"internal_server_error","message":"","details":""}` every time. This is the Lovable AI gateway rejecting the request. The most likely causes:
+### 1A. Upgrade MultiImageUploader Component
+- **File:** `src/components/admin/MultiImageUploader.tsx`
+- Add drag-and-drop reorder (already partially exists in the standalone version)
+- Add "Set as Main Image" button on each thumbnail — moves that image URL to `image_url` field and shifts previous main to screenshots
+- Add "Select from Library" button that opens `MediaLibraryPicker` in multi-select mode
+- Visual indicators: main image badge, reorder grip handles, hover actions
 
-1. **Payload too large:** `fetchSiteContext()` does `select("*")` on 17 tables with `limit(10)`, sending ALL columns of up to 10 records per table. Tables like `projects` have 30+ columns including `case_study` (HTML), `jsonb` fields, etc. This creates a massive JSON blob that gets embedded in the system prompt. The combined system prompt + context easily exceeds token limits.
+### 1B. Update MediaLibraryPicker for Multi-Select
+- **File:** `src/components/admin/MediaLibraryPicker.tsx`
+- Add `multiSelect` prop (boolean)
+- When multi-select enabled, allow checking multiple images and return array of URLs
+- Add "Select All" / "Deselect All" controls
 
-2. **Model issue:** The function uses `google/gemini-3-flash-preview` which is a preview model. If this model is unavailable or has issues, every request fails with a generic 500.
-
-**Fixes:**
-
-### Fix 2a: Reduce context payload size
-- In `fetchSiteContext()`, change `select("*")` to select only the specific columns needed (id, title/name, slug, published, description truncated, dates) instead of all columns
-- Reduce from `limit(10)` to `limit(5)` 
-- Truncate description to 150 chars max
-- Remove large fields (case_study, long_description, detailed_content, jsonb blobs) from the context
-
-### Fix 2b: Add model fallback
-- Try `google/gemini-2.5-flash` as primary (stable, not preview)
-- If that fails with 500, the error message already surfaces to the user -- but at least the stable model is less likely to fail
-
-### Fix 2c: Add request size logging
-- Log the size of the outgoing request body in the edge function so gateway issues can be diagnosed
-
----
-
-## Problem 3: Additional Suggestion Accuracy Issues
-
-- **Stale content check uses string comparison:** `i.updated_at < ninetyDaysAgo` does a string comparison on ISO dates. This works for ISO format but tables without `updated_at` (artwork, favorites, skills, etc.) get skipped anyway due to Problem 1.
-- **"supplies_needed" has no `updated_at` column** so stale check would fail even if the query worked.
+### 1C. Update All Editors Using Images
+Apply the enhanced uploader to:
+- `src/pages/admin/ExperimentEditor.tsx` — cover image + screenshots with reorder + set-as-main
+- `src/pages/admin/ProjectEditor.tsx` — same pattern
+- `src/pages/admin/ExperienceEditor.tsx` — same pattern
+- `src/pages/admin/ClientProjectEditor.tsx` — same pattern
+- `src/pages/admin/ProductReviewEditor.tsx` — same pattern
+- `src/pages/admin/ProductEditor.tsx` — same pattern
 
 ---
 
-## Files to Modify
+## Phase 2: Media Library Photo Editing Tools
+**Goal:** Add rotate, remove background, auto-crop whitespace to media library with batch support and review/approval.
 
-### 1. `src/lib/adminRoutes.ts`
-Add a `TABLE_COLUMNS` map defining which base columns exist per table:
+### 2A. Client-Side Image Editing Utilities
+- **New file:** `src/lib/imageEditing.ts`
+- `rotateImage(url, degrees)` — uses Canvas API to rotate 90°/180°/270°
+- `removeWhitespace(url)` — uses Canvas API to detect and crop white/near-white borders
+- `flipImage(url, direction)` — horizontal/vertical flip
 
-```text
-TABLE_COLUMNS = {
-  articles: { id: "id", label: "title", slug: true, updated_at: true, published: true },
-  artwork: { id: "id", label: "title", slug: false, updated_at: false, published: false },
-  favorites: { id: "id", label: "title", slug: false, updated_at: false, published: false },
-  skills: { id: "id", label: "name", slug: false, updated_at: false, published: false },
-  supplies_needed: { id: "id", label: "name", slug: false, updated_at: false, published: false },
-  ...etc for all 17 tables
-}
+### 2B. AI Background Removal via Edge Function
+- **New file:** `supabase/functions/remove-background/index.ts`
+- Uses canvas-based approach with tolerance-based flood fill for simple backgrounds
+- Accepts image URL, returns processed image URL stored in content-images bucket
+- Support batch processing: accept array of URLs
+- Enhancement: Use Lovable AI for complex images
+
+### 2C. Review & Approval Workflow for Edits
+- **New file:** `src/components/admin/ImageEditPreview.tsx`
+- Side-by-side before/after preview modal
+- "Approve & Save" / "Discard" buttons
+- For batch operations: carousel of before/after pairs with approve-all option
+
+### 2D. Media Library UI Integration
+- **File:** `src/pages/admin/MediaLibrary.tsx`
+- Add toolbar buttons: Rotate, Remove Background, Auto-Crop
+- Single image: right-click or hover menu with edit options
+- Multi-select: batch toolbar appears with all edit options
+- All edits go through the review/approval modal before saving
+
+---
+
+## Phase 3: Knowledge Base System
+**Goal:** Store rich information, data, notes on all items to build a growing knowledge base.
+
+### 3A. Database Migration — `knowledge_entries` Table
+```sql
+CREATE TABLE public.knowledge_entries (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id UUID,
+  title TEXT NOT NULL,
+  content TEXT,
+  category TEXT,
+  tags TEXT[] DEFAULT '{}',
+  metadata JSONB DEFAULT '{}',
+  images TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 ```
 
-### 2. `src/components/admin/ContentSuggestions.tsx`
-- Replace `getSelectFields()` to use the new `TABLE_COLUMNS` map, only selecting columns that actually exist
-- Use the correct label field (`title` vs `name` vs `project_name` vs `product_name`) per table
-- Guard stale content check to only run when `updated_at` exists for that table
+### 3B. Knowledge Base Admin UI
+- **New file:** `src/pages/admin/KnowledgeBase.tsx`
+- Searchable, filterable list of all knowledge entries
+- Filter by entity_type, category, tags
+- Rich text editor for content
+- Link to related entities
+- AI-powered analysis button
 
-### 3. `src/hooks/useContentActions.ts` (fetchSiteContext)
-- Replace `select("*")` with explicit column lists per table (id, title/name, slug, published, description, updated_at -- only columns that exist)
-- Reduce `limit(10)` to `limit(5)`
-- Truncate descriptions to 150 characters
-- This dramatically reduces the payload sent to the AI gateway
+### 3C. Knowledge Entry Widget in All Editors
+- **New file:** `src/components/admin/KnowledgeEntryWidget.tsx`
+- Collapsible panel at bottom of each editor
+- Shows existing knowledge entries linked to this item
+- Quick-add form for new entries
 
-### 4. `supabase/functions/ai-content-hub/index.ts`
-- Change model from `google/gemini-3-flash-preview` to `google/gemini-2.5-flash` (stable, proven)
-- Add `console.log` for outgoing request body size for debugging
-- Add a size check: if context exceeds 50KB, truncate the context before sending
+### 3D. Add Routes
+- Add `/admin/knowledge-base` route and nav entry
+
+---
+
+## Phase 4: Show Experiment Images on Listing Page
+**Goal:** Display all screenshots under each experiment's description on `/experiments`.
+
+### 4A. Update Experiments Listing Page
+- **File:** `src/pages/Experiments.tsx`
+- After description, render horizontal scrollable row of screenshot thumbnails
+- Clicking opens lightbox or navigates to detail
+
+---
+
+## Phase 5: Month-Only Dates for Experiments
+**Goal:** Allow month/year dates without requiring a specific day.
+
+### 5A. Update Date Inputs in ExperimentEditor
+- **File:** `src/pages/admin/ExperimentEditor.tsx`
+- Change `type="date"` to `type="month"`
+- Store as `YYYY-MM-01` in DB, display as `YYYY-MM` in editor
+
+### 5B. Update Date Display
+- **Files:** `src/pages/Experiments.tsx`, `src/pages/ExperimentDetail.tsx`
+- Show month/year format (e.g., "Jan 2023")
 
 ---
 
 ## Implementation Order
-
-1. Update `adminRoutes.ts` with per-table column definitions
-2. Fix `ContentSuggestions.tsx` to use correct columns per table
-3. Slim down `fetchSiteContext()` payload in `useContentActions.ts`
-4. Update edge function model and add size guards
-5. Redeploy edge function
-
+1. **Phase 5** — Month-only dates (quick win)
+2. **Phase 4** — Show images on listing page (small UI change)
+3. **Phase 1** — Image management upgrades (medium)
+4. **Phase 2** — Media library editing (complex)
+5. **Phase 3** — Knowledge base (independent)
