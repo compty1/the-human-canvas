@@ -1,88 +1,66 @@
 
-# Plan: Artwork Multi-Image, Per-Item AI Chat, and Media Library "Add to Content"
 
-## 1. Multiple Images for Artwork
+# Plan: Fix Add-to-Content Flow, Add Drag-Reorder, and Add Similarity Sorting
 
-Currently each artwork entry has only a single `image_url` field. This adds an `images` text array column for process photos, stages, etc.
+## Issue 1: Add to Content -- Fix the Flow
 
-### Database migration
-```sql
-ALTER TABLE artwork ADD COLUMN images text[] DEFAULT '{}'::text[];
-```
+**Problem**: When selecting a content type with multiple image fields (like Experiments), the modal forces you to pick a "Target Field" before showing existing records. This is confusing -- users want to pick the record first, then choose which field to add images to.
 
-### Changes
-- **`src/pages/admin/ArtworkEditor.tsx`**: Add `EnhancedImageManager` component below the main image uploader for managing the `images` array (drag-reorder, add from library, set as main). Import existing `EnhancedImageManager` and `MediaLibraryPicker` components already built in Phase 1.
-- **`src/pages/ArtGallery.tsx`** (or artwork detail view): Show additional images in a small gallery/thumbnail row when viewing an artwork piece.
-- **`src/components/admin/AddToContentModal.tsx`**: Update the artwork config to include the new `images` array field so media library can target it, and change artwork from "create new entry" mode to also support "add to existing artwork" with both `image_url` (single) and `images` (array) fields.
+Additionally, some content types may not show all records (e.g., only published ones). All existing records should be shown regardless of status.
 
----
-
-## 2. Per-Item AI Chat with Saved Conversations and Knowledge Base Integration
-
-Add a dedicated AI chat panel to each individual content editor (projects, experiences, life periods, experiments, artwork, articles, client projects, etc.) that:
-- Persists conversations in the `ai_conversations` table linked to the entity
-- Allows re-accessing past conversations
-- Has a "Save to Knowledge Base" button on each AI message to add insights to the `knowledge_entries` table for that item
-
-### New component
-- **`src/components/admin/ItemAIChatPanel.tsx`**: A new component wrapping the existing `AIChatAssistant` pattern but with:
-  - Conversation persistence: loads/saves messages from `ai_conversations` table using metadata to filter by entity type + entity ID
-  - Conversation list: shows past conversations for this item, ability to switch between them or start a new one
-  - "Add to Knowledge Base" button on each assistant message that creates a `knowledge_entries` record linked to the current entity
-  - Props: `entityType`, `entityId`, `entityTitle`, `context`
-
-### Database changes
-- Add `entity_type` (text, nullable) and `entity_id` (uuid, nullable) columns to `ai_conversations` table so conversations can be linked to specific items.
-
-```sql
-ALTER TABLE ai_conversations 
-  ADD COLUMN entity_type text,
-  ADD COLUMN entity_id uuid;
-```
-
-### Editor integrations
-Add `ItemAIChatPanel` to the following editors (alongside or replacing the existing `AIChatAssistant`):
-- `ExperimentEditor.tsx`
-- `ProjectEditor.tsx`
-- `ExperienceEditor.tsx`
-- `ClientProjectEditor.tsx`
-- `ArtworkEditor.tsx`
-- `ArticleEditor.tsx`
-- `LifePeriodEditor.tsx`
-- `ProductReviewEditor.tsx`
-- `FavoriteEditor.tsx`
-- `InspirationEditor.tsx`
-- `CertificationEditor.tsx`
-- `UpdateEditor.tsx`
-
-Each editor will pass its entity type, ID, title, and relevant form context to the chat panel.
+### Fix in `src/components/admin/AddToContentModal.tsx`
+- Swap the order: show **Step 2: Select Record** immediately after picking the content type
+- Move **Target Field** to Step 3 (only shown after a record is selected, and only if the content type has more than one image field)
+- Auto-select the field if there's only one (already works but timing is off due to ordering)
+- Remove any status/published filtering from the records query -- fetch ALL records with `.limit(500)` and no status filter (the current query already doesn't filter by status, but increase limit to catch everything)
 
 ---
 
-## 3. Media Library "Add to Content" -- Full Wiring
+## Issue 2: Drag and Rearrange Photos in Media Library
 
-The `AddToContentModal` component already exists and supports 12 content types. The needed improvements:
+**Problem**: There's no way to reorder images in the media library grid.
 
-### Changes to `src/components/admin/AddToContentModal.tsx`
-- Update the `artwork` config entry: instead of only creating new artwork entries, support both "Create new artwork entry" AND "Add to existing artwork" (using the new `images` array field)
-- Add `updates` content type config (if not already present) with any image fields
-
-### Changes to `src/pages/admin/MediaLibrary.tsx`
-- The "Add to Content" button and modal are already wired. Verify the flow works end-to-end: select images, click "Add to Content", pick content type, pick record, pick field, save. No new code needed here beyond ensuring the button is visible and functional in the selection toolbar.
+### Add to `src/pages/admin/MediaLibrary.tsx`
+- Add drag-and-drop support to `renderMediaCard` using HTML5 drag events (same pattern used in `EnhancedImageManager`)
+- Track `draggedIndex` and `dragOverIndex` state
+- On drop, update the `media_library` table's `uploaded_at` timestamps to reflect the new visual order (since the grid sorts by `uploaded_at desc`)
+- Show a visual indicator (border highlight) on the drop target
+- Only allow reordering for library-sourced items
 
 ---
 
-## Implementation Order
+## Issue 3: Organize by Similarity, Duplicates, and Related Images
 
-1. Database migration (artwork.images + ai_conversations entity columns)
-2. `ArtworkEditor.tsx` -- add `EnhancedImageManager` for multi-image support
-3. `AddToContentModal.tsx` -- update artwork config for existing entries + images array
-4. `ItemAIChatPanel.tsx` -- new component with persistence and knowledge base integration
-5. Integrate `ItemAIChatPanel` into all editors
+**Problem**: The "Group by Tag" view exists but there's no way to find duplicate images, similar images, or sort by image type.
 
-## Technical Notes
+### Add new sort/filter options to `src/pages/admin/MediaLibrary.tsx`
+- Add a new **Sort By** dropdown next to the existing filters with options:
+  - **Date (newest)** -- default, current behavior
+  - **Date (oldest)**
+  - **Filename** -- alphabetical sort to surface similarly named files
+  - **File size** -- groups similar-sized images together
+  - **Duplicates first** -- detects images with identical URLs or filenames and surfaces them at the top with a "Duplicate" badge
+  - **By type** -- groups by file extension (jpg, png, webp, etc.)
 
-- The `EnhancedImageManager` component (already built) handles drag-reorder, "set as main", library picker, and upload -- it will be reused directly for artwork.
-- The `ai_conversations` table already exists with `messages` jsonb and `title` fields. Adding `entity_type` and `entity_id` allows filtering conversations per item.
-- The `knowledge_entries` table already exists with `entity_type`, `entity_id`, `title`, `content`, `category`, and `tags` fields -- perfect for storing AI-generated insights.
-- The `AddToContentModal` already handles both "single" (replace) and "array" (append) field types, so adding artwork's `images` array is straightforward.
+- Add **duplicate detection** logic:
+  - Compare URLs and filenames across all media items
+  - Mark items that share the same URL or very similar filenames (ignoring UUID prefixes) with a "Possible Duplicate" badge
+  - Add a "Duplicates" option in the usage filter dropdown to show only suspected duplicates
+
+- The existing **"Group by Tag"** view already handles category-based organization. The Auto-Tag AI feature can suggest tags like "portrait", "screenshot", "logo" etc. which handles the "related images" grouping.
+
+---
+
+## Files to Modify
+
+1. **`src/components/admin/AddToContentModal.tsx`**
+   - Reorder steps: Content Type -> Record -> Field
+   - Show record list immediately after content type selection
+   - Auto-select field when only one exists
+
+2. **`src/pages/admin/MediaLibrary.tsx`**
+   - Add drag-and-drop reordering to the grid
+   - Add "Sort By" dropdown (date, filename, size, duplicates, type)
+   - Add duplicate detection logic with badges
+   - Add "Duplicates" filter option
+
