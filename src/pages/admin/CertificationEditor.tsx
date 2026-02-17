@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 
 const categories = [
   { value: "technical", label: "Technical" },
@@ -415,6 +416,14 @@ const CertificationEditor = () => {
             placeholder="Private notes about this certification..."
           />
         </ComicPanel>
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="certification"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.name || "New Certification"}
+          context={`Issuer: ${form.issuer}\nCategory: ${form.category}\nStatus: ${form.status}`}
+        />
 
         {/* Save Button */}
         <div className="flex justify-end gap-4">

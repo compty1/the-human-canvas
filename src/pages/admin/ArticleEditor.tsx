@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 
 type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research" | "metaphysics";
 
@@ -603,6 +604,14 @@ const ArticleEditor = () => {
             </PopButton>
           </div>
         </div>
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="article"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.title || "New Article"}
+          context={`Category: ${form.category}\nExcerpt: ${form.excerpt}`}
+        />
       </div>
     </AdminLayout>
   );

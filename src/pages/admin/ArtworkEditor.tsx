@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +22,7 @@ const ArtworkEditor = () => {
   const [form, setForm] = useState({
     title: "",
     image_url: "",
+    images: [] as string[],
     category: "mixed",
     description: "",
     admin_notes: "",
@@ -47,6 +50,7 @@ const ArtworkEditor = () => {
       setForm({
         title: artwork.title || "",
         image_url: artwork.image_url || "",
+        images: (artwork as any).images || [],
         category: artwork.category || "mixed",
         description: artwork.description || "",
         admin_notes: artwork.admin_notes || "",
@@ -210,6 +214,30 @@ const ArtworkEditor = () => {
             </div>
           </div>
         </ComicPanel>
+
+        {/* Process / Stage Images */}
+        <ComicPanel className="p-6">
+          <h2 className="text-xl font-display mb-4">Process & Stage Images</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add photos of different stages, process shots, or alternate views
+          </p>
+          <EnhancedImageManager
+            mainImage=""
+            screenshots={form.images}
+            onMainImageChange={() => {}}
+            onScreenshotsChange={(urls) => setForm(prev => ({ ...prev, images: urls }))}
+            folder="artwork/process"
+            maxImages={20}
+          />
+        </ComicPanel>
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="artwork"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.title || "New Artwork"}
+          context={`Category: ${form.category}\nDescription: ${form.description}`}
+        />
 
         {/* Actions */}
         <div className="flex gap-4">

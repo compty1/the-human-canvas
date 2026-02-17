@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
@@ -1005,6 +1006,14 @@ const ProjectEditor = () => {
 
         {/* Knowledge Base */}
         <KnowledgeEntryWidget entityType="project" entityId={isEditing ? id : undefined} />
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="project"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.title || "New Project"}
+          context={`Status: ${form.status}\nDescription: ${form.description}`}
+        />
 
         {/* Actions */}
         <div className="flex gap-4">

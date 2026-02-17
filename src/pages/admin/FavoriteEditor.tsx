@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Save, ArrowLeft, Loader2, Link as LinkIcon, Plus, X, Music, Film, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { 
   streamingPlatforms, 
   musicPlatforms, 
@@ -652,6 +653,14 @@ const FavoriteEditor = () => {
             </button>
           </div>
         </ComicPanel>
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="favorite"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.title || "New Favorite"}
+          context={`Type: ${form.type}\nDescription: ${form.description}`}
+        />
 
         {/* Save */}
         <div className="flex justify-end">

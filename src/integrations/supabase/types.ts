@@ -179,6 +179,8 @@ export type Database = {
       ai_conversations: {
         Row: {
           created_at: string
+          entity_id: string | null
+          entity_type: string | null
           id: string
           messages: Json
           title: string
@@ -186,6 +188,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           messages?: Json
           title?: string
@@ -193,6 +197,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
           messages?: Json
           title?: string
@@ -281,6 +287,7 @@ export type Database = {
           draft_content: Json | null
           id: string
           image_url: string
+          images: string[] | null
           title: string
         }
         Insert: {
@@ -291,6 +298,7 @@ export type Database = {
           draft_content?: Json | null
           id?: string
           image_url: string
+          images?: string[] | null
           title: string
         }
         Update: {
@@ -301,6 +309,7 @@ export type Database = {
           draft_content?: Json | null
           id?: string
           image_url?: string
+          images?: string[] | null
           title?: string
         }
         Relationships: []
