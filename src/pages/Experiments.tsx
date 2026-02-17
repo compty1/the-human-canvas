@@ -12,6 +12,7 @@ const Experiments = () => {
       const { data, error } = await supabase
         .from("experiments")
         .select("*")
+        .neq("status", "draft")
         .order("start_date", { ascending: false });
       if (error) throw error;
       return data;

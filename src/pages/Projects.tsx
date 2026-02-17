@@ -27,6 +27,7 @@ const Projects = () => {
       const { data, error } = await supabase
         .from("projects")
         .select("*")
+        .not("status", "eq", "planned")
         .order("created_at", { ascending: false });
       
       if (error) throw error;

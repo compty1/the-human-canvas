@@ -1,8 +1,9 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import {
@@ -42,7 +43,7 @@ import {
   Command,
   ExternalLink,
 } from "lucide-react";
-import { PopButton } from "@/components/pop-art";
+import { PopButton, ComicPanel } from "@/components/pop-art";
 import { toast } from "@/hooks/use-toast";
 
 interface AdminLayoutProps {
@@ -140,20 +141,8 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Check admin access
-  const { data: isAdmin, isLoading } = useQuery({
-    queryKey: ["is-admin", user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      const { data, error } = await supabase.rpc("has_role", {
-        _user_id: user.id,
-        _role: "admin",
-      });
-      if (error) return false;
-      return data;
-    },
-    enabled: !!user,
-  });
+  // Check admin access (shared query key with Header)
+  const { isAdmin, isLoading } = useAdminCheck();
 
   const handleSignOut = async () => {
     await signOut();
@@ -171,15 +160,19 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-        <h1 className="text-4xl font-display mb-4">Access Denied</h1>
-        <p className="text-muted-foreground mb-8">
-          You don't have permission to access the admin area.
-        </p>
-        <Link to="/">
-          <PopButton>Return Home</PopButton>
-        </Link>
-      </div>
+      <Layout>
+        <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
+          <ComicPanel className="max-w-md p-8 text-center">
+            <h1 className="text-4xl font-display mb-4">Access Denied</h1>
+            <p className="text-muted-foreground mb-8">
+              You don't have permission to access the admin area.
+            </p>
+            <Link to="/">
+              <PopButton>Return Home</PopButton>
+            </Link>
+          </ComicPanel>
+        </div>
+      </Layout>
     );
   }
 

@@ -1,12 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, User, LogIn, Settings } from "lucide-react";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { PopButton } from "@/components/pop-art";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 const navItems = [
   { label: "Art", href: "/art" },
   { label: "Projects", href: "/projects" },
@@ -28,20 +26,8 @@ export const Header = () => {
   const location = useLocation();
   const { user, signOut } = useAuth();
 
-  // Check if user is admin
-  const { data: isAdmin } = useQuery({
-    queryKey: ["is-admin-header", user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: user.id,
-        _role: "admin",
-      });
-      return data;
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
-  });
+  // Check if user is admin (shared query key with AdminLayout)
+  const { isAdmin } = useAdminCheck();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-4 border-foreground">
