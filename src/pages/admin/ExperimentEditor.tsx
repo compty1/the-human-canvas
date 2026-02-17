@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
-import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { ExperimentProductEditor } from "@/components/admin/ExperimentProductEditor";
 import { supabase } from "@/integrations/supabase/client";
@@ -282,21 +283,21 @@ const ExperimentEditor = () => {
               </select>
             </div>
             <div>
-              <Label htmlFor="start_date">Start Date</Label>
+              <Label htmlFor="start_date">Start Date (Month)</Label>
               <Input
                 id="start_date"
-                type="date"
-                value={form.start_date}
-                onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
+                type="month"
+                value={form.start_date ? form.start_date.substring(0, 7) : ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value ? `${e.target.value}-01` : "" }))}
               />
             </div>
             <div>
-              <Label htmlFor="end_date">End Date</Label>
+              <Label htmlFor="end_date">End Date (Month)</Label>
               <Input
                 id="end_date"
-                type="date"
-                value={form.end_date}
-                onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value }))}
+                type="month"
+                value={form.end_date ? form.end_date.substring(0, 7) : ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value ? `${e.target.value}-01` : "" }))}
               />
             </div>
           </div>
@@ -323,20 +324,13 @@ const ExperimentEditor = () => {
         {/* Images */}
         <ComicPanel className="p-6">
           <h2 className="text-xl font-display mb-4">Images</h2>
-          <ImageUploader
-            value={form.image_url}
-            onChange={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
-            label="Main Image"
+          <EnhancedImageManager
+            mainImage={form.image_url}
+            screenshots={form.screenshots}
+            onMainImageChange={(url) => setForm((prev) => ({ ...prev, image_url: url }))}
+            onScreenshotsChange={(urls) => setForm((prev) => ({ ...prev, screenshots: urls }))}
             folder="experiments"
           />
-          <div className="mt-4">
-            <MultiImageUploader
-              value={form.screenshots}
-              onChange={(urls) => setForm((prev) => ({ ...prev, screenshots: urls }))}
-              label="Screenshots"
-              folder="experiments"
-            />
-          </div>
         </ComicPanel>
 
         {/* Financials */}
@@ -595,6 +589,12 @@ const ExperimentEditor = () => {
             placeholder="Internal notes..."
           />
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget
+          entityType="experiment"
+          entityId={isEditing ? id : undefined}
+        />
 
         {/* Actions */}
         <div className="flex gap-4">

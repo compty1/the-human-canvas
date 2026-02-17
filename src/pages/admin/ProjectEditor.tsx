@@ -3,7 +3,9 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
-import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { ImageUploader } from "@/components/admin/ImageUploader";
+import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
@@ -744,21 +746,13 @@ const ProjectEditor = () => {
               </div>
             </div>
 
-            {/* Featured Image Upload */}
-            <ImageUploader
-              value={form.image_url}
-              onChange={(url) => updateForm({ image_url: url })}
-              label="Featured Image"
+            {/* Images */}
+            <EnhancedImageManager
+              mainImage={form.image_url}
+              screenshots={form.screenshots}
+              onMainImageChange={(url) => updateForm({ image_url: url })}
+              onScreenshotsChange={(urls) => updateForm({ screenshots: urls })}
               folder="projects"
-            />
-
-            {/* Screenshots Gallery */}
-            <MultiImageUploader
-              value={form.screenshots}
-              onChange={(urls) => updateForm({ screenshots: urls })}
-              label="Screenshots"
-              folder="projects/screenshots"
-              maxImages={8}
             />
           </div>
         </ComicPanel>
@@ -1008,6 +1002,9 @@ const ProjectEditor = () => {
             placeholder="Internal notes, next steps, ideas..."
           />
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget entityType="project" entityId={isEditing ? id : undefined} />
 
         {/* Actions */}
         <div className="flex gap-4">

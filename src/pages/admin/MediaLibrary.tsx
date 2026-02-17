@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageCropper } from "@/components/admin/ImageCropper";
+import { ImageEditPreview } from "@/components/admin/ImageEditPreview";
+import { rotateImage, flipImage, removeWhitespace, removeBackground } from "@/lib/imageEditing";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +84,9 @@ const MediaLibrary = () => {
     description: "",
   });
   const [addingToArtwork, setAddingToArtwork] = useState(false);
+  const [editResults, setEditResults] = useState<Array<{ originalUrl: string; editedBlob: Blob; filename: string }>>([]);
+  const [showEditPreview, setShowEditPreview] = useState(false);
+  const [processingEdit, setProcessingEdit] = useState(false);
 
   // Fetch media from library table
   const { data: libraryMedia = [], isLoading: libraryLoading } = useQuery({
@@ -385,6 +390,48 @@ const MediaLibrary = () => {
     }
   };
 
+  const handleBatchEdit = async (action: "rotate" | "removeBg" | "autoCrop") => {
+    const selectedMedia = allMedia.filter(m => selectedItems.includes(m.id));
+    if (selectedMedia.length === 0) return;
+    setProcessingEdit(true);
+    const results: Array<{ originalUrl: string; editedBlob: Blob; filename: string }> = [];
+    try {
+      for (const item of selectedMedia) {
+        let blob: Blob;
+        if (action === "rotate") blob = await rotateImage(item.url, 90);
+        else if (action === "removeBg") blob = await removeBackground(item.url);
+        else blob = await removeWhitespace(item.url);
+        results.push({ originalUrl: item.url, editedBlob: blob, filename: item.filename });
+      }
+      setEditResults(results);
+      setShowEditPreview(true);
+    } catch (error) {
+      console.error("Edit error:", error);
+      toast.error("Failed to process images. Some may have CORS restrictions.");
+    } finally {
+      setProcessingEdit(false);
+    }
+  };
+
+  const handleApproveEdits = async (approved: Array<{ originalUrl: string; editedBlob: Blob; filename: string }>) => {
+    for (const item of approved) {
+      try {
+        const uniqueId = crypto.randomUUID();
+        const fileName = `edited/${uniqueId}-${item.filename}`;
+        const { data: uploadData, error } = await supabase.storage.from("content-images").upload(fileName, item.editedBlob);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("content-images").getPublicUrl(uploadData.path);
+        await supabase.from("media_library").insert({ url: urlData.publicUrl, filename: `edited-${item.filename}`, file_size: item.editedBlob.size });
+      } catch (err) { console.error("Save error:", err); }
+    }
+    queryClient.invalidateQueries({ queryKey: ["media-library-table"] });
+    queryClient.invalidateQueries({ queryKey: ["media-storage-bucket"] });
+    toast.success(`Saved ${approved.length} edited image(s)`);
+    setShowEditPreview(false);
+    setEditResults([]);
+    setSelectedItems([]);
+  };
+
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "Unknown";
     if (bytes < 1024) return `${bytes} B`;
@@ -468,8 +515,11 @@ const MediaLibrary = () => {
           </Select>
 
           {selectedItems.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-muted border-2 border-foreground">
+            <div className="flex items-center gap-2 px-3 py-2 bg-muted border-2 border-foreground flex-wrap">
               <span className="text-sm font-bold">{selectedItems.length} selected</span>
+              <button onClick={() => handleBatchEdit("rotate")} disabled={processingEdit} className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground" title="Rotate 90°">↻ Rotate</button>
+              <button onClick={() => handleBatchEdit("removeBg")} disabled={processingEdit} className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground" title="Remove Background">✂ Remove BG</button>
+              <button onClick={() => handleBatchEdit("autoCrop")} disabled={processingEdit} className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground" title="Auto-crop whitespace">⬡ Auto-Crop</button>
               <button
                 onClick={() => setAddToContentModal(true)}
                 className="p-1 text-primary hover:bg-primary/10 rounded"
@@ -692,6 +742,16 @@ const MediaLibrary = () => {
             setSelectedItems([]);
             queryClient.invalidateQueries({ queryKey: ["media-usage"] });
           }}
+        />
+
+        {/* Image Edit Preview */}
+        <ImageEditPreview
+          open={showEditPreview}
+          onClose={() => { setShowEditPreview(false); setEditResults([]); }}
+          results={editResults}
+          onApprove={handleApproveEdits}
+          isProcessing={processingEdit}
+          title="Review Image Edits"
         />
       </div>
     </AdminLayout>
