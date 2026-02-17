@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -24,6 +24,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Search,
   Upload,
   Trash2,
@@ -38,6 +48,12 @@ import {
   Plus,
   Palette,
   FolderPlus,
+  Pencil,
+  Tag,
+  LayoutGrid,
+  Layers,
+  ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AddToContentModal } from "@/components/admin/AddToContentModal";
@@ -88,6 +104,28 @@ const MediaLibrary = () => {
   const [showEditPreview, setShowEditPreview] = useState(false);
   const [processingEdit, setProcessingEdit] = useState(false);
 
+  // New state for inline rename
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // New state for grouped view
+  const [viewMode, setViewMode] = useState<"grid" | "grouped">("grid");
+  const [tagFilter, setTagFilter] = useState<string>("all");
+
+  // New state for bulk tagging
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [newTagInput, setNewTagInput] = useState("");
+  const [autoCategorizing, setAutoCategorizing] = useState(false);
+
+  // Focus rename input when editing
+  useEffect(() => {
+    if (editingId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [editingId]);
+
   // Fetch media from library table
   const { data: libraryMedia = [], isLoading: libraryLoading } = useQuery({
     queryKey: ["media-library-table"],
@@ -111,7 +149,6 @@ const MediaLibrary = () => {
       
       if (error) throw error;
       
-      // Also check artwork folder
       const { data: artworkData } = await supabase.storage
         .from("content-images")
         .list("artwork", { limit: 1000 });
@@ -131,39 +168,32 @@ const MediaLibrary = () => {
     queryFn: async () => {
       const urls: { url: string; source: string }[] = [];
       
-      // Artwork
       const { data: artwork } = await supabase.from("artwork").select("image_url, title");
       artwork?.forEach(a => a.image_url && urls.push({ url: a.image_url, source: `Artwork: ${a.title}` }));
       
-      // Projects
       const { data: projects } = await supabase.from("projects").select("image_url, screenshots, title");
       projects?.forEach(p => {
         if (p.image_url) urls.push({ url: p.image_url, source: `Project: ${p.title}` });
         p.screenshots?.forEach((s: string) => urls.push({ url: s, source: `Project: ${p.title}` }));
       });
       
-      // Articles
       const { data: articles } = await supabase.from("articles").select("featured_image, title");
       articles?.forEach(a => a.featured_image && urls.push({ url: a.featured_image, source: `Article: ${a.title}` }));
       
-      // Favorites
       const { data: favorites } = await supabase.from("favorites").select("image_url, title");
       favorites?.forEach(f => f.image_url && urls.push({ url: f.image_url, source: `Favorite: ${f.title}` }));
       
-      // Products
       const { data: products } = await supabase.from("products").select("images, name");
       products?.forEach(p => {
         p.images?.forEach((img: string) => urls.push({ url: img, source: `Product: ${p.name}` }));
       });
       
-      // Experiments
       const { data: experiments } = await supabase.from("experiments").select("image_url, screenshots, name");
       experiments?.forEach(e => {
         if (e.image_url) urls.push({ url: e.image_url, source: `Experiment: ${e.name}` });
         e.screenshots?.forEach((s: string) => urls.push({ url: s, source: `Experiment: ${e.name}` }));
       });
       
-      // Experiences
       const { data: experiences } = await supabase.from("experiences").select("image_url, screenshots, title");
       experiences?.forEach(e => {
         if (e.image_url) urls.push({ url: e.image_url, source: `Experience: ${e.title}` });
@@ -179,7 +209,6 @@ const MediaLibrary = () => {
     const items: MediaItem[] = [];
     const seenUrls = new Set<string>();
     
-    // Add library items
     libraryMedia.forEach(item => {
       if (!seenUrls.has(item.url)) {
         seenUrls.add(item.url);
@@ -193,7 +222,6 @@ const MediaLibrary = () => {
       }
     });
     
-    // Add storage items not in library
     storageFiles.forEach(file => {
       const { data } = supabase.storage.from("content-images").getPublicUrl(file.name);
       const url = data.publicUrl;
@@ -221,6 +249,9 @@ const MediaLibrary = () => {
     return items;
   })();
 
+  // Collect all unique tags for filtering
+  const allTags = Array.from(new Set(allMedia.flatMap(m => m.tags || []))).sort();
+
   // Apply filters
   const filteredMedia = allMedia.filter((item) => {
     const searchLower = search.toLowerCase();
@@ -234,13 +265,33 @@ const MediaLibrary = () => {
       usageFilter === "all" ||
       (usageFilter === "used" && item.inUse) ||
       (usageFilter === "unused" && !item.inUse);
+
+    const matchesTag =
+      tagFilter === "all" ||
+      (tagFilter === "uncategorized" ? (!item.tags || item.tags.length === 0) : item.tags?.includes(tagFilter));
     
-    return matchesSearch && matchesUsage;
+    return matchesSearch && matchesUsage && matchesTag;
   });
+
+  // Group media by first tag for grouped view
+  const groupedMedia = (() => {
+    const groups: Record<string, MediaItem[]> = {};
+    filteredMedia.forEach(item => {
+      const tag = item.tags && item.tags.length > 0 ? item.tags[0] : "Uncategorized";
+      if (!groups[tag]) groups[tag] = [];
+      groups[tag].push(item);
+    });
+    // Sort groups alphabetically, but keep "Uncategorized" last
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === "Uncategorized") return 1;
+      if (b === "Uncategorized") return -1;
+      return a.localeCompare(b);
+    });
+    return sortedKeys.map(key => ({ tag: key, items: groups[key] }));
+  })();
 
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      // Delete from library table
       const libraryIds = allMedia
         .filter(m => ids.includes(m.id) && m.source === "library")
         .map(m => m.id);
@@ -250,10 +301,8 @@ const MediaLibrary = () => {
         if (error) throw error;
       }
       
-      // Also try to delete from storage
       const storageItems = allMedia.filter(m => ids.includes(m.id));
       for (const item of storageItems) {
-        // Extract path from URL
         const urlParts = item.url.split("/content-images/");
         if (urlParts[1]) {
           await supabase.storage.from("content-images").remove([urlParts[1]]);
@@ -271,6 +320,119 @@ const MediaLibrary = () => {
       console.error(error);
     },
   });
+
+  // Inline rename mutation
+  const renameMutation = useMutation({
+    mutationFn: async ({ id, newName }: { id: string; newName: string }) => {
+      const { error } = await supabase
+        .from("media_library")
+        .update({ filename: newName })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media-library-table"] });
+      setEditingId(null);
+      toast.success("Renamed");
+    },
+    onError: () => {
+      toast.error("Failed to rename");
+    },
+  });
+
+  // Bulk tag mutation
+  const bulkTagMutation = useMutation({
+    mutationFn: async ({ ids, tag }: { ids: string[]; tag: string }) => {
+      const libraryItems = allMedia.filter(m => ids.includes(m.id) && m.source === "library");
+      for (const item of libraryItems) {
+        const currentTags = item.tags || [];
+        if (!currentTags.includes(tag)) {
+          const { error } = await supabase
+            .from("media_library")
+            .update({ tags: [...currentTags, tag] })
+            .eq("id", item.id);
+          if (error) throw error;
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media-library-table"] });
+      setNewTagInput("");
+      toast.success("Tags updated");
+    },
+    onError: () => {
+      toast.error("Failed to update tags");
+    },
+  });
+
+  const handleStartRename = (e: React.MouseEvent, item: MediaItem) => {
+    e.stopPropagation();
+    if (item.source !== "library") return;
+    setEditingId(item.id);
+    setEditingName(item.filename);
+  };
+
+  const handleSaveRename = () => {
+    if (!editingId || !editingName.trim()) return;
+    renameMutation.mutate({ id: editingId, newName: editingName.trim() });
+  };
+
+  const handleCancelRename = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  const handleAddTag = () => {
+    const tag = newTagInput.trim().toLowerCase();
+    if (!tag || selectedItems.length === 0) return;
+    const libraryIds = allMedia
+      .filter(m => selectedItems.includes(m.id) && m.source === "library")
+      .map(m => m.id);
+    if (libraryIds.length === 0) {
+      toast.error("Only library items can be tagged");
+      return;
+    }
+    bulkTagMutation.mutate({ ids: libraryIds, tag });
+  };
+
+  const handleAutoCategorize = async () => {
+    const selectedMedia = allMedia.filter(m => selectedItems.includes(m.id));
+    if (selectedMedia.length === 0) return;
+
+    setAutoCategorizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("categorize-images", {
+        body: { urls: selectedMedia.map(m => m.url) },
+      });
+
+      if (error) throw error;
+
+      const results = data?.results as Array<{ url: string; tags: string[] }> | undefined;
+      if (!results) throw new Error("No results returned");
+
+      let updated = 0;
+      for (const result of results) {
+        const item = allMedia.find(m => m.url === result.url && m.source === "library");
+        if (item && result.tags.length > 0) {
+          const existingTags = item.tags || [];
+          const mergedTags = Array.from(new Set([...existingTags, ...result.tags]));
+          const { error: updateError } = await supabase
+            .from("media_library")
+            .update({ tags: mergedTags })
+            .eq("id", item.id);
+          if (!updateError) updated++;
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["media-library-table"] });
+      toast.success(`Auto-categorized ${updated} image(s)`);
+    } catch (error) {
+      console.error("Auto-categorize error:", error);
+      toast.error("Failed to auto-categorize images");
+    } finally {
+      setAutoCategorizing(false);
+    }
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -355,7 +517,6 @@ const MediaLibrary = () => {
     );
   };
 
-  // Add selected items to artwork
   const handleAddToArtwork = async () => {
     if (selectedItems.length === 0) return;
     
@@ -443,6 +604,141 @@ const MediaLibrary = () => {
   const usedCount = allMedia.filter(m => m.inUse).length;
   const unusedCount = allMedia.filter(m => !m.inUse).length;
 
+  // Render a single media card
+  const renderMediaCard = (item: MediaItem) => (
+    <div
+      key={item.id}
+      className={`group relative border-2 cursor-pointer ${
+        selectedItems.includes(item.id) ? "border-primary" : "border-foreground"
+      }`}
+      onClick={() => toggleSelect(item.id)}
+    >
+      {/* Selection checkbox */}
+      <div
+        className={`absolute top-2 left-2 z-10 w-5 h-5 border-2 flex items-center justify-center ${
+          selectedItems.includes(item.id)
+            ? "bg-primary border-primary text-white"
+            : "bg-background border-foreground"
+        }`}
+      >
+        {selectedItems.includes(item.id) && <Check className="w-3 h-3" />}
+      </div>
+
+      {/* In Use badge */}
+      {item.inUse && (
+        <Badge className="absolute top-2 right-2 z-10 bg-green-600">
+          In Use
+        </Badge>
+      )}
+
+      {/* Image */}
+      <div className="aspect-square overflow-hidden bg-muted">
+        <img
+          src={item.url}
+          alt={item.filename}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </div>
+
+      {/* Inline rename area */}
+      {editingId === item.id ? (
+        <div className="p-1 bg-background" onClick={e => e.stopPropagation()}>
+          <input
+            ref={renameInputRef}
+            value={editingName}
+            onChange={e => setEditingName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") handleSaveRename();
+              if (e.key === "Escape") handleCancelRename();
+            }}
+            className="w-full px-1 py-0.5 text-xs border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <div className="flex gap-1 mt-1">
+            <button onClick={handleSaveRename} className="p-0.5 text-green-600 hover:bg-green-100 rounded">
+              <Check className="w-3 h-3" />
+            </button>
+            <button onClick={handleCancelRename} className="p-0.5 text-destructive hover:bg-destructive/10 rounded">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Hover overlay */}
+      {editingId !== item.id && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+          <p className="text-white text-xs truncate">{item.filename}</p>
+          {/* Tags preview */}
+          {item.tags && item.tags.length > 0 && (
+            <div className="flex flex-wrap gap-0.5 mt-0.5">
+              {item.tags.slice(0, 3).map(tag => (
+                <span key={tag} className="text-[9px] px-1 py-0 bg-white/20 text-white rounded">
+                  {tag}
+                </span>
+              ))}
+              {item.tags.length > 3 && (
+                <span className="text-[9px] px-1 py-0 bg-white/20 text-white rounded">+{item.tags.length - 3}</span>
+              )}
+            </div>
+          )}
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-white/70 text-[10px]">
+              {formatFileSize(item.file_size)}
+            </span>
+            <div className="flex gap-1">
+              {item.source === "library" && (
+                <button
+                  onClick={(e) => handleStartRename(e, item)}
+                  className="p-1 bg-white/20 hover:bg-white/30 rounded text-white"
+                  title="Rename"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCropItem(item);
+                }}
+                className="p-1 bg-white/20 hover:bg-white/30 rounded text-white"
+                title="Crop"
+              >
+                <Crop className="w-3 h-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  copyUrl(item.url);
+                }}
+                className="p-1 bg-white/20 hover:bg-white/30 rounded text-white"
+                title="Copy URL"
+              >
+                <Copy className="w-3 h-3" />
+              </button>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="p-1 bg-white/20 hover:bg-white/30 rounded text-white"
+                title="Open"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+          {item.usedIn && item.usedIn.length > 0 && (
+            <p className="text-white/60 text-[10px] mt-1 truncate">
+              {item.usedIn[0]}
+              {item.usedIn.length > 1 && ` +${item.usedIn.length - 1}`}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -514,12 +810,103 @@ const MediaLibrary = () => {
             </SelectContent>
           </Select>
 
+          {/* Tag filter */}
+          <Select value={tagFilter} onValueChange={setTagFilter}>
+            <SelectTrigger className="w-44">
+              <Tag className="w-3 h-3 mr-1" />
+              <SelectValue placeholder="Filter by tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tags</SelectItem>
+              <SelectItem value="uncategorized">Uncategorized</SelectItem>
+              {allTags.map(tag => (
+                <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* View mode toggle */}
+          <div className="flex border-2 border-foreground">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-2 ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+              title="Grid view"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("grouped")}
+              className={`p-2 ${viewMode === "grouped" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+              title="Grouped by tag"
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+          </div>
+
           {selectedItems.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-muted border-2 border-foreground flex-wrap">
               <span className="text-sm font-bold">{selectedItems.length} selected</span>
               <button onClick={() => handleBatchEdit("rotate")} disabled={processingEdit} className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground" title="Rotate 90°">↻ Rotate</button>
               <button onClick={() => handleBatchEdit("removeBg")} disabled={processingEdit} className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground" title="Remove Background">✂ Remove BG</button>
               <button onClick={() => handleBatchEdit("autoCrop")} disabled={processingEdit} className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground" title="Auto-crop whitespace">⬡ Auto-Crop</button>
+              
+              {/* Bulk Tag */}
+              <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground" title="Tag selected">
+                    <Tag className="w-3 h-3 inline mr-1" /> Tag
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64">
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold">Add tag to selected</p>
+                    <div className="flex gap-1">
+                      <Input
+                        value={newTagInput}
+                        onChange={e => setNewTagInput(e.target.value)}
+                        placeholder="Tag name..."
+                        className="text-sm"
+                        onKeyDown={e => e.key === "Enter" && handleAddTag()}
+                      />
+                      <button onClick={handleAddTag} className="p-2 border border-foreground hover:bg-muted">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                    {allTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {allTags.slice(0, 15).map(tag => (
+                          <button
+                            key={tag}
+                            onClick={() => {
+                              const libraryIds = allMedia
+                                .filter(m => selectedItems.includes(m.id) && m.source === "library")
+                                .map(m => m.id);
+                              if (libraryIds.length > 0) {
+                                bulkTagMutation.mutate({ ids: libraryIds, tag });
+                              }
+                            }}
+                            className="px-2 py-0.5 text-xs bg-muted border border-foreground hover:bg-primary hover:text-primary-foreground"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Auto-Categorize */}
+              <button
+                onClick={handleAutoCategorize}
+                disabled={autoCategorizing}
+                className="px-2 py-1 text-xs font-bold border border-foreground hover:bg-primary hover:text-primary-foreground"
+                title="AI auto-categorize"
+              >
+                {autoCategorizing ? <Loader2 className="w-3 h-3 inline animate-spin mr-1" /> : <Sparkles className="w-3 h-3 inline mr-1" />}
+                Auto-Tag
+              </button>
+
               <button
                 onClick={() => setAddToContentModal(true)}
                 className="p-1 text-primary hover:bg-primary/10 rounded"
@@ -547,7 +934,7 @@ const MediaLibrary = () => {
           )}
         </div>
 
-        {/* Media Grid */}
+        {/* Media Grid / Grouped View */}
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -558,92 +945,26 @@ const MediaLibrary = () => {
             <h3 className="text-xl font-display mb-2">No Media Found</h3>
             <p className="text-muted-foreground">Upload your first image or scan storage</p>
           </ComicPanel>
-        ) : (
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {filteredMedia.map((item) => (
-              <div
-                key={item.id}
-                className={`group relative border-2 cursor-pointer ${
-                  selectedItems.includes(item.id) ? "border-primary" : "border-foreground"
-                }`}
-                onClick={() => toggleSelect(item.id)}
-              >
-                {/* Selection checkbox */}
-                <div
-                  className={`absolute top-2 left-2 z-10 w-5 h-5 border-2 flex items-center justify-center ${
-                    selectedItems.includes(item.id)
-                      ? "bg-primary border-primary text-white"
-                      : "bg-background border-foreground"
-                  }`}
-                >
-                  {selectedItems.includes(item.id) && <Check className="w-3 h-3" />}
-                </div>
-
-                {/* In Use badge */}
-                {item.inUse && (
-                  <Badge className="absolute top-2 right-2 z-10 bg-green-600">
-                    In Use
-                  </Badge>
-                )}
-
-                {/* Image */}
-                <div className="aspect-square overflow-hidden bg-muted">
-                  <img
-                    src={item.url}
-                    alt={item.filename}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                  <p className="text-white text-xs truncate">{item.filename}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-white/70 text-[10px]">
-                      {formatFileSize(item.file_size)}
-                    </span>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCropItem(item);
-                        }}
-                        className="p-1 bg-white/20 hover:bg-white/30 rounded text-white"
-                        title="Crop"
-                      >
-                        <Crop className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyUrl(item.url);
-                        }}
-                        className="p-1 bg-white/20 hover:bg-white/30 rounded text-white"
-                        title="Copy URL"
-                      >
-                        <Copy className="w-3 h-3" />
-                      </button>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 bg-white/20 hover:bg-white/30 rounded text-white"
-                        title="Open"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
+            {filteredMedia.map(renderMediaCard)}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {groupedMedia.map(group => (
+              <Collapsible key={group.tag} defaultOpen>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted border-2 border-foreground hover:bg-accent text-left font-bold">
+                  <ChevronDown className="w-4 h-4" />
+                  <Tag className="w-4 h-4" />
+                  <span className="capitalize">{group.tag}</span>
+                  <Badge variant="secondary" className="ml-auto">{group.items.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4 border-2 border-t-0 border-foreground">
+                    {group.items.map(renderMediaCard)}
                   </div>
-                  {item.usedIn && item.usedIn.length > 0 && (
-                    <p className="text-white/60 text-[10px] mt-1 truncate">
-                      {item.usedIn[0]}
-                      {item.usedIn.length > 1 && ` +${item.usedIn.length - 1}`}
-                    </p>
-                  )}
-                </div>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             ))}
           </div>
         )}

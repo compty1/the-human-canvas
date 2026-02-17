@@ -4,23 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { Briefcase, ArrowRight, Loader2, Calendar, ExternalLink } from "lucide-react";
-
-interface ClientProject {
-  id: string;
-  client_name: string;
-  project_name: string;
-  slug: string;
-  description: string | null;
-  image_url: string | null;
-  tech_stack: string[] | null;
-  status: string;
-  start_date: string | null;
-  end_date: string | null;
-}
+import { Briefcase, ArrowRight, Loader2, Calendar } from "lucide-react";
+import { PROJECT_TYPES, getProjectTypeLabel, getProjectTypeIcon } from "@/lib/clientProjectTypes";
 
 const ClientWork = () => {
-  const [filter, setFilter] = useState<"all" | "completed" | "in_progress">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "in_progress">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["client-projects"],
@@ -31,13 +20,18 @@ const ClientWork = () => {
         .eq("is_public", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as ClientProject[];
+      return data as any[];
     },
   });
 
-  const filteredProjects = projects.filter(p => 
-    filter === "all" ? true : p.status === filter
-  );
+  const filteredProjects = projects.filter(p => {
+    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+    const matchesType = typeFilter === "all" || p.project_type === typeFilter;
+    return matchesStatus && matchesType;
+  });
+
+  // Get unique project types present in data
+  const usedTypes = Array.from(new Set(projects.map(p => p.project_type || "web_design")));
 
   return (
     <Layout>
@@ -55,10 +49,10 @@ const ClientWork = () => {
         </div>
       </section>
 
-      {/* Filter */}
+      {/* Filters */}
       <section className="py-8 border-y-4 border-foreground bg-background sticky top-16 z-40">
         <div className="container mx-auto px-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-2">
             {[
               { id: "all", label: "All Projects" },
               { id: "completed", label: "Completed" },
@@ -66,9 +60,9 @@ const ClientWork = () => {
             ].map((f) => (
               <button
                 key={f.id}
-                onClick={() => setFilter(f.id as typeof filter)}
+                onClick={() => setStatusFilter(f.id as typeof statusFilter)}
                 className={`px-4 py-2 font-bold uppercase text-sm tracking-wide border-2 border-foreground transition-all ${
-                  filter === f.id
+                  statusFilter === f.id
                     ? "bg-primary text-primary-foreground"
                     : "bg-background hover:bg-muted"
                 }`}
@@ -77,6 +71,29 @@ const ClientWork = () => {
               </button>
             ))}
           </div>
+          {usedTypes.length > 1 && (
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setTypeFilter("all")}
+                className={`px-3 py-1 text-xs font-bold border border-foreground transition-all ${
+                  typeFilter === "all" ? "bg-accent text-accent-foreground" : "bg-background hover:bg-muted"
+                }`}
+              >
+                All Types
+              </button>
+              {usedTypes.map(type => (
+                <button
+                  key={type}
+                  onClick={() => setTypeFilter(type)}
+                  className={`px-3 py-1 text-xs font-bold border border-foreground transition-all ${
+                    typeFilter === type ? "bg-accent text-accent-foreground" : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  {getProjectTypeIcon(type)} {getProjectTypeLabel(type)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -92,9 +109,9 @@ const ClientWork = () => {
               <Briefcase className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
               <h2 className="text-2xl font-display mb-2">No Client Projects Found</h2>
               <p className="text-muted-foreground">
-                {filter === "all" 
+                {statusFilter === "all" 
                   ? "Check back soon for client work examples."
-                  : `No ${filter === "completed" ? "completed" : "in progress"} projects at the moment.`
+                  : `No ${statusFilter === "completed" ? "completed" : "in progress"} projects at the moment.`
                 }
               </p>
             </div>
@@ -105,7 +122,6 @@ const ClientWork = () => {
                   key={project.id}
                   className={`p-6 flex flex-col animate-fade-in stagger-${(index % 5) + 1}`}
                 >
-                  {/* Image */}
                   {project.image_url && (
                     <Link to={`/client-work/${project.slug}`} className="block mb-4 -mx-6 -mt-6 relative">
                       <img 
@@ -117,7 +133,6 @@ const ClientWork = () => {
                     </Link>
                   )}
 
-                  {/* Status Badge + Date */}
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
                     <div
                       className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wide border-2 border-foreground ${
@@ -128,7 +143,10 @@ const ClientWork = () => {
                     >
                       {project.status === "completed" ? "Completed" : "In Progress"}
                     </div>
-                    {/* Date Display */}
+                    {/* Project Type Badge */}
+                    <span className="px-2 py-1 text-xs font-bold bg-muted border border-foreground">
+                      {getProjectTypeIcon(project.project_type || "web_design")} {getProjectTypeLabel(project.project_type || "web_design")}
+                    </span>
                     {project.start_date && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Calendar className="w-3 h-3" />
@@ -154,10 +172,9 @@ const ClientWork = () => {
                     </p>
                   )}
 
-                  {/* Tech Stack */}
                   {project.tech_stack && project.tech_stack.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {project.tech_stack.slice(0, 4).map((tech) => (
+                      {project.tech_stack.slice(0, 4).map((tech: string) => (
                         <span
                           key={tech}
                           className="px-2 py-1 text-xs font-bold bg-muted border border-foreground"
@@ -173,7 +190,6 @@ const ClientWork = () => {
                     </div>
                   )}
 
-                  {/* Actions */}
                   <div className="flex items-center justify-between mt-auto pt-4 border-t-2 border-muted">
                     <Link 
                       to={`/client-work/${project.slug}`}

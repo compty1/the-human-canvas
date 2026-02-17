@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.ai-content-hub]
 verify_jwt = false
+
+[functions.categorize-images]
+verify_jwt = false

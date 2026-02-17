@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Check, Calendar, ExternalLink, Quote, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Calendar, Quote, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { getProjectTypeLabel, getProjectTypeIcon } from "@/lib/clientProjectTypes";
 
 const ClientProjectDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -20,7 +21,7 @@ const ClientProjectDetail = () => {
         .maybeSingle();
       
       if (error) throw error;
-      return data;
+      return data as any;
     },
     enabled: !!slug,
   });
@@ -51,6 +52,9 @@ const ClientProjectDetail = () => {
     );
   }
 
+  const meta = project.type_metadata || {};
+  const projectType = project.project_type || "web_design";
+
   return (
     <Layout>
       {/* Hero */}
@@ -65,6 +69,9 @@ const ClientProjectDetail = () => {
               project.status === "completed" ? "bg-green-500 text-white" : "bg-yellow-400"
             }`}>
               {project.status === "completed" ? "Completed" : "In Progress"}
+            </span>
+            <span className="px-3 py-1 text-xs font-bold border-2 border-foreground bg-muted">
+              {getProjectTypeIcon(projectType)} {getProjectTypeLabel(projectType)}
             </span>
           </div>
 
@@ -121,13 +128,156 @@ const ClientProjectDetail = () => {
         </section>
       )}
 
+      {/* Type-Specific Metadata */}
+      {projectType === "logo_branding" && (meta.brand_colors?.length > 0 || meta.font_names?.length > 0) && (
+        <section className="py-16 bg-muted">
+          <div className="container mx-auto px-4">
+            <h2 className="text-4xl font-display text-center mb-12">Brand Details</h2>
+            <div className="max-w-3xl mx-auto grid md:grid-cols-2 gap-8">
+              {meta.brand_colors?.length > 0 && (
+                <div>
+                  <h3 className="font-display text-xl mb-4">Brand Colors</h3>
+                  <div className="flex flex-wrap gap-3">
+                    {meta.brand_colors.map((color: string) => (
+                      <div key={color} className="flex items-center gap-2 p-2 bg-background border-2 border-foreground">
+                        <div className="w-8 h-8 border border-foreground" style={{ backgroundColor: color }} />
+                        <span className="font-mono text-sm">{color}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {meta.font_names?.length > 0 && (
+                <div>
+                  <h3 className="font-display text-xl mb-4">Typography</h3>
+                  <div className="space-y-2">
+                    {meta.font_names.map((font: string) => (
+                      <div key={font} className="p-2 bg-background border-2 border-foreground font-bold">{font}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {meta.logo_variations && (
+              <p className="text-center mt-6 text-muted-foreground">{meta.logo_variations} logo variations delivered</p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {projectType === "copywriting" && (meta.content_type || meta.sample_excerpt) && (
+        <section className="py-16 bg-muted">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <h2 className="text-4xl font-display text-center mb-12">Content Details</h2>
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              {meta.content_type && (
+                <ComicPanel className="p-4 text-center">
+                  <div className="text-sm text-muted-foreground">Type</div>
+                  <div className="font-display text-lg capitalize">{meta.content_type.replace("_", " ")}</div>
+                </ComicPanel>
+              )}
+              {meta.word_count > 0 && (
+                <ComicPanel className="p-4 text-center">
+                  <div className="text-sm text-muted-foreground">Word Count</div>
+                  <div className="font-display text-lg">{meta.word_count.toLocaleString()}</div>
+                </ComicPanel>
+              )}
+              {meta.tone && (
+                <ComicPanel className="p-4 text-center">
+                  <div className="text-sm text-muted-foreground">Tone</div>
+                  <div className="font-display text-lg">{meta.tone}</div>
+                </ComicPanel>
+              )}
+            </div>
+            {meta.sample_excerpt && (
+              <ComicPanel className="p-6">
+                <h3 className="font-display text-xl mb-3">Sample Excerpt</h3>
+                <p className="font-sans italic text-muted-foreground">{meta.sample_excerpt}</p>
+              </ComicPanel>
+            )}
+          </div>
+        </section>
+      )}
+
+      {projectType === "business_plan" && (meta.industry || meta.sections?.length > 0) && (
+        <section className="py-16 bg-muted">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <h2 className="text-4xl font-display text-center mb-12">Business Plan Details</h2>
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              {meta.industry && (
+                <ComicPanel className="p-4">
+                  <div className="text-sm text-muted-foreground">Industry</div>
+                  <div className="font-display text-lg">{meta.industry}</div>
+                </ComicPanel>
+              )}
+              {meta.format && (
+                <ComicPanel className="p-4">
+                  <div className="text-sm text-muted-foreground">Format</div>
+                  <div className="font-display text-lg">{meta.format}</div>
+                </ComicPanel>
+              )}
+            </div>
+            {meta.executive_summary && (
+              <ComicPanel className="p-6 mb-6">
+                <h3 className="font-display text-xl mb-3">Executive Summary</h3>
+                <p className="font-sans text-muted-foreground">{meta.executive_summary}</p>
+              </ComicPanel>
+            )}
+            {meta.sections?.length > 0 && (
+              <ComicPanel className="p-6">
+                <h3 className="font-display text-xl mb-3">Key Sections</h3>
+                <div className="flex flex-wrap gap-2">
+                  {meta.sections.map((s: string) => (
+                    <span key={s} className="px-3 py-1 bg-background border-2 border-foreground font-bold text-sm">{s}</span>
+                  ))}
+                </div>
+              </ComicPanel>
+            )}
+          </div>
+        </section>
+      )}
+
+      {projectType === "consulting" && (meta.focus_area || meta.outcome_metrics) && (
+        <section className="py-16 bg-muted">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <h2 className="text-4xl font-display text-center mb-12">Consulting Details</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              {meta.focus_area && (
+                <ComicPanel className="p-4">
+                  <div className="text-sm text-muted-foreground">Focus Area</div>
+                  <div className="font-display text-lg">{meta.focus_area}</div>
+                </ComicPanel>
+              )}
+              {meta.duration && (
+                <ComicPanel className="p-4">
+                  <div className="text-sm text-muted-foreground">Duration</div>
+                  <div className="font-display text-lg">{meta.duration}</div>
+                </ComicPanel>
+              )}
+              {meta.recommendations_count > 0 && (
+                <ComicPanel className="p-4">
+                  <div className="text-sm text-muted-foreground">Recommendations</div>
+                  <div className="font-display text-lg">{meta.recommendations_count}</div>
+                </ComicPanel>
+              )}
+              {meta.outcome_metrics && (
+                <ComicPanel className="p-4">
+                  <div className="text-sm text-muted-foreground">Outcome</div>
+                  <div className="font-display text-lg">{meta.outcome_metrics}</div>
+                </ComicPanel>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Features */}
       {project.features && project.features.length > 0 && (
         <section className="py-16 bg-muted">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-display text-center mb-12">Key Features</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {project.features.map((feature, index) => (
+              {project.features.map((feature: string, index: number) => (
                 <div key={index} className="flex items-start gap-3 p-4 bg-background border-2 border-foreground">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <span className="font-sans">{feature}</span>
@@ -144,7 +294,7 @@ const ClientProjectDetail = () => {
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-display text-center mb-12">Screenshots</h2>
             <div className="grid md:grid-cols-2 gap-6">
-              {project.screenshots.map((screenshot, index) => (
+              {project.screenshots.map((screenshot: string, index: number) => (
                 <ComicPanel key={index} className="overflow-hidden">
                   <img 
                     src={screenshot} 
@@ -164,7 +314,7 @@ const ClientProjectDetail = () => {
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-4xl font-display text-pop-yellow mb-8">Tech Stack</h2>
             <div className="flex flex-wrap justify-center gap-3">
-              {project.tech_stack.map((tech) => (
+              {project.tech_stack.map((tech: string) => (
                 <span 
                   key={tech}
                   className="px-4 py-2 bg-background text-foreground font-bold uppercase text-sm border-2 border-background"
