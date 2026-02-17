@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -142,7 +142,14 @@ export const AddToContentModal = ({
 
   const config = contentType ? CONTENT_TYPE_CONFIG[contentType] : null;
 
-  // Fetch records for selected content type
+  // Auto-select field when only one exists
+  useEffect(() => {
+    if (config && config.fields.length === 1) {
+      setTargetField(config.fields[0].name);
+    }
+  }, [config]);
+
+  // Fetch records for selected content type -- ALL records regardless of status
   const { data: records = [], isLoading: recordsLoading } = useQuery({
     queryKey: ["add-to-content-records", contentType],
     queryFn: async () => {
@@ -151,7 +158,7 @@ export const AddToContentModal = ({
       const { data } = await (supabase.from(config.table as any) as any)
         .select(`id, ${titleField}`)
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(500);
       return (data || []).map((r: any) => ({ id: r.id, title: r[titleField] || r.id }));
     },
     enabled: !!config,
@@ -168,7 +175,6 @@ export const AddToContentModal = ({
     try {
       const urls = selectedMedia.map((m) => m.url);
 
-      // Standard flow for all content types
       if (!targetRecordId || !targetField) {
         toast.error("Please select a record and field");
         setSaving(false);
@@ -179,13 +185,11 @@ export const AddToContentModal = ({
       if (!fieldConfig) return;
 
       if (fieldConfig.type === "single") {
-        // Replace single image field
         await (supabase.from(config.table as any) as any)
           .update({ [targetField]: urls[0] })
           .eq("id", targetRecordId);
         toast.success(`Updated ${fieldConfig.label}`);
       } else {
-        // Append to array field
         const { data: existing } = await (supabase.from(config.table as any) as any)
           .select(targetField)
           .eq("id", targetRecordId)
@@ -247,30 +251,8 @@ export const AddToContentModal = ({
             </Select>
           </div>
 
-          {/* Step 2: Target Field */}
-          {config && config.fields.length > 1 && (
-            <div>
-              <Label>Target Field</Label>
-              <Select value={targetField} onValueChange={setTargetField}>
-                <SelectTrigger><SelectValue placeholder="Select field..." /></SelectTrigger>
-                <SelectContent>
-                  {config.fields.map((f) => (
-                    <SelectItem key={f.name} value={f.name}>
-                      {f.label} ({f.type === "single" ? "replace" : "append"})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Auto-select if single field */}
-          {config && config.fields.length === 1 && !targetField && (
-            <>{(() => { if (!targetField) setTimeout(() => setTargetField(config.fields[0].name), 0); return null; })()}</>
-          )}
-
-          {/* Step 3: Target Record */}
-          {config && targetField && (
+          {/* Step 2: Select Record (shown immediately after content type) */}
+          {config && (
             <div>
               <Label>Select Record</Label>
               <div className="relative mb-2">
@@ -304,6 +286,23 @@ export const AddToContentModal = ({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Step 3: Target Field (only if multiple fields, shown after record is selected) */}
+          {config && config.fields.length > 1 && targetRecordId && (
+            <div>
+              <Label>Target Field</Label>
+              <Select value={targetField} onValueChange={setTargetField}>
+                <SelectTrigger><SelectValue placeholder="Select field..." /></SelectTrigger>
+                <SelectContent>
+                  {config.fields.map((f) => (
+                    <SelectItem key={f.name} value={f.name}>
+                      {f.label} ({f.type === "single" ? "replace" : "append"})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
