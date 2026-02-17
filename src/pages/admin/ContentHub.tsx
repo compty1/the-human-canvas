@@ -45,9 +45,13 @@ const ContentHub = () => {
       const counts: Record<string, number> = {};
       await Promise.all(
         tables.map(async (table) => {
-          const { count } = await (supabase.from(table as any) as any)
-            .select("*", { count: "exact", head: true });
-          counts[table] = count || 0;
+          try {
+            const { data, error } = await (supabase.from(table as any) as any)
+              .select("id");
+            counts[table] = error ? 0 : (data?.length ?? 0);
+          } catch {
+            counts[table] = 0;
+          }
         })
       );
       return counts;
