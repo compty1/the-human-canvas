@@ -54,6 +54,9 @@ import {
   Layers,
   ChevronDown,
   Sparkles,
+  GripVertical,
+  ArrowUpDown,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AddToContentModal } from "@/components/admin/AddToContentModal";
@@ -90,7 +93,7 @@ const MediaLibrary = () => {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [usageFilter, setUsageFilter] = useState<"all" | "used" | "unused">("all");
+  const [usageFilter, setUsageFilter] = useState<"all" | "used" | "unused" | "duplicates">("all");
   const [cropItem, setCropItem] = useState<MediaItem | null>(null);
   const [addToArtworkModal, setAddToArtworkModal] = useState(false);
   const [addToContentModal, setAddToContentModal] = useState(false);
@@ -117,6 +120,13 @@ const MediaLibrary = () => {
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [newTagInput, setNewTagInput] = useState("");
   const [autoCategorizing, setAutoCategorizing] = useState(false);
+
+  // Drag reorder state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Sort state
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "filename" | "size" | "duplicates" | "type">("date-desc");
 
   // Focus rename input when editing
   useEffect(() => {
@@ -252,6 +262,26 @@ const MediaLibrary = () => {
   // Collect all unique tags for filtering
   const allTags = Array.from(new Set(allMedia.flatMap(m => m.tags || []))).sort();
 
+  // Detect duplicates (same URL or similar filename ignoring UUID prefixes)
+  const duplicateIds = new Set<string>();
+  (() => {
+    const urlMap = new Map<string, string[]>();
+    const nameMap = new Map<string, string[]>();
+    allMedia.forEach(item => {
+      // Group by URL
+      const ids = urlMap.get(item.url) || [];
+      ids.push(item.id);
+      urlMap.set(item.url, ids);
+      // Group by cleaned filename (strip UUID prefix patterns)
+      const cleanName = item.filename.replace(/^[a-f0-9-]{36,}-?/i, "").toLowerCase();
+      const nameIds = nameMap.get(cleanName) || [];
+      nameIds.push(item.id);
+      nameMap.set(cleanName, nameIds);
+    });
+    urlMap.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
+    nameMap.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
+  })();
+
   // Apply filters
   const filteredMedia = allMedia.filter((item) => {
     const searchLower = search.toLowerCase();
@@ -264,7 +294,8 @@ const MediaLibrary = () => {
     const matchesUsage =
       usageFilter === "all" ||
       (usageFilter === "used" && item.inUse) ||
-      (usageFilter === "unused" && !item.inUse);
+      (usageFilter === "unused" && !item.inUse) ||
+      (usageFilter === "duplicates" && duplicateIds.has(item.id));
 
     const matchesTag =
       tagFilter === "all" ||
@@ -273,15 +304,38 @@ const MediaLibrary = () => {
     return matchesSearch && matchesUsage && matchesTag;
   });
 
+  // Apply sorting
+  const sortedMedia = [...filteredMedia].sort((a, b) => {
+    switch (sortBy) {
+      case "date-asc":
+        return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime();
+      case "filename":
+        return a.filename.localeCompare(b.filename);
+      case "size":
+        return (b.file_size || 0) - (a.file_size || 0);
+      case "duplicates": {
+        const aIsDup = duplicateIds.has(a.id) ? 0 : 1;
+        const bIsDup = duplicateIds.has(b.id) ? 0 : 1;
+        return aIsDup - bIsDup;
+      }
+      case "type": {
+        const aExt = a.filename.split(".").pop()?.toLowerCase() || "";
+        const bExt = b.filename.split(".").pop()?.toLowerCase() || "";
+        return aExt.localeCompare(bExt);
+      }
+      default: // date-desc
+        return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
+    }
+  });
+
   // Group media by first tag for grouped view
   const groupedMedia = (() => {
     const groups: Record<string, MediaItem[]> = {};
-    filteredMedia.forEach(item => {
+    sortedMedia.forEach(item => {
       const tag = item.tags && item.tags.length > 0 ? item.tags[0] : "Uncategorized";
       if (!groups[tag]) groups[tag] = [];
       groups[tag].push(item);
     });
-    // Sort groups alphabetically, but keep "Uncategorized" last
     const sortedKeys = Object.keys(groups).sort((a, b) => {
       if (a === "Uncategorized") return 1;
       if (b === "Uncategorized") return -1;
@@ -603,14 +657,46 @@ const MediaLibrary = () => {
   const isLoading = libraryLoading || storageLoading || usageLoading;
   const usedCount = allMedia.filter(m => m.inUse).length;
   const unusedCount = allMedia.filter(m => !m.inUse).length;
+  const duplicateCount = duplicateIds.size;
+
+  // Drag handlers for media grid reorder
+  const handleMediaDragStart = (e: React.DragEvent, item: MediaItem) => {
+    setDraggedId(item.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+  const handleMediaDragOver = (e: React.DragEvent, item: MediaItem) => {
+    e.preventDefault();
+    if (draggedId && draggedId !== item.id) {
+      setDragOverId(item.id);
+    }
+  };
+  const handleMediaDragEnd = async () => {
+    if (draggedId && dragOverId && draggedId !== dragOverId) {
+      // Swap uploaded_at timestamps to persist order
+      const draggedItem = allMedia.find(m => m.id === draggedId);
+      const overItem = allMedia.find(m => m.id === dragOverId);
+      if (draggedItem?.source === "library" && overItem?.source === "library") {
+        await supabase.from("media_library").update({ uploaded_at: overItem.uploaded_at }).eq("id", draggedItem.id);
+        await supabase.from("media_library").update({ uploaded_at: draggedItem.uploaded_at }).eq("id", overItem.id);
+        queryClient.invalidateQueries({ queryKey: ["media-library-table"] });
+        toast.success("Reordered");
+      }
+    }
+    setDraggedId(null);
+    setDragOverId(null);
+  };
 
   // Render a single media card
   const renderMediaCard = (item: MediaItem) => (
     <div
       key={item.id}
-      className={`group relative border-2 cursor-pointer ${
+      draggable={item.source === "library"}
+      onDragStart={(e) => handleMediaDragStart(e, item)}
+      onDragOver={(e) => handleMediaDragOver(e, item)}
+      onDragEnd={handleMediaDragEnd}
+      className={`group relative border-2 cursor-pointer transition-all ${
         selectedItems.includes(item.id) ? "border-primary" : "border-foreground"
-      }`}
+      } ${dragOverId === item.id ? "ring-2 ring-primary scale-[1.02]" : ""} ${draggedId === item.id ? "opacity-50" : ""}`}
       onClick={() => toggleSelect(item.id)}
     >
       {/* Selection checkbox */}
@@ -629,6 +715,20 @@ const MediaLibrary = () => {
         <Badge className="absolute top-2 right-2 z-10 bg-green-600">
           In Use
         </Badge>
+      )}
+
+      {/* Duplicate badge */}
+      {duplicateIds.has(item.id) && (
+        <Badge variant="destructive" className="absolute top-2 right-2 z-10" style={item.inUse ? { top: '2rem' } : {}}>
+          <AlertTriangle className="w-2.5 h-2.5 mr-0.5" /> Duplicate
+        </Badge>
+      )}
+
+      {/* Drag handle */}
+      {item.source === "library" && (
+        <div className="absolute bottom-2 left-2 z-10 p-1 bg-background/80 border border-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab">
+          <GripVertical className="w-3 h-3" />
+        </div>
       )}
 
       {/* Image */}
@@ -800,13 +900,14 @@ const MediaLibrary = () => {
           </div>
           
           <Select value={usageFilter} onValueChange={(v: typeof usageFilter) => setUsageFilter(v)}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All ({allMedia.length})</SelectItem>
               <SelectItem value="used">In Use ({usedCount})</SelectItem>
               <SelectItem value="unused">Unused ({unusedCount})</SelectItem>
+              <SelectItem value="duplicates">Duplicates ({duplicateCount})</SelectItem>
             </SelectContent>
           </Select>
 
@@ -842,6 +943,22 @@ const MediaLibrary = () => {
               <Layers className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Sort By */}
+          <Select value={sortBy} onValueChange={(v: typeof sortBy) => setSortBy(v)}>
+            <SelectTrigger className="w-44">
+              <ArrowUpDown className="w-3 h-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Date (newest)</SelectItem>
+              <SelectItem value="date-asc">Date (oldest)</SelectItem>
+              <SelectItem value="filename">Filename</SelectItem>
+              <SelectItem value="size">File size</SelectItem>
+              <SelectItem value="duplicates">Duplicates first</SelectItem>
+              <SelectItem value="type">By type</SelectItem>
+            </SelectContent>
+          </Select>
 
           {selectedItems.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-muted border-2 border-foreground flex-wrap">
@@ -939,7 +1056,7 @@ const MediaLibrary = () => {
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : filteredMedia.length === 0 ? (
+        ) : sortedMedia.length === 0 ? (
           <ComicPanel className="p-12 text-center">
             <ImageIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-display mb-2">No Media Found</h3>
@@ -947,7 +1064,7 @@ const MediaLibrary = () => {
           </ComicPanel>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {filteredMedia.map(renderMediaCard)}
+            {sortedMedia.map(renderMediaCard)}
           </div>
         ) : (
           <div className="space-y-4">
