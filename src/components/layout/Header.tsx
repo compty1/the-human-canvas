@@ -169,14 +169,14 @@ export const Header = () => {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <nav className="lg:hidden bg-background border-t-2 border-foreground">
-          <div className="container mx-auto px-4 py-4">
+        <nav className="lg:hidden bg-background border-t-2 border-foreground fixed top-16 left-0 right-0 bottom-0 z-40 overflow-y-auto overscroll-contain">
+          <div className="container mx-auto px-4 py-4 pb-safe">
             {navItems.map((item: { label: string; href: string }) => (
               <Link
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  "block py-3 font-bold uppercase tracking-wide border-b-2 border-muted",
+                  "block py-3 font-bold uppercase tracking-wide border-b-2 border-muted text-base",
                   location.pathname === item.href
                     ? "text-primary"
                     : "hover:text-primary"
@@ -186,7 +186,7 @@ export const Header = () => {
                 {item.label}
               </Link>
             ))}
-            <div className="mt-4 pt-4 border-t-2 border-foreground">
+            <div className="mt-4 pt-4 border-t-2 border-foreground pb-8">
               {user ? (
                 <div className="space-y-2">
                   {isAdmin && (
