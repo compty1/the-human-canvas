@@ -1,129 +1,66 @@
 
-# Wire Up AI Content Hub + Suggestions + Interactive Improvements
 
-## Overview
+# Fix: AI Content Hub Not Recognizing life_periods (and other missing tables)
 
-Three major enhancements to make the AI Content Hub the central nerve center for all site content:
+## Root Cause
 
-1. **Wire to live content and admin sections** -- deep-link from Content Hub to admin editors, show publish status, and let the AI see full content details (not just 5 recent summaries)
-2. **Add an AI Suggestions tab** -- automatically analyze live content and surface actionable suggestions (missing descriptions, unpublished drafts, empty fields, SEO gaps, stale content)
-3. **Make the chat more interactive** -- quick-action buttons, content type picker, direct "open in editor" links from plan cards, and richer context for the AI
+Two specific bugs prevent the AI from creating life period records:
 
----
+1. **The edge function system prompt omits `life_periods`** from its list of known tables and required fields. When you say "add a life period," the AI doesn't know about the `life_periods` table and incorrectly creates an `experiences` record instead.
 
-## 1. Wire Content Hub to Admin Editors and Live Content
+2. **`fetchSiteContext()` doesn't include `life_periods`** (or `life_periods`, `learning_goals`, `funding_campaigns`, or `supplies`) in the tables it sends to the AI. So the AI has zero awareness of those content types.
 
-### Content Overview Enhancement (`src/pages/admin/ContentHub.tsx`)
-- Each content stat card in the "Content Overview" tab becomes clickable, linking to its admin manager page (e.g., clicking "articles (12)" navigates to `/admin/articles`)
-- Add a "published vs draft" breakdown per table where applicable (articles, updates, projects, experiments, product_reviews have `published` boolean)
-- Show `review_status` distribution for tables that support it
-
-### Plan Card Deep Links (`src/components/admin/ContentPlanCard.tsx`)
-- After a plan is executed, show "Open in Editor" links for each created/updated record
-- Map each table to its admin editor route (e.g., `articles` -> `/admin/articles/{id}/edit`, `projects` -> `/admin/projects/{id}/edit`)
-- For tables without dedicated editors (skills, favorites), link to the manager page
-
-### Richer Site Context (`src/hooks/useContentActions.ts`)
-- Expand `fetchSiteContext()` to include:
-  - Published vs unpublished counts per table
-  - Records with empty/null descriptions or content
-  - Records last updated more than 90 days ago (stale content)
-  - This gives the AI much better awareness of what needs attention
+The change history confirms this: the AI inserted into the `experiences` table with experience-specific columns instead of using `life_periods` with its proper columns (`start_date`, `end_date`, `themes`, `is_current`, etc.).
 
 ---
 
-## 2. AI Suggestions Tab
+## Fix 1: Update Edge Function System Prompt
 
-### New Component: `src/components/admin/ContentSuggestions.tsx`
+**File:** `supabase/functions/ai-content-hub/index.ts`
 
-An automated analysis panel that scans live content and generates actionable suggestions:
+Add `life_periods` (and the other missing tables) to the system prompt's required fields section:
 
-**Suggestion categories:**
-- **Missing content**: Records with null/empty descriptions, excerpts, or content fields
-- **Unpublished drafts**: Content marked `published: false` that could be ready to publish
-- **Stale content**: Items not updated in 90+ days
-- **Review pending**: Items with `review_status` = "pending_review" or "draft"
-- **SEO gaps**: Articles/projects missing tags, excerpts, or featured images
-- **Empty tables**: Content types with zero records
-
-**Each suggestion card shows:**
-- What the issue is (e.g., "3 articles missing excerpts")
-- Affected record names/titles
-- Quick action buttons: "Fix with AI" (sends a prompt to the chat), "Open in Editor" (navigates to admin page)
-
-**Integration with chat:**
-- "Fix with AI" button pre-populates the chat with a targeted prompt like "Generate excerpts for these 3 articles: [title1], [title2], [title3]"
-- The AI then returns a structured plan to update those records
-
-### Add to ContentHub.tsx
-- New tab: "Suggestions" with a badge showing the count of actionable items
-- Sits alongside "Recent Changes", "Saved Plans", and "Content Overview"
-
----
-
-## 3. Interactive Chat Improvements
-
-### Quick Action Buttons (`src/components/admin/ContentHubChat.tsx`)
-- Add a row of quick-action chips above the input when the chat is empty:
-  - "Audit all content" -- asks AI to review everything and suggest improvements
-  - "Find missing fields" -- asks AI to identify incomplete records
-  - "Generate descriptions" -- asks AI to draft descriptions for records missing them
-  - "Publish ready content" -- asks AI to find and publish content in "approved" review status
-  - "Content report" -- asks AI for a summary of all content stats
-
-### Content Type Picker for New Content
-- When user types "create" or "new", show a dropdown/chip bar of content types (Article, Project, Update, etc.) that pre-fills a structured prompt
-
-### Direct Editor Links in Plan Results
-- When a plan executes successfully, each action result shows a clickable link: "View in Editor" that navigates to the appropriate admin editor page
-
----
-
-## Technical Details
-
-### Files to Create
-| File | Purpose |
-|------|---------|
-| `src/components/admin/ContentSuggestions.tsx` | Suggestions panel component |
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/pages/admin/ContentHub.tsx` | Add Suggestions tab, make overview cards clickable with links to admin pages, add published/draft breakdown |
-| `src/components/admin/ContentHubChat.tsx` | Add quick-action chips for empty state, content type picker |
-| `src/components/admin/ContentPlanCard.tsx` | Add "Open in Editor" links after execution, map tables to admin routes |
-| `src/hooks/useContentActions.ts` | Expand `fetchSiteContext()` with richer data (published counts, missing fields, stale content) |
-| `supabase/functions/ai-content-hub/index.ts` | Update system prompt to mention suggestions and be aware of publish status / review workflow |
-
-### Admin Route Mapping (used by plan cards and suggestions)
-```text
-articles     -> /admin/articles/{id}/edit
-projects     -> /admin/projects/{id}/edit
-updates      -> /admin/updates/{id}/edit
-artwork      -> /admin/artwork/{id}/edit
-experiments  -> /admin/experiments/{id}/edit
-favorites    -> /admin/favorites/{id}/edit
-inspirations -> /admin/inspirations/{id}/edit
-experiences  -> /admin/experiences/{id}/edit
-certifications -> /admin/certifications/{id}/edit
-client_projects -> /admin/client-work/{id}/edit
-products     -> /admin/products/{id}/edit
-product_reviews -> /admin/product-reviews/{id}/edit
-life_periods -> /admin/life-periods/{id}/edit
-skills       -> /admin/skills
-supplies     -> /admin/supplies
+```
+- life_periods: title (required), start_date (required, date format YYYY-MM-DD), end_date (optional), description, detailed_content, themes (text array), image_url, is_current (boolean), order_index (integer)
+- learning_goals: (check existing schema)
+- funding_campaigns: (check existing schema)
+- supplies: (check existing schema)
 ```
 
-### Suggestions Query Logic
-```text
-For each table with 'published' field:
-  - Count where published = false -> "X unpublished drafts"
-For each table with text fields (description, content, excerpt):
-  - Count where field IS NULL or field = '' -> "X records missing {field}"
-For each table with 'review_status':
-  - Count where review_status = 'pending_review' -> "X items awaiting review"
-For each table:
-  - Count where updated_at < now() - 90 days -> "X stale items"
+Also update the opening sentence to explicitly list `life_periods` as a managed content type so the AI considers it when interpreting requests about "periods" or "timeline."
+
+## Fix 2: Expand fetchSiteContext to Include All Tables
+
+**File:** `src/hooks/useContentActions.ts`
+
+Add the missing tables to the `tables` array (line 262):
+
+```typescript
+const tables = [
+  "articles", "updates", "projects", "artwork", "experiments",
+  "favorites", "inspirations", "experiences", "certifications",
+  "client_projects", "skills", "products", "product_reviews",
+  "life_periods", "learning_goals", "funding_campaigns", "supplies",
+];
 ```
 
-No database changes required. All data already exists in the current schema.
+This ensures the AI receives current life_periods data (counts, recent records, stale indicators) in every request.
+
+## Fix 3: Clean Up the Incorrectly Created Records
+
+The failed attempt created 2 records in the `experiences` table that should not exist:
+- `d26d6e8b-20c1-4023-8bee-85777e62a4c7` -- "The Gaspless Void: A Mind Apart (2020-2025)"
+- `bcccb15d-b19e-4b98-8be0-9999b07c0579` -- "The Great Isolation: A Journey Through Deep Solitude"
+
+These should be deleted (or you can revert them from the change history in the Content Hub).
+
+---
+
+## Summary
+
+| File | Change |
+|------|--------|
+| `supabase/functions/ai-content-hub/index.ts` | Add life_periods, learning_goals, funding_campaigns, supplies to system prompt with correct column schemas |
+| `src/hooks/useContentActions.ts` | Add missing tables to fetchSiteContext's table list |
+
+After these fixes, asking the AI to "add a life period" will correctly target the `life_periods` table with the right columns (`title`, `start_date`, `themes`, etc.).
