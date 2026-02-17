@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ProtectedAdminRoute } from "@/components/admin/ProtectedAdminRoute";
 
 import Index from "./pages/Index";
 import ArtGallery from "./pages/ArtGallery";
@@ -88,7 +90,7 @@ import ContributionsManager from "./pages/admin/ContributionsManager";
 import ContentReviewManager from "./pages/admin/ContentReviewManager";
 import LeadDetail from "./pages/admin/LeadDetail";
 import ExperiencesManager from "./pages/admin/ExperiencesManager";
-import ExperienceEditorPage from "./pages/admin/ExperienceEditor";
+import ExperienceEditor from "./pages/admin/ExperienceEditor";
 import CertificationsManager from "./pages/admin/CertificationsManager";
 import CertificationEditor from "./pages/admin/CertificationEditor";
 import ContentLibrary from "./pages/admin/ContentLibrary";
@@ -97,10 +99,24 @@ import MediaLibrary from "./pages/admin/MediaLibrary";
 import ContentHub from "./pages/admin/ContentHub";
 
 // Additional Public pages
-import ExperiencesPage from "./pages/Experiences";
-import ExperienceDetailPage from "./pages/ExperienceDetail";
-import CertificationsPage from "./pages/Certifications";
-const queryClient = new QueryClient();
+import Experiences from "./pages/Experiences";
+import ExperienceDetail from "./pages/ExperienceDetail";
+import Certifications from "./pages/Certifications";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Admin route wrapper for convenience
+const Admin = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedAdminRoute>{children}</ProtectedAdminRoute>
+);
 
 // Analytics wrapper component
 const AnalyticsWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -112,115 +128,117 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AnalyticsWrapper>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/art" element={<ArtGallery />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/writing" element={<Writing />} />
-              <Route path="/updates" element={<Updates />} />
-              <Route path="/updates/:slug" element={<UpdateDetail />} />
-              <Route path="/articles" element={<Articles />} />
-              <Route path="/articles/:slug" element={<ArticleDetail />} />
-              <Route path="/skills" element={<Skills />} />
-              <Route path="/future" element={<FuturePlans />} />
-              <Route path="/support" element={<Support />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/projects/:slug" element={<ProjectDetail />} />
-              <Route path="/product-reviews" element={<ProductReviews />} />
-              <Route path="/product-reviews/:slug" element={<ProductReviewDetail />} />
-              <Route path="/supplies" element={<Supplies />} />
-              <Route path="/client-work" element={<ClientWork />} />
-              <Route path="/client-work/:slug" element={<ClientProjectDetail />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/favorites/:id" element={<FavoriteDetail />} />
-              <Route path="/inspirations" element={<Inspirations />} />
-              <Route path="/inspirations/:id" element={<InspirationDetail />} />
-              <Route path="/timeline" element={<LifeTimeline />} />
-              <Route path="/timeline/:id" element={<LifePeriodDetail />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/experiments" element={<Experiments />} />
-              <Route path="/experiments/:slug" element={<ExperimentDetail />} />
-              <Route path="/store" element={<Store />} />
-              <Route path="/store/:slug" element={<StoreProductDetail />} />
-              <Route path="/experiences" element={<ExperiencesPage />} />
-              <Route path="/experiences/:slug" element={<ExperienceDetailPage />} />
-              <Route path="/certifications" element={<CertificationsPage />} />
-              <Route path="/contact" element={<Contact />} />
-              {/* Admin routes */}
-              <Route path="/admin" element={<Dashboard />} />
-              <Route path="/admin/analytics" element={<Analytics />} />
-              <Route path="/admin/updates/new" element={<UpdateEditor />} />
-              <Route path="/admin/updates/:id/edit" element={<UpdateEditor />} />
-              <Route path="/admin/articles/new" element={<ArticleEditor />} />
-              <Route path="/admin/articles/:id/edit" element={<ArticleEditor />} />
-              <Route path="/admin/projects" element={<ProjectsManager />} />
-              <Route path="/admin/projects/new" element={<ProjectEditor />} />
-              <Route path="/admin/projects/:id/edit" element={<ProjectEditor />} />
-              <Route path="/admin/artwork" element={<ArtworkManager />} />
-              <Route path="/admin/artwork/new" element={<ArtworkEditor />} />
-              <Route path="/admin/artwork/:id/edit" element={<ArtworkEditor />} />
-              <Route path="/admin/skills" element={<SkillsManager />} />
-              <Route path="/admin/learning-goals" element={<LearningGoalsManager />} />
-              <Route path="/admin/leads" element={<LeadFinder />} />
-              <Route path="/admin/ai-writer" element={<AIWriter />} />
-              <Route path="/admin/import" element={<BulkImport />} />
-              <Route path="/admin/notes" element={<NotesManager />} />
-              <Route path="/admin/activity" element={<ActivityLog />} />
-              <Route path="/admin/settings" element={<Settings />} />
-              <Route path="/admin/product-reviews" element={<ProductReviewsManager />} />
-              <Route path="/admin/product-reviews/new" element={<ProductReviewEditor />} />
-              <Route path="/admin/product-reviews/:id/edit" element={<ProductReviewEditor />} />
-              <Route path="/admin/content/site" element={<SiteContent />} />
-              <Route path="/admin/content/home" element={<HomeContent />} />
-              <Route path="/admin/content/about" element={<AboutContent />} />
-              <Route path="/admin/future-plans" element={<FuturePlansManager />} />
-              <Route path="/admin/supplies" element={<SuppliesManager />} />
-              <Route path="/admin/articles" element={<ArticlesManager />} />
-              <Route path="/admin/updates" element={<UpdatesManager />} />
-              <Route path="/admin/time-tracker" element={<TimeTracker />} />
-              <Route path="/admin/sales" element={<SalesDataManager />} />
-              <Route path="/admin/funding-campaigns" element={<FundingCampaignsManager />} />
-              <Route path="/admin/client-work" element={<ClientWorkManager />} />
-              <Route path="/admin/client-work/new" element={<ClientProjectEditor />} />
-              <Route path="/admin/client-work/:id/edit" element={<ClientProjectEditor />} />
-              <Route path="/admin/favorites" element={<FavoritesManager />} />
-              <Route path="/admin/favorites/new" element={<FavoriteEditor />} />
-              <Route path="/admin/favorites/:id/edit" element={<FavoriteEditor />} />
-              <Route path="/admin/inspirations" element={<InspirationsManager />} />
-              <Route path="/admin/inspirations/new" element={<InspirationEditor />} />
-              <Route path="/admin/inspirations/:id/edit" element={<InspirationEditor />} />
-              <Route path="/admin/life-periods" element={<LifePeriodsManager />} />
-              <Route path="/admin/life-periods/new" element={<LifePeriodEditor />} />
-              <Route path="/admin/life-periods/:id/edit" element={<LifePeriodEditor />} />
-              <Route path="/admin/experiments" element={<ExperimentsManager />} />
-              <Route path="/admin/experiments/new" element={<ExperimentEditor />} />
-              <Route path="/admin/experiments/:id/edit" element={<ExperimentEditor />} />
-              <Route path="/admin/products" element={<ProductsManager />} />
-              <Route path="/admin/products/new" element={<ProductEditor />} />
-              <Route path="/admin/products/:id/edit" element={<ProductEditor />} />
-              <Route path="/admin/contributions" element={<ContributionsManager />} />
-              <Route path="/admin/content-review" element={<ContentReviewManager />} />
-              <Route path="/admin/leads/:id" element={<LeadDetail />} />
-              <Route path="/admin/experiences" element={<ExperiencesManager />} />
-              <Route path="/admin/experiences/new" element={<ExperienceEditorPage />} />
-              <Route path="/admin/experiences/:id/edit" element={<ExperienceEditorPage />} />
-              <Route path="/admin/certifications" element={<CertificationsManager />} />
-              <Route path="/admin/certifications/new" element={<CertificationEditor />} />
-              <Route path="/admin/certifications/:id/edit" element={<CertificationEditor />} />
-              <Route path="/admin/content-library" element={<ContentLibrary />} />
-              <Route path="/admin/quick-capture" element={<QuickCapture />} />
-              <Route path="/admin/media-library" element={<MediaLibrary />} />
-              <Route path="/admin/content-hub" element={<ContentHub />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnalyticsWrapper>
-        </BrowserRouter>
+        <ErrorBoundary>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnalyticsWrapper>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/art" element={<ArtGallery />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/writing" element={<Writing />} />
+                <Route path="/updates" element={<Updates />} />
+                <Route path="/updates/:slug" element={<UpdateDetail />} />
+                <Route path="/articles" element={<Articles />} />
+                <Route path="/articles/:slug" element={<ArticleDetail />} />
+                <Route path="/skills" element={<Skills />} />
+                <Route path="/future" element={<FuturePlans />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/projects/:slug" element={<ProjectDetail />} />
+                <Route path="/product-reviews" element={<ProductReviews />} />
+                <Route path="/product-reviews/:slug" element={<ProductReviewDetail />} />
+                <Route path="/supplies" element={<Supplies />} />
+                <Route path="/client-work" element={<ClientWork />} />
+                <Route path="/client-work/:slug" element={<ClientProjectDetail />} />
+                <Route path="/favorites" element={<Favorites />} />
+                <Route path="/favorites/:id" element={<FavoriteDetail />} />
+                <Route path="/inspirations" element={<Inspirations />} />
+                <Route path="/inspirations/:id" element={<InspirationDetail />} />
+                <Route path="/timeline" element={<LifeTimeline />} />
+                <Route path="/timeline/:id" element={<LifePeriodDetail />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/experiments" element={<Experiments />} />
+                <Route path="/experiments/:slug" element={<ExperimentDetail />} />
+                <Route path="/store" element={<Store />} />
+                <Route path="/store/:slug" element={<StoreProductDetail />} />
+                <Route path="/experiences" element={<Experiences />} />
+                <Route path="/experiences/:slug" element={<ExperienceDetail />} />
+                <Route path="/certifications" element={<Certifications />} />
+                <Route path="/contact" element={<Contact />} />
+                {/* Admin routes - all protected */}
+                <Route path="/admin" element={<Admin><Dashboard /></Admin>} />
+                <Route path="/admin/analytics" element={<Admin><Analytics /></Admin>} />
+                <Route path="/admin/updates/new" element={<Admin><UpdateEditor /></Admin>} />
+                <Route path="/admin/updates/:id/edit" element={<Admin><UpdateEditor /></Admin>} />
+                <Route path="/admin/articles/new" element={<Admin><ArticleEditor /></Admin>} />
+                <Route path="/admin/articles/:id/edit" element={<Admin><ArticleEditor /></Admin>} />
+                <Route path="/admin/projects" element={<Admin><ProjectsManager /></Admin>} />
+                <Route path="/admin/projects/new" element={<Admin><ProjectEditor /></Admin>} />
+                <Route path="/admin/projects/:id/edit" element={<Admin><ProjectEditor /></Admin>} />
+                <Route path="/admin/artwork" element={<Admin><ArtworkManager /></Admin>} />
+                <Route path="/admin/artwork/new" element={<Admin><ArtworkEditor /></Admin>} />
+                <Route path="/admin/artwork/:id/edit" element={<Admin><ArtworkEditor /></Admin>} />
+                <Route path="/admin/skills" element={<Admin><SkillsManager /></Admin>} />
+                <Route path="/admin/learning-goals" element={<Admin><LearningGoalsManager /></Admin>} />
+                <Route path="/admin/leads" element={<Admin><LeadFinder /></Admin>} />
+                <Route path="/admin/ai-writer" element={<Admin><AIWriter /></Admin>} />
+                <Route path="/admin/import" element={<Admin><BulkImport /></Admin>} />
+                <Route path="/admin/notes" element={<Admin><NotesManager /></Admin>} />
+                <Route path="/admin/activity" element={<Admin><ActivityLog /></Admin>} />
+                <Route path="/admin/settings" element={<Admin><Settings /></Admin>} />
+                <Route path="/admin/product-reviews" element={<Admin><ProductReviewsManager /></Admin>} />
+                <Route path="/admin/product-reviews/new" element={<Admin><ProductReviewEditor /></Admin>} />
+                <Route path="/admin/product-reviews/:id/edit" element={<Admin><ProductReviewEditor /></Admin>} />
+                <Route path="/admin/content/site" element={<Admin><SiteContent /></Admin>} />
+                <Route path="/admin/content/home" element={<Admin><HomeContent /></Admin>} />
+                <Route path="/admin/content/about" element={<Admin><AboutContent /></Admin>} />
+                <Route path="/admin/future-plans" element={<Admin><FuturePlansManager /></Admin>} />
+                <Route path="/admin/supplies" element={<Admin><SuppliesManager /></Admin>} />
+                <Route path="/admin/articles" element={<Admin><ArticlesManager /></Admin>} />
+                <Route path="/admin/updates" element={<Admin><UpdatesManager /></Admin>} />
+                <Route path="/admin/time-tracker" element={<Admin><TimeTracker /></Admin>} />
+                <Route path="/admin/sales" element={<Admin><SalesDataManager /></Admin>} />
+                <Route path="/admin/funding-campaigns" element={<Admin><FundingCampaignsManager /></Admin>} />
+                <Route path="/admin/client-work" element={<Admin><ClientWorkManager /></Admin>} />
+                <Route path="/admin/client-work/new" element={<Admin><ClientProjectEditor /></Admin>} />
+                <Route path="/admin/client-work/:id/edit" element={<Admin><ClientProjectEditor /></Admin>} />
+                <Route path="/admin/favorites" element={<Admin><FavoritesManager /></Admin>} />
+                <Route path="/admin/favorites/new" element={<Admin><FavoriteEditor /></Admin>} />
+                <Route path="/admin/favorites/:id/edit" element={<Admin><FavoriteEditor /></Admin>} />
+                <Route path="/admin/inspirations" element={<Admin><InspirationsManager /></Admin>} />
+                <Route path="/admin/inspirations/new" element={<Admin><InspirationEditor /></Admin>} />
+                <Route path="/admin/inspirations/:id/edit" element={<Admin><InspirationEditor /></Admin>} />
+                <Route path="/admin/life-periods" element={<Admin><LifePeriodsManager /></Admin>} />
+                <Route path="/admin/life-periods/new" element={<Admin><LifePeriodEditor /></Admin>} />
+                <Route path="/admin/life-periods/:id/edit" element={<Admin><LifePeriodEditor /></Admin>} />
+                <Route path="/admin/experiments" element={<Admin><ExperimentsManager /></Admin>} />
+                <Route path="/admin/experiments/new" element={<Admin><ExperimentEditor /></Admin>} />
+                <Route path="/admin/experiments/:id/edit" element={<Admin><ExperimentEditor /></Admin>} />
+                <Route path="/admin/products" element={<Admin><ProductsManager /></Admin>} />
+                <Route path="/admin/products/new" element={<Admin><ProductEditor /></Admin>} />
+                <Route path="/admin/products/:id/edit" element={<Admin><ProductEditor /></Admin>} />
+                <Route path="/admin/contributions" element={<Admin><ContributionsManager /></Admin>} />
+                <Route path="/admin/content-review" element={<Admin><ContentReviewManager /></Admin>} />
+                <Route path="/admin/leads/:id" element={<Admin><LeadDetail /></Admin>} />
+                <Route path="/admin/experiences" element={<Admin><ExperiencesManager /></Admin>} />
+                <Route path="/admin/experiences/new" element={<Admin><ExperienceEditor /></Admin>} />
+                <Route path="/admin/experiences/:id/edit" element={<Admin><ExperienceEditor /></Admin>} />
+                <Route path="/admin/certifications" element={<Admin><CertificationsManager /></Admin>} />
+                <Route path="/admin/certifications/new" element={<Admin><CertificationEditor /></Admin>} />
+                <Route path="/admin/certifications/:id/edit" element={<Admin><CertificationEditor /></Admin>} />
+                <Route path="/admin/content-library" element={<Admin><ContentLibrary /></Admin>} />
+                <Route path="/admin/quick-capture" element={<Admin><QuickCapture /></Admin>} />
+                <Route path="/admin/media-library" element={<Admin><MediaLibrary /></Admin>} />
+                <Route path="/admin/content-hub" element={<Admin><ContentHub /></Admin>} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AnalyticsWrapper>
+          </BrowserRouter>
+        </ErrorBoundary>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>

@@ -77,12 +77,13 @@
          <Mail className="w-5 h-5" />
          <span className="font-bold">Get Updates</span>
        </div>
-       <Input
-         type="text"
-         value={name}
-         onChange={(e) => setName(e.target.value)}
-         placeholder="Your name (optional)"
-       />
+        <Input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name (optional)"
+          maxLength={100}
+        />
        <Input
          type="email"
          value={email}

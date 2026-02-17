@@ -121,6 +121,7 @@ const Contact = () => {
                       onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                       placeholder="Your name"
                       required
+                      maxLength={100}
                     />
                   </div>
                   <div>
@@ -132,6 +133,7 @@ const Contact = () => {
                       onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                       placeholder="your@email.com"
                       required
+                      maxLength={255}
                     />
                   </div>
                 </div>
@@ -143,6 +145,7 @@ const Contact = () => {
                     value={form.subject}
                     onChange={(e) => setForm(prev => ({ ...prev, subject: e.target.value }))}
                     placeholder="What's this about?"
+                    maxLength={200}
                   />
                 </div>
 
@@ -155,6 +158,7 @@ const Contact = () => {
                     placeholder="Tell me about your project, idea, or just say hello..."
                     rows={6}
                     required
+                    maxLength={5000}
                   />
                 </div>
 

@@ -192,7 +192,7 @@ const ArtGallery = () => {
   };
 
   const getCategoryLabel = (categoryId: string): string => {
-    return categories.find(c => c.id === categoryId)?.label || categoryId.replace("_", " ");
+    return categories.find(c => c.id === categoryId)?.label || categoryId.replace(/_/g, " ");
   };
 
   return (
@@ -311,7 +311,7 @@ const ArtGallery = () => {
                                     <div>
                                       <h3 className="text-xl font-display">{artwork.title}</h3>
                                       <p className="text-sm text-muted-foreground capitalize">
-                                        {artwork.category.replace("_", " ")}
+                                        {artwork.category.replace(/_/g, " ")}
                                       </p>
                                     </div>
                                     <LikeButton
@@ -378,7 +378,7 @@ const ArtGallery = () => {
                 </div>
                 <div className="p-8">
                   <div className="caption-box inline-block mb-4 capitalize">
-                    {selectedArtwork.category.replace("_", " ")}
+                    {selectedArtwork.category.replace(/_/g, " ")}
                   </div>
                   <h2 className="text-4xl font-display mb-4">
                     {selectedArtwork.title}

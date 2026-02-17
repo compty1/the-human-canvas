@@ -94,7 +94,7 @@ const Certifications = () => {
                   }`}
                 >
                   {Icon && <Icon className="w-4 h-4" />}
-                  {status === "all" ? "All" : status.replace("_", " ")} ({count})
+                  {status === "all" ? "All" : status.replace(/_/g, " ")} ({count})
                 </button>
               );
             })}
@@ -140,7 +140,7 @@ const Certifications = () => {
                       <div className="flex items-center gap-2 mb-3">
                         <span className={`px-2 py-1 text-xs font-bold text-white flex items-center gap-1 ${statusColors[cert.status || "planned"]}`}>
                           <Icon className="w-3 h-3" />
-                          {cert.status?.replace("_", " ")}
+                          {cert.status?.replace(/_/g, " ")}
                         </span>
                         {cert.category && (
                           <span className="px-2 py-1 text-xs font-bold bg-muted capitalize">
