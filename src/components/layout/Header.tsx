@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, User, LogIn, Settings, Sun, Moon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { PopButton } from "@/components/pop-art";
@@ -58,6 +58,23 @@ export const Header = () => {
   const navItems = (dbNavItems || defaultNavItems).filter(
     (item: { visible?: boolean }) => item.visible !== false
   );
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -169,8 +186,8 @@ export const Header = () => {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <nav className="lg:hidden bg-background border-t-2 border-foreground fixed top-16 left-0 right-0 bottom-0 z-40 overflow-y-auto overscroll-contain">
-          <div className="container mx-auto px-4 py-4 pb-safe">
+        <nav className="lg:hidden bg-background border-t-2 border-foreground fixed top-16 left-0 right-0 bottom-0 z-[60] overflow-y-auto overscroll-contain -webkit-overflow-scrolling-touch">
+          <div className="px-4 py-4 pb-24">
             {navItems.map((item: { label: string; href: string }) => (
               <Link
                 key={item.href}
@@ -186,7 +203,7 @@ export const Header = () => {
                 {item.label}
               </Link>
             ))}
-            <div className="mt-4 pt-4 border-t-2 border-foreground pb-8">
+            <div className="mt-4 pt-4 border-t-2 border-foreground">
               {user ? (
                 <div className="space-y-2">
                   {isAdmin && (
