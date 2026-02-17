@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ContentPlan, ContentAction, useContentActions } from "@/hooks/useContentActions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,14 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
   const [reviewing, setReviewing] = useState(false);
   const [loadingReview, setLoadingReview] = useState(false);
   const [currentData, setCurrentData] = useState<CurrentDataMap>({});
+
+  // Auto-expand review on first render
+  useEffect(() => {
+    if (!reviewing && !done && editedActions.length > 0) {
+      toggleReview();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const actionCounts = editedActions.reduce(
     (acc, a) => {
