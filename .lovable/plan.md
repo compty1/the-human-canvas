@@ -1,66 +1,121 @@
 
 
-# Fix: AI Content Hub Not Recognizing life_periods (and other missing tables)
+# Comprehensive AI Content Hub Knowledge Enhancement
 
-## Root Cause
+## Problem
 
-Two specific bugs prevent the AI from creating life period records:
+The AI editor has incomplete knowledge of the build's database schema, table structures, and content types. This causes it to misroute content (e.g., creating `experiences` instead of `life_periods`). Multiple registries across the codebase are out of sync, and the system prompt lacks complete column definitions for most tables.
 
-1. **The edge function system prompt omits `life_periods`** from its list of known tables and required fields. When you say "add a life period," the AI doesn't know about the `life_periods` table and incorrectly creates an `experiences` record instead.
+## Root Issues Found
 
-2. **`fetchSiteContext()` doesn't include `life_periods`** (or `life_periods`, `learning_goals`, `funding_campaigns`, or `supplies`) in the tables it sends to the AI. So the AI has zero awareness of those content types.
+1. **Edge function system prompt** has vague/incomplete schemas for most tables (e.g., `skills: (check existing schema)`, `supplies: (check existing schema)`)
+2. **`ALLOWED_TABLES` in useContentActions.ts** is missing `supplies_needed` (the actual table name -- not `supplies`)
+3. **`CONTENT_FIELDS` in adminRoutes.ts** is missing entries for `life_periods`, `learning_goals`, `funding_campaigns`, `supplies_needed`
+4. **`fetchSiteContext` tables list** references `funding_campaigns` but not `supplies_needed`
+5. **ContentHub overview stats** only checks 12 tables -- missing `life_periods`, `learning_goals`, `funding_campaigns`, `product_reviews`, `supplies_needed`
+6. **The system prompt** doesn't include ALL column names for every table, leading the AI to guess wrong columns
+7. **No `supplies` table exists** -- the actual table is called `supplies_needed`, but the code references `supplies` everywhere
 
-The change history confirms this: the AI inserted into the `experiences` table with experience-specific columns instead of using `life_periods` with its proper columns (`start_date`, `end_date`, `themes`, `is_current`, etc.).
+## Plan
 
----
-
-## Fix 1: Update Edge Function System Prompt
+### 1. Complete System Prompt with Full Schemas (Edge Function)
 
 **File:** `supabase/functions/ai-content-hub/index.ts`
 
-Add `life_periods` (and the other missing tables) to the system prompt's required fields section:
+Replace the partial "Required fields by table" section with exhaustive column definitions for every content table, derived from the actual database schema. This is the single most impactful change -- it prevents the AI from ever guessing wrong columns again.
 
-```
-- life_periods: title (required), start_date (required, date format YYYY-MM-DD), end_date (optional), description, detailed_content, themes (text array), image_url, is_current (boolean), order_index (integer)
-- learning_goals: (check existing schema)
-- funding_campaigns: (check existing schema)
-- supplies: (check existing schema)
-```
+Every table will list:
+- All column names with types
+- Which are required vs optional
+- Valid enum values where applicable
+- Array vs scalar fields
 
-Also update the opening sentence to explicitly list `life_periods` as a managed content type so the AI considers it when interpreting requests about "periods" or "timeline."
+Key additions/fixes:
+- `articles`: add all columns including `excerpt`, `content`, `tags`, `featured_image`, `reading_time_minutes`, `review_status`, `published`
+- `projects`: add `description`, `long_description`, `tech_stack` (array), `features` (array), `image_url`, `status`, `published`, `review_status`
+- `updates`: add `content`, `excerpt`, `tags`, `published`, `review_status`
+- `experiences`: add all 20+ columns including `skills_used`, `tools_used`, `key_achievements`, `is_experimentation`, etc.
+- `favorites`: add `type` (required), `streaming_links`, `release_year`, `is_childhood_root`, `media_subtype`, etc.
+- `inspirations`: add `category` (required), `detailed_content`, `influence_areas` (array), `images` (array)
+- `certifications`: add `status`, `earned_date`, `skills` (array), `estimated_cost`, `funded_amount`
+- `client_projects`: add `tech_stack` (array), `features` (array), `testimonial`, `status`
+- `skills`: `name` (required), `category` (required), `proficiency` (integer), `icon_name`
+- `products`: `name`, `slug`, `price` (required), `description`, `images` (array), `tags` (array), `inventory_count`, `status`
+- `product_reviews`: add `overall_rating`, `pain_points` (array), `strengths` (array), `technical_issues` (array), `screenshots` (array)
+- `supplies_needed` (NOT `supplies`): `name` (required), `price` (required), `priority` (required), `category` (required), `status` (required), `description`, `product_url`, `funded_amount`
+- Fix `supplies` references to `supplies_needed` throughout
 
-## Fix 2: Expand fetchSiteContext to Include All Tables
+Also add a "TABLE-TO-ADMIN-ROUTE MAPPING" section to the prompt so the AI knows the correct admin URL paths and can reference them.
+
+Also add an "IMPORTANT DISAMBIGUATION" section:
+- "life periods" = `life_periods` table (NOT `experiences`)
+- "supplies" = `supplies_needed` table
+- "client work" / "client projects" = `client_projects` table
+- "store products" = `products` table (NOT `experiment_products`)
+
+### 2. Fix Table Name: `supplies` to `supplies_needed`
+
+**Files:** `src/hooks/useContentActions.ts`, `src/lib/adminRoutes.ts`, `supabase/functions/ai-content-hub/index.ts`
+
+The actual database table is `supplies_needed`, not `supplies`. Update:
+- `ALLOWED_TABLES` array: add `"supplies_needed"`
+- `ADMIN_ROUTES`: change key from `supplies` to `supplies_needed`
+- `CONTENT_FIELDS`: add `supplies_needed` entry
+- `fetchSiteContext` tables array: replace/add `supplies_needed`
+- Edge function prompt: use `supplies_needed`
+
+### 3. Complete All Registries in adminRoutes.ts
+
+**File:** `src/lib/adminRoutes.ts`
+
+- Add missing entries to `CONTENT_FIELDS`:
+  - `life_periods: ["description", "detailed_content", "image_url", "themes"]`
+  - `learning_goals: ["description"]`
+  - `funding_campaigns: ["description"]`
+  - `supplies_needed: ["description", "image_url"]`
+
+- Fix `ADMIN_ROUTES` key from `supplies` to `supplies_needed`
+
+### 4. Expand fetchSiteContext with ALL Columns
 
 **File:** `src/hooks/useContentActions.ts`
 
-Add the missing tables to the `tables` array (line 262):
+- Add `supplies_needed` to tables array
+- Expand the `recent` record summary to include more fields so the AI has richer context:
+  - Add `start_date`, `end_date`, `is_current` for life_periods/experiences
+  - Add `themes`, `type` for favorites/life_periods
+  - Add `price`, `priority` for supplies_needed
+  - Add `platform` for experiments
 
-```typescript
-const tables = [
-  "articles", "updates", "projects", "artwork", "experiments",
-  "favorites", "inspirations", "experiences", "certifications",
-  "client_projects", "skills", "products", "product_reviews",
-  "life_periods", "learning_goals", "funding_campaigns", "supplies",
-];
-```
+### 5. Complete ContentHub Overview Stats
 
-This ensures the AI receives current life_periods data (counts, recent records, stale indicators) in every request.
+**File:** `src/pages/admin/ContentHub.tsx`
 
-## Fix 3: Clean Up the Incorrectly Created Records
+Add all missing tables to the `contentStats` query:
+- `life_periods`, `learning_goals`, `funding_campaigns`, `supplies_needed`, `product_reviews`
 
-The failed attempt created 2 records in the `experiences` table that should not exist:
-- `d26d6e8b-20c1-4023-8bee-85777e62a4c7` -- "The Gaspless Void: A Mind Apart (2020-2025)"
-- `bcccb15d-b19e-4b98-8be0-9999b07c0579` -- "The Great Isolation: A Journey Through Deep Solitude"
+### 6. Complete ContentSuggestions Coverage
 
-These should be deleted (or you can revert them from the change history in the Content Hub).
+**File:** `src/components/admin/ContentSuggestions.tsx`
+
+Currently only scans tables listed in `CONTENT_FIELDS`. After fixing `CONTENT_FIELDS` in step 3, this will automatically cover the new tables too.
+
+### 7. Send Change History to AI
+
+**File:** `src/hooks/useContentActions.ts`
+
+Add recent AI change history (last 10 changes) to `fetchSiteContext` output so the AI knows what it recently did and can avoid repeating mistakes or creating duplicates.
 
 ---
 
-## Summary
+## Summary of Files Changed
 
-| File | Change |
-|------|--------|
-| `supabase/functions/ai-content-hub/index.ts` | Add life_periods, learning_goals, funding_campaigns, supplies to system prompt with correct column schemas |
-| `src/hooks/useContentActions.ts` | Add missing tables to fetchSiteContext's table list |
+| File | Changes |
+|------|---------|
+| `supabase/functions/ai-content-hub/index.ts` | Complete schema for all 17+ tables, disambiguation rules, admin route mapping |
+| `src/hooks/useContentActions.ts` | Fix `supplies_needed`, add to ALLOWED_TABLES, enrich context with more fields + change history |
+| `src/lib/adminRoutes.ts` | Fix `supplies` -> `supplies_needed`, add missing CONTENT_FIELDS entries |
+| `src/pages/admin/ContentHub.tsx` | Add all missing tables to overview stats |
 
-After these fixes, asking the AI to "add a life period" will correctly target the `life_periods` table with the right columns (`title`, `start_date`, `themes`, etc.).
+No database changes required.
+
