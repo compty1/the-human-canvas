@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { supabase } from "@/integrations/supabase/client";
@@ -620,6 +621,14 @@ const ExperienceEditor = () => {
 
         {/* Knowledge Base */}
         <KnowledgeEntryWidget entityType="experience" entityId={isEditing ? id : undefined} />
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="experience"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.title || "New Experience"}
+          context={`Category: ${form.category}\nDescription: ${form.description}`}
+        />
 
         {/* Save Button */}
         <div className="flex justify-end gap-4">

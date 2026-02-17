@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2, Loader2 } from "lucide-react";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 
 interface FormState {
   title: string;
@@ -366,6 +367,14 @@ const UpdateEditor = () => {
             </PopButton>
           </div>
         </div>
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="update"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.title || "New Update"}
+          context={`Excerpt: ${form.excerpt}\nTags: ${form.tags}`}
+        />
       </div>
     </AdminLayout>
   );

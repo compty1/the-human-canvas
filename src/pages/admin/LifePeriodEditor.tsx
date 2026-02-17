@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -372,6 +373,14 @@ const LifePeriodEditor = () => {
             )}
           </div>
         </ComicPanel>
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="life_period"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.title || "New Life Period"}
+          context={`Dates: ${form.start_date} - ${form.end_date || "Present"}\nDescription: ${form.description}`}
+        />
 
         {/* Save */}
         <div className="flex justify-end">

@@ -121,10 +121,13 @@ const CONTENT_TYPE_CONFIG: Record<string, {
     ],
   },
   artwork: {
-    label: "Artwork (new entry)",
+    label: "Artwork",
     table: "artwork",
     titleField: "title",
-    fields: [{ name: "image_url", label: "Image", type: "single" }],
+    fields: [
+      { name: "image_url", label: "Main Image", type: "single" },
+      { name: "images", label: "Process/Stage Images", type: "array" },
+    ],
   },
 };
 
@@ -143,7 +146,7 @@ export const AddToContentModal = ({
   const { data: records = [], isLoading: recordsLoading } = useQuery({
     queryKey: ["add-to-content-records", contentType],
     queryFn: async () => {
-      if (!config || contentType === "artwork") return [];
+      if (!config) return [];
       const titleField = config.titleField;
       const { data } = await (supabase.from(config.table as any) as any)
         .select(`id, ${titleField}`)
@@ -151,7 +154,7 @@ export const AddToContentModal = ({
         .limit(200);
       return (data || []).map((r: any) => ({ id: r.id, title: r[titleField] || r.id }));
     },
-    enabled: !!config && contentType !== "artwork",
+    enabled: !!config,
   });
 
   const filteredRecords = records.filter((r: any) =>
@@ -165,21 +168,7 @@ export const AddToContentModal = ({
     try {
       const urls = selectedMedia.map((m) => m.url);
 
-      // Special case: artwork creates new entries
-      if (contentType === "artwork") {
-        for (const media of selectedMedia) {
-          await supabase.from("artwork").insert({
-            title: media.filename.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
-            image_url: media.url,
-            category: "mixed",
-          });
-        }
-        toast.success(`Added ${selectedMedia.length} item(s) to artwork`);
-        onSuccess();
-        resetAndClose();
-        return;
-      }
-
+      // Standard flow for all content types
       if (!targetRecordId || !targetField) {
         toast.error("Please select a record and field");
         setSaving(false);
@@ -259,7 +248,7 @@ export const AddToContentModal = ({
           </div>
 
           {/* Step 2: Target Field */}
-          {config && config.fields.length > 1 && contentType !== "artwork" && (
+          {config && config.fields.length > 1 && (
             <div>
               <Label>Target Field</Label>
               <Select value={targetField} onValueChange={setTargetField}>
@@ -276,12 +265,12 @@ export const AddToContentModal = ({
           )}
 
           {/* Auto-select if single field */}
-          {config && config.fields.length === 1 && contentType !== "artwork" && !targetField && (
+          {config && config.fields.length === 1 && !targetField && (
             <>{(() => { if (!targetField) setTimeout(() => setTargetField(config.fields[0].name), 0); return null; })()}</>
           )}
 
           {/* Step 3: Target Record */}
-          {config && contentType !== "artwork" && targetField && (
+          {config && targetField && (
             <div>
               <Label>Select Record</Label>
               <div className="relative mb-2">
@@ -323,10 +312,10 @@ export const AddToContentModal = ({
             <PopButton variant="outline" onClick={resetAndClose}>Cancel</PopButton>
             <PopButton
               onClick={handleSave}
-              disabled={saving || !contentType || (contentType !== "artwork" && (!targetRecordId || !targetField))}
+              disabled={saving || !contentType || !targetRecordId || !targetField}
             >
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-              {contentType === "artwork" ? "Add to Artwork" : "Add to Content"}
+              Add to Content
             </PopButton>
           </div>
         </div>

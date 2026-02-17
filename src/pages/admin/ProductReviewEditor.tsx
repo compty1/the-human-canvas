@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { RichTextEditor } from "@/components/editor";
 import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -525,6 +526,14 @@ const ProductReviewEditor = () => {
 
         {/* Knowledge Base */}
         <KnowledgeEntryWidget entityType="product_review" entityId={isEditing ? id : undefined} />
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="product_review"
+          entityId={isEditing ? id : undefined}
+          entityTitle={formData.product_name || "New Review"}
+          context={`Company: ${formData.company}\nCategory: ${formData.category}`}
+        />
 
         {/* Save Button */}
         <div className="flex justify-end">

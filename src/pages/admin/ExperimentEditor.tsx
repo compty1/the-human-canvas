@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { ExperimentProductEditor } from "@/components/admin/ExperimentProductEditor";
 import { supabase } from "@/integrations/supabase/client";
@@ -594,6 +595,14 @@ const ExperimentEditor = () => {
         <KnowledgeEntryWidget
           entityType="experiment"
           entityId={isEditing ? id : undefined}
+        />
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="experiment"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.name || "New Experiment"}
+          context={`Platform: ${form.platform}\nStatus: ${form.status}\nDescription: ${form.description}`}
         />
 
         {/* Actions */}

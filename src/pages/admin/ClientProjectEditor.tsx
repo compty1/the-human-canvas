@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -736,6 +737,14 @@ const ClientProjectEditor = () => {
 
         {/* Knowledge Base */}
         <KnowledgeEntryWidget entityType="client_project" entityId={isEditing ? id : undefined} />
+
+        {/* AI Chat */}
+        <ItemAIChatPanel
+          entityType="client_project"
+          entityId={isEditing ? id : undefined}
+          entityTitle={form.project_name || "New Client Project"}
+          context={`Client: ${form.client_name}\nType: ${form.project_type}\nDescription: ${form.description}`}
+        />
 
         {/* Save Button */}
         <div className="flex justify-end">
