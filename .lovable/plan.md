@@ -1,92 +1,114 @@
 
 
-# Fix Content Suggestions Accuracy, Media Library Content Linking, and AI Editor Context
+# Extended Plan: Site Design Controls, Mobile Layout, and Content Wiring Gaps
 
-## Problem Summary
+## What This Adds to the Existing Plan
 
-Three interconnected issues are degrading the admin editing experience:
-
-1. **Content Suggestions show false positives** -- The suggestions panel reports "missing content" for fields that either don't exist on certain tables or already have data. The root cause is a broad SELECT query that requests columns like `content`, `excerpt`, `summary`, `tags`, `features` from tables that don't have those columns (e.g., `artwork` has no `content` column). The query returns `null` for non-existent columns, which the checker interprets as "missing." There's also no manual refresh button.
-
-2. **Media Library can only add images to Artwork** -- The "Add to Content" action only supports adding media to the artwork gallery. There's no way to attach images from the media library to life periods, articles, projects, experiences, or any other content type.
-
-3. **AI editor assistants don't reference existing content** -- The `AIChatAssistant` and `AIGenerateButton` components pass minimal context (just the current form fields as a string). They don't include information about what content already exists in the database, making the AI unable to cross-reference or suggest connections.
+Beyond the already-planned multi-select media, AI editing enhancements, and file upload features, this extension addresses **6 additional gaps** that prevent full control over the site from the admin panel.
 
 ---
 
-## Technical Plan
+## 1. Theme and Color Customizer in Admin Settings
 
-### 1. Fix ContentSuggestions accuracy and add refresh
+**Problem:** All colors (Gold, Teal, Terracotta, Cream, Navy, etc.) are hardcoded in `src/index.css`. There's no way to adjust the site palette without editing code.
 
-**File: `src/components/admin/ContentSuggestions.tsx`**
+**Solution:** Add a "Theme & Colors" section to `src/pages/admin/Settings.tsx` that:
+- Shows color pickers for each palette color (primary/Gold, secondary/Teal, accent/Terracotta, background/Cream, foreground/Navy)
+- Stores selected values in the `site_content` table as JSON under a `theme_colors` key
+- Applies them at runtime by setting CSS custom properties on the document root
+- Includes preset palettes ("Gallery Warmth" default, "Monochrome", "Ocean", "Sunset") for one-click switching
+- Shows a live preview swatch row so you can see changes before saving
 
-- Replace the single broad `SELECT` with per-table queries that only request columns defined in `CONTENT_FIELDS[table]` plus the base fields (`id`, `title`, `name`, `slug`, `updated_at`, `published`). This eliminates false nulls from non-existent columns.
-- Change the query from selecting all columns blindly:
-  ```
-  // BEFORE (broken): requests columns that don't exist on every table
-  .select("id, title, name, slug, updated_at, published, review_status, description, content, excerpt, image_url, ...")
-  
-  // AFTER (accurate): only request columns the table actually has
-  const selectFields = ["id", "title", "name", "slug", "updated_at", "published", ...CONTENT_FIELDS[table]];
-  .select(selectFields.join(", "))
-  ```
-- Add `refetchOnWindowFocus: true` and expose `refetch` to add a manual refresh button.
-- Accept a `refetchKey` prop so parent components can trigger refresh after content changes.
-- Add a refresh button in the header alongside the suggestion count.
-
-**File: `src/pages/admin/ContentHub.tsx`**
-
-- Add a "Refresh" button next to the Suggestions tab that calls `queryClient.invalidateQueries({ queryKey: ["content-suggestions"] })`.
-- Remove the separate `suggestionsCount` query (which duplicates logic) and derive the count from the main suggestions data instead.
-
-### 2. Media Library "Add to Content" for all content types
-
-**File: `src/pages/admin/MediaLibrary.tsx`**
-
-- Replace the single "Add to Artwork" button/modal with an "Add to Content" system that supports multiple target content types.
-- The new modal will have two steps:
-  1. **Select content type**: dropdown with options -- Articles (featured_image), Projects (image_url, screenshots), Life Periods (image_url, images), Experiences (image_url, screenshots), Experiments (image_url, screenshots), Favorites (image_url), Client Projects (image_url), Products (images), Certifications (image_url), Inspirations (image_url)
-  2. **Select target record**: searchable list of existing records from the chosen table, fetched on demand
-  3. **Select field**: which image field to update (e.g., `image_url` for single, `screenshots`/`images` for array append)
-- For single-image fields (`image_url`, `featured_image`): update/replace the value
-- For array fields (`screenshots`, `images`): append selected URLs to the existing array
-- Bulk selection support: when multiple media items are selected, array fields get all URLs appended; single fields use the first selected image
-- Keep existing "Add to Artwork" as one of the content type options
-
-### 3. AI editor context improvements
-
-**File: `src/components/admin/AIChatAssistant.tsx`**
-
-- Enhance the `context` prop handling to include a structured summary of related content. When the component is used in an editor, the parent should pass richer context.
-- Add a `relatedContent` optional prop that editors can populate with summaries of existing records from the same table (e.g., titles and descriptions of other life periods when editing a life period).
-
-**File: `src/components/admin/AIGenerateButton.tsx`**
-
-- Expand the `context` object passed to the AI to include existing content from the same table. Before generating, fetch up to 5 recent records from the same content type to give the AI examples of tone, length, and style.
-- Add the existing field values of the current record so the AI doesn't generate content that conflicts with what's already written.
-
-**File: `supabase/functions/ai-assistant/index.ts`**
-
-- Update the system prompt to instruct the AI to reference existing content when provided, maintaining consistency in tone and avoiding duplication.
-
-### 4. Additional gaps found
-
-**File: `src/components/admin/ContentSuggestions.tsx`**
-- The `CONTENT_FIELDS` check for `image_url` on tables like `artwork` (which always has `image_url` populated) generates zero suggestions -- but the query still fetches those columns unnecessarily, adding latency.
-
-**File: `src/pages/admin/ContentHub.tsx`**
-- The `suggestionsCount` query at lines 79-104 runs its own separate set of queries against 4 tables, completely independent of the actual suggestions. This means the badge count doesn't match the actual number of suggestions shown. Fix: derive count from the real suggestions query.
+**Files:** `src/pages/admin/Settings.tsx`, `src/index.css` (no change, just read by the runtime), new `src/hooks/useThemeColors.ts` hook that reads from `site_content` and applies CSS variables on load.
 
 ---
 
-## Files to Create/Modify
+## 2. Dark Mode Toggle
+
+**Problem:** Dark mode CSS variables exist in `src/index.css` (lines 112-139) but there's no toggle anywhere on the site for users to switch.
+
+**Solution:** 
+- Add a sun/moon toggle button in the site Header (both desktop and mobile nav)
+- Use `next-themes` (already installed) to manage the theme state with localStorage persistence
+- Wrap the app in a `ThemeProvider` in `src/main.tsx`
+- In admin Settings, add a "Default Theme" option (Light / Dark / System) stored in `site_content`
+
+**Files:** `src/main.tsx`, `src/components/layout/Header.tsx`, `src/pages/admin/Settings.tsx`
+
+---
+
+## 3. Wire Up About Page to Database Content
+
+**Problem:** The About page (`src/pages/About.tsx`) is entirely hardcoded text. The admin has an About Content editor (`src/pages/admin/AboutContent.tsx`) that saves to `site_content`, but the public About page doesn't read from it.
+
+**Solution:** Update `src/pages/About.tsx` to:
+- Fetch `profile_image`, `bio_intro`, `bio_full`, `about_services`, `about_interests`, `speech_bubble_quote`, `about_location`, `experience_years` from the `site_content` table
+- Replace hardcoded text with the database values, falling back to current hardcoded defaults when no value exists
+- This means edits in the admin About Content editor will actually appear on the live site
+
+**Files:** `src/pages/About.tsx`
+
+---
+
+## 4. Wire Up Footer and Header to Database Content
+
+**Problem:** The Footer has hardcoded text ("Exploring the human experience..."), hardcoded project links (Notardex, Solutiodex, Zodaci), and hardcoded section labels. The Header nav items are hardcoded. The admin SiteContent editor saves `footer_text`, `social_*` links, and `nav_items` but the actual components don't read them.
+
+**Solution:**
+- Update `src/components/layout/Footer.tsx` to fetch `footer_text`, `site_tagline`, `social_twitter`, `social_instagram`, `social_github`, `social_linkedin` from `site_content` and render dynamically
+- Update `src/components/layout/Header.tsx` to optionally read `nav_items` from `site_content` (if set), falling back to the current hardcoded array
+- Add a "Navigation Manager" section to `src/pages/admin/SiteContent.tsx` with drag-to-reorder nav items, show/hide toggles, and label editing
+
+**Files:** `src/components/layout/Footer.tsx`, `src/components/layout/Header.tsx`, `src/pages/admin/SiteContent.tsx`
+
+---
+
+## 5. Mobile Layout Preview and Responsive Controls
+
+**Problem:** No way to preview or fine-tune how content looks on mobile from the admin panel. Some pages (like the Certifications page with its sticky filter bar) may have layout issues on small screens.
+
+**Solution:** Add a "Mobile Preview" panel to admin editors and Settings:
+- In `src/pages/admin/Settings.tsx`, add a "Layout" section with toggles for:
+  - Mobile nav style: "Hamburger" vs "Bottom tabs"
+  - Card columns on mobile: 1 or 2
+  - Hero image visibility on mobile (show/hide)
+  - Sticky filter bar behavior (sticky vs scroll-away)
+- Store these as `site_content` entries (`layout_mobile_nav`, `layout_mobile_columns`, etc.)
+- Read them in the relevant public components via a `useSiteSettings` hook
+- In the admin Dashboard, add a phone-frame preview iframe showing the live site at 375px width
+
+**Files:** `src/pages/admin/Settings.tsx`, new `src/hooks/useSiteSettings.ts`, `src/components/layout/Header.tsx` (bottom nav option), `src/pages/admin/Dashboard.tsx` (preview frame)
+
+---
+
+## 6. Page Section Ordering and Visibility
+
+**Problem:** The homepage has a fixed section order (Hero, Ticker, Featured Projects, Nav Panels, Film Strip, etc.) with no admin control over which sections appear or their order.
+
+**Solution:** Add a "Homepage Sections" manager to `src/pages/admin/HomeContent.tsx`:
+- List all homepage sections with toggle switches (show/hide) and drag-to-reorder
+- Store section order and visibility as JSON in `site_content` under `homepage_sections`
+- Update `src/pages/Index.tsx` to read this configuration and render sections conditionally in the stored order
+- Sections: Hero, Ticker, Featured Projects, Navigation Panels, Film Strip, Latest Updates, Featured Artwork, CTA
+
+**Files:** `src/pages/admin/HomeContent.tsx`, `src/pages/Index.tsx`
+
+---
+
+## Summary of All New Files and Changes
 
 | File | Changes |
-|------|---------|
-| `src/components/admin/ContentSuggestions.tsx` | Fix SELECT queries per-table, add refresh button, expose refetch |
-| `src/pages/admin/ContentHub.tsx` | Add refresh button, remove duplicate suggestions count query, derive count from real data |
-| `src/pages/admin/MediaLibrary.tsx` | Replace "Add to Artwork" with "Add to Content" supporting all content types with record selection |
-| `src/components/admin/AIGenerateButton.tsx` | Fetch sibling content for context before generating |
-| `src/components/admin/AIChatAssistant.tsx` | Accept and pass richer context including related records |
-| `supabase/functions/ai-assistant/index.ts` | Update system prompt to reference existing content |
+|---|---|
+| `src/pages/admin/Settings.tsx` | Add Theme Colors section with color pickers, dark mode default, mobile layout toggles |
+| `src/hooks/useThemeColors.ts` | New hook: fetch theme colors from site_content, apply CSS variables at runtime |
+| `src/hooks/useSiteSettings.ts` | New hook: fetch layout/mobile settings from site_content |
+| `src/main.tsx` | Wrap app in ThemeProvider from next-themes |
+| `src/components/layout/Header.tsx` | Add dark mode toggle, read nav items from DB, optional bottom-tab mobile nav |
+| `src/components/layout/Footer.tsx` | Read footer text, social links, tagline from site_content |
+| `src/pages/About.tsx` | Fetch all content from site_content instead of hardcoded text |
+| `src/pages/admin/SiteContent.tsx` | Add Navigation Manager with reorder and show/hide |
+| `src/pages/admin/HomeContent.tsx` | Add Homepage Sections manager with ordering and visibility |
+| `src/pages/Index.tsx` | Read section order/visibility config, render conditionally |
+| `src/pages/admin/Dashboard.tsx` | Add mobile preview iframe |
 
+These additions combine with the existing plan (multi-select media, file uploads, AI context, quick actions) to give complete control over the site's content, design, and layout from the admin panel.
