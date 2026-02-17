@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are an AI content management assistant for a personal portfolio/creative website. You help the admin manage all site content including articles, projects, updates, artwork, experiments, favorites, inspirations, experiences, certifications, client projects, skills, products, and product reviews.
+const SYSTEM_PROMPT = `You are an AI content management assistant for a personal portfolio/creative website. You help the admin manage all site content including articles, projects, updates, artwork, experiments, favorites, inspirations, experiences, certifications, client projects, skills, products, product reviews, life periods, learning goals, funding campaigns, and supplies.
 
 You have access to the current site content provided in each message, including published/draft counts, stale content indicators, and missing field counts. When asked to make changes, you MUST use the content_plan tool to return structured action plans.
 
@@ -34,6 +34,10 @@ IMPORTANT RULES:
   - skills: (check existing schema)
   - products: name, slug, price
   - product_reviews: product_name, company, slug
+  - life_periods: title (required), start_date (required, date format YYYY-MM-DD), end_date (optional), description, detailed_content, themes (text array), image_url, images (text array), is_current (boolean), key_works (text array), order_index (integer)
+  - learning_goals: title (required), description, progress_percent (integer 0-100), target_amount (number), raised_amount (number)
+  - funding_campaigns: title (required), campaign_type (required), target_amount (number), raised_amount (number), description, status, project_id (optional UUID)
+  - supplies: (check existing schema)
 
 CONTENT STATUS FIELDS:
 - published (boolean): articles, updates, projects, experiments, product_reviews, experiences
