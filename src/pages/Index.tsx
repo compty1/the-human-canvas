@@ -49,8 +49,8 @@ const Index = () => {
         .from("site_content")
         .select("content_value")
         .eq("section_key", "homepage_sections")
-        .single();
-      if (error) return null;
+        .maybeSingle();
+      if (error || !data) return null;
       try {
         return JSON.parse(data?.content_value || "null") as HomepageSection[];
       } catch { return null; }
@@ -58,24 +58,48 @@ const Index = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch hero and mission content from admin
+  const { data: heroContent } = useQuery({
+    queryKey: ["site-content-hero-mission"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_content")
+        .select("section_key, content_value")
+        .in("section_key", ["hero_title", "hero_subtitle", "hero_description", "mission_statement"]);
+      if (error) return {};
+      return (data || []).reduce((acc, item) => {
+        acc[item.section_key] = item.content_value || "";
+        return acc;
+      }, {} as Record<string, string>);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const heroTitle = heroContent?.hero_title || "LeCompte";
+  const heroSubtitle = heroContent?.hero_subtitle || "The Human Experience";
+  const heroDescription = heroContent?.hero_description || "Artist. Developer. Storyteller. Building tools and creating works that reflect society and spark transformation.";
+  const missionStatement = heroContent?.mission_statement || "From Type 1 Diabetes tools to philosophical essays, from pop art portraits to community-driven search engines — every project explores what it means to be human, to struggle, to transform, and to connect.";
+
   // Fetch ticker items from site_content
   const { data: tickerContent } = useQuery({
     queryKey: ["site-content-ticker"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("site_content").select("content_value").eq("section_key", "ticker_items").single();
-      if (error) return null;
+      const { data, error } = await supabase.from("site_content").select("content_value").eq("section_key", "ticker_items").maybeSingle();
+      if (error || !data) return null;
       return data?.content_value;
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch featured project IDs from site_content
   const { data: featuredProjectIds } = useQuery({
     queryKey: ["site-content-featured-projects"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("site_content").select("content_value").eq("section_key", "featured_project_ids").single();
-      if (error) return null;
+      const { data, error } = await supabase.from("site_content").select("content_value").eq("section_key", "featured_project_ids").maybeSingle();
+      if (error || !data) return null;
       try { return JSON.parse(data?.content_value || "[]"); } catch { return []; }
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch featured projects from database
@@ -124,11 +148,11 @@ const Index = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-fade-in">
               <div className="inline-block px-4 py-2 bg-pop-terracotta text-pop-cream font-bold uppercase tracking-wide border-2 border-foreground">
-                The Human Experience
+                {heroSubtitle}
               </div>
-              <h1 className="text-6xl md:text-8xl font-display leading-none gradient-text">LeCompte</h1>
+              <h1 className="text-6xl md:text-8xl font-display leading-none gradient-text">{heroTitle}</h1>
               <p className="text-xl md:text-2xl font-sans max-w-lg text-foreground/90">
-                Artist. Developer. Storyteller. Building tools and creating works that reflect society and spark transformation.
+                {heroDescription}
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/projects"><PopButton variant="primary" size="lg">View Projects <ArrowRight className="ml-2 w-5 h-5" /></PopButton></Link>
@@ -184,7 +208,7 @@ const Index = () => {
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl md:text-6xl font-display text-pop-gold mb-8">The Human Experience Is Everything</h2>
             <p className="text-xl md:text-2xl font-sans leading-relaxed opacity-90">
-              From Type 1 Diabetes tools to philosophical essays, from pop art portraits to community-driven search engines — every project explores what it means to be human, to struggle, to transform, and to connect.
+              {missionStatement}
             </p>
             <div className="mt-12">
               <Link to="/about"><PopButton variant="accent" size="lg">Learn More About Me</PopButton></Link>

@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton, SpeechBubble } from "@/components/pop-art";
@@ -355,7 +356,7 @@ const ProductReviewDetail = () => {
               <h2 className="text-4xl font-display mb-8">Full Analysis</h2>
               <div 
                 className="prose prose-lg max-w-none font-sans"
-                dangerouslySetInnerHTML={{ __html: review.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(review.content) }}
               />
             </div>
           </div>

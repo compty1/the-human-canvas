@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SubscribeForm } from "@/components/newsletter/SubscribeForm";
 
+
+
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
   const { data: siteContent } = useQuery({
     queryKey: ["site-content-footer"],
@@ -25,6 +27,21 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
         acc[item.section_key] = item.content_value || "";
         return acc;
       }, {} as Record<string, string>);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch live projects for footer
+  const { data: liveProjects } = useQuery({
+    queryKey: ["footer-live-projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, external_url, slug")
+        .eq("status", "live")
+        .limit(5);
+      if (error) return [];
+      return data || [];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -91,21 +108,23 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               Live Projects
             </h4>
             <ul className="space-y-2">
-              <li>
-                <a href="https://notardex.com" target="_blank" rel="noopener noreferrer" className="hover:text-pop-gold transition-colors inline-flex items-center gap-1">
-                  Notardex <ExternalLink className="w-3 h-3" />
-                </a>
-              </li>
-              <li>
-                <a href="https://solutiodex.com" target="_blank" rel="noopener noreferrer" className="hover:text-pop-gold transition-colors inline-flex items-center gap-1">
-                  Solutiodex <ExternalLink className="w-3 h-3" />
-                </a>
-              </li>
-              <li>
-                <a href="https://zodaci.com" target="_blank" rel="noopener noreferrer" className="hover:text-pop-gold transition-colors inline-flex items-center gap-1">
-                  Zodaci <ExternalLink className="w-3 h-3" />
-                </a>
-              </li>
+              {(liveProjects && liveProjects.length > 0 ? liveProjects : [
+                { id: "1", title: "Notardex", external_url: "https://notardex.com", slug: "" },
+                { id: "2", title: "Solutiodex", external_url: "https://solutiodex.com", slug: "" },
+                { id: "3", title: "Zodaci", external_url: "https://zodaci.com", slug: "" },
+              ]).map((project) => (
+                <li key={project.id}>
+                  {project.external_url ? (
+                    <a href={project.external_url} target="_blank" rel="noopener noreferrer" className="hover:text-pop-gold transition-colors inline-flex items-center gap-1">
+                      {project.title} <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <Link to={`/projects/${project.slug}`} className="hover:text-pop-gold transition-colors">
+                      {project.title}
+                    </Link>
+                  )}
+                </li>
+              ))}
             </ul>
             {socialLinks.length > 0 && (
               <div className="mt-4 pt-4 border-t border-pop-cream/20">

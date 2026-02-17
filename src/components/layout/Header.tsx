@@ -43,7 +43,7 @@ export const Header = () => {
         .from("site_content")
         .select("content_value")
         .eq("section_key", "nav_items")
-        .single();
+        .maybeSingle();
       if (error || !data?.content_value) return null;
       try {
         const parsed = JSON.parse(data.content_value);

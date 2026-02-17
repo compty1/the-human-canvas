@@ -61,7 +61,7 @@ const ExperimentEditor = () => {
         .from("experiments")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

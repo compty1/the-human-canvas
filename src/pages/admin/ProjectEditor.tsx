@@ -165,7 +165,7 @@ const ProjectEditor = () => {
         .from("projects")
         .select("*")
         .eq("id", targetId)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

@@ -47,7 +47,7 @@ const ClientProjectEditor = () => {
         .from("client_projects")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

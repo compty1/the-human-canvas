@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -9,12 +10,12 @@ interface LikeButtonProps {
   className?: string;
 }
 
-export const LikeButton = ({
+export const LikeButton = forwardRef<HTMLButtonElement, LikeButtonProps>(({
   count,
   liked = false,
   onLike,
   className,
-}: LikeButtonProps) => {
+}, ref) => {
   const [isAnimating, setIsAnimating] = useState(false);
 
   const handleClick = () => {
@@ -25,6 +26,7 @@ export const LikeButton = ({
 
   return (
     <button
+      ref={ref}
       onClick={handleClick}
       className={cn(
         "flex items-center gap-2 px-3 py-2 border-2 border-foreground transition-all",
@@ -44,4 +46,6 @@ export const LikeButton = ({
       <span className="font-bold">{count}</span>
     </button>
   );
-};
+});
+
+LikeButton.displayName = "LikeButton";

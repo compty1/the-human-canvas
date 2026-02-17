@@ -181,7 +181,7 @@ const Settings = () => {
   const exportAllData = async () => {
     setExporting(true);
     try {
-      const tables = ["projects", "articles", "updates", "artwork", "skills", "learning_goals", "admin_notes"];
+      const tables = ["projects", "articles", "updates", "artwork", "skills", "learning_goals", "admin_notes", "experiments", "favorites", "inspirations", "experiences", "certifications", "client_projects", "products", "product_reviews", "life_periods", "funding_campaigns", "site_content"];
       const exportData: Record<string, unknown[]> = {};
       for (const table of tables) {
         const { data, error } = await supabase.from(table as "projects").select("*");

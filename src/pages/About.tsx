@@ -4,12 +4,14 @@ import { Mail, ExternalLink, Heart, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 import zacPortrait from "@/assets/artwork/zac-portrait.png";
 
 const ABOUT_KEYS = [
   "profile_image", "bio_intro", "bio_full", "about_services",
-  "about_interests", "speech_bubble_quote", "about_location", "experience_years",
+  "about_interests", "speech_bubble_quote", "about_location",
+  "experience_years", "contact_email",
 ];
 
 const About = () => {
@@ -29,10 +31,27 @@ const About = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch live projects from DB
+  const { data: liveProjects } = useQuery({
+    queryKey: ["about-live-projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, description, external_url, slug")
+        .eq("status", "live")
+        .limit(6);
+      if (error) return [];
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const profileImage = aboutContent?.profile_image || zacPortrait;
   const bioIntro = aboutContent?.bio_intro || "Artist. Developer. Writer. Type 1 Diabetic. Exploring what it means to be human through every medium I can get my hands on.";
   const bioFull = aboutContent?.bio_full || "";
-  const speechQuote = aboutContent?.speech_bubble_quote || "\"I build tools that allow for change and different ways of innovative operation. I'm passionate about complex, interconnected ecosystems that reflect society and what makes us human.\"";
+  const contactEmail = aboutContent?.contact_email || "hello@lecompte.art";
+  const location = aboutContent?.about_location || "";
+  const experienceYears = aboutContent?.experience_years || "";
 
   let services: string[] = [];
   try {
@@ -47,6 +66,8 @@ const About = () => {
       "Brand Identity Development",
     ];
   }
+
+  const speechQuote = aboutContent?.speech_bubble_quote || "\"I build tools that allow for change and different ways of innovative operation. I'm passionate about complex, interconnected ecosystems that reflect society and what makes us human.\"";
 
   let interests: string[] = [];
   try {
@@ -100,7 +121,7 @@ const About = () => {
             {bioFull ? (
               <div
                 className="space-y-6 text-lg font-sans leading-relaxed prose prose-lg max-w-none"
-                dangerouslySetInnerHTML={{ __html: bioFull }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(bioFull) }}
               />
             ) : (
               <div className="space-y-6 text-lg font-sans leading-relaxed">
@@ -201,11 +222,17 @@ const About = () => {
                 </p>
                 <div className="space-y-3">
                   <a
-                    href="mailto:hello@lecompte.art"
+                    href={`mailto:${contactEmail}`}
                     className="flex items-center gap-2 font-bold hover:underline"
                   >
-                    <Mail className="w-5 h-5" /> hello@lecompte.art
+                    <Mail className="w-5 h-5" /> {contactEmail}
                   </a>
+                  {location && (
+                    <p className="text-sm text-muted-foreground mt-2">📍 {location}</p>
+                  )}
+                  {experienceYears && (
+                    <p className="text-sm text-muted-foreground">🎯 {experienceYears} years of experience</p>
+                  )}
                 </div>
               </ComicPanel>
             </div>
@@ -232,12 +259,12 @@ const About = () => {
           </h2>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { title: "Notardex", url: "https://notardex.com", description: "Virtual notebook platform" },
-              { title: "Solutiodex", url: "https://solutiodex.com", description: "Community-driven solutions" },
-              { title: "Zodaci", url: "https://zodaci.com", description: "Birth charts & astrology" },
-            ].map((project) => (
-              <a key={project.title} href={project.url} target="_blank" rel="noopener noreferrer">
+            {(liveProjects && liveProjects.length > 0 ? liveProjects : [
+              { id: "1", title: "Notardex", external_url: "https://notardex.com", description: "Virtual notebook platform", slug: "" },
+              { id: "2", title: "Solutiodex", external_url: "https://solutiodex.com", description: "Community-driven solutions", slug: "" },
+              { id: "3", title: "Zodaci", external_url: "https://zodaci.com", description: "Birth charts & astrology", slug: "" },
+            ]).map((project) => (
+              <a key={project.id} href={project.external_url || `/projects/${project.slug}`} target={project.external_url ? "_blank" : undefined} rel={project.external_url ? "noopener noreferrer" : undefined}>
                 <ComicPanel className="p-6 h-full">
                   <h3 className="text-xl font-display mb-2">{project.title}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{project.description}</p>

@@ -82,7 +82,7 @@ export const useAnalytics = () => {
         .from("sessions")
         .select("pages_viewed")
         .eq("id", sessionId.current)
-        .single();
+        .maybeSingle();
 
       if (session) {
         await supabase

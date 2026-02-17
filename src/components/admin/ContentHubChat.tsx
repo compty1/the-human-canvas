@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useContentActions, ContentPlan } from "@/hooks/useContentActions";
@@ -127,7 +128,7 @@ export const ContentHubChat = ({ externalPrompt, onExternalPromptConsumed }: Con
         .from("ai_conversations")
         .insert({ title, messages: msgsJson })
         .select()
-        .single();
+        .maybeSingle();
       if (data) setConversationId(data.id);
     }
     setTimeout(() => refetchConversations(), 1000);
@@ -154,11 +155,14 @@ export const ContentHubChat = ({ externalPrompt, onExternalPromptConsumed }: Con
     try {
       const siteContent = await fetchSiteContext();
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
@@ -167,8 +171,12 @@ export const ContentHubChat = ({ externalPrompt, onExternalPromptConsumed }: Con
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${resp.status}`);
+        let errMsg = `HTTP ${resp.status}`;
+        try {
+          const errBody = await resp.text();
+          try { errMsg = JSON.parse(errBody).error || errMsg; } catch { errMsg = errBody || errMsg; }
+        } catch { /* use default */ }
+        throw new Error(errMsg);
       }
 
       const reader = resp.body?.getReader();
@@ -246,8 +254,7 @@ export const ContentHubChat = ({ externalPrompt, onExternalPromptConsumed }: Con
               }
             }
           } catch {
-            buffer = line + "\n" + buffer;
-            break;
+            // Incomplete JSON chunk - skip and continue, don't re-prepend to avoid infinite loop
           }
         }
       }
@@ -371,7 +378,7 @@ export const ContentHubChat = ({ externalPrompt, onExternalPromptConsumed }: Con
               {msg.role === "assistant" ? (
                 <div
                   className="text-sm prose prose-sm max-w-none dark:prose-invert [&_p]:my-1 [&_li]:my-0.5 [&_pre]:my-2 [&_h2]:my-2 [&_h3]:my-2 [&_h4]:my-1"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(msg.content)) }}
                 />
               ) : (
                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
