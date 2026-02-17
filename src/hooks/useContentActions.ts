@@ -23,7 +23,7 @@ const ALLOWED_TABLES = [
   "articles", "updates", "projects", "artwork", "experiments",
   "favorites", "inspirations", "experiences", "certifications",
   "client_projects", "skills", "products", "product_reviews",
-  "life_periods", "learning_goals", "funding_campaigns",
+  "life_periods", "learning_goals", "funding_campaigns", "supplies_needed",
 ] as const;
 
 type AllowedTable = typeof ALLOWED_TABLES[number];
@@ -263,12 +263,12 @@ export function useContentActions() {
       "articles", "updates", "projects", "artwork", "experiments",
       "favorites", "inspirations", "experiences", "certifications",
       "client_projects", "skills", "products", "product_reviews",
-      "life_periods", "learning_goals", "funding_campaigns",
+      "life_periods", "learning_goals", "funding_campaigns", "supplies_needed",
     ];
-    const publishableTables = ["articles", "updates", "projects", "experiments", "product_reviews", "experiences", "life_periods"];
+    const publishableTables = ["articles", "updates", "projects", "experiments", "product_reviews", "experiences"];
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-    const context: Record<string, { count: number; published?: number; draft?: number; stale?: number; missingDescription?: number; recent: any[] }> = {};
+    const context: Record<string, any> = {};
 
     await Promise.all(
       tables.map(async (table) => {
@@ -283,6 +283,7 @@ export function useContentActions() {
             count: count || items.length,
             recent: items.slice(0, 5).map((item: any) => {
               const summary: any = { id: item.id };
+              // Common fields
               if (item.title) summary.title = item.title;
               if (item.name) summary.name = item.name;
               if (item.slug) summary.slug = item.slug;
@@ -291,6 +292,22 @@ export function useContentActions() {
               if (item.review_status) summary.review_status = item.review_status;
               if (item.category) summary.category = item.category;
               if (item.description) summary.description = item.description?.substring(0, 100);
+              // Table-specific enrichment
+              if (item.start_date) summary.start_date = item.start_date;
+              if (item.end_date) summary.end_date = item.end_date;
+              if (item.is_current !== undefined) summary.is_current = item.is_current;
+              if (item.themes) summary.themes = item.themes;
+              if (item.type) summary.type = item.type;
+              if (item.platform) summary.platform = item.platform;
+              if (item.price !== undefined) summary.price = item.price;
+              if (item.priority) summary.priority = item.priority;
+              if (item.project_name) summary.project_name = item.project_name;
+              if (item.client_name) summary.client_name = item.client_name;
+              if (item.product_name) summary.product_name = item.product_name;
+              if (item.company) summary.company = item.company;
+              if (item.issuer) summary.issuer = item.issuer;
+              if (item.campaign_type) summary.campaign_type = item.campaign_type;
+              if (item.progress_percent !== undefined) summary.progress_percent = item.progress_percent;
               return summary;
             }),
           };
@@ -316,6 +333,28 @@ export function useContentActions() {
         }
       })
     );
+
+    // Fetch recent AI change history so the AI knows what it recently did
+    try {
+      const { data: recentChanges } = await supabase
+        .from("ai_change_history")
+        .select("action_type, table_name, record_id, new_data, created_at, reverted")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (recentChanges && recentChanges.length > 0) {
+        context.RECENT_AI_CHANGES = recentChanges.map((c: any) => ({
+          action: c.action_type,
+          table: c.table_name,
+          record_id: c.record_id,
+          reverted: c.reverted,
+          created_at: c.created_at,
+          summary: c.new_data?.title || c.new_data?.name || c.new_data?.product_name || "unknown",
+        }));
+      }
+    } catch {
+      // non-critical
+    }
 
     return context;
   };

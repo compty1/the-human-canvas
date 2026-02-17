@@ -14,7 +14,7 @@ export const ADMIN_ROUTES: Record<string, { manager: string; editor: (id: string
   product_reviews: { manager: "/admin/product-reviews", editor: (id) => `/admin/product-reviews/${id}/edit` },
   life_periods: { manager: "/admin/life-periods", editor: (id) => `/admin/life-periods/${id}/edit` },
   skills: { manager: "/admin/skills", editor: () => "/admin/skills" },
-  supplies: { manager: "/admin/supplies", editor: () => "/admin/supplies" },
+  supplies_needed: { manager: "/admin/supplies", editor: () => "/admin/supplies" },
   learning_goals: { manager: "/admin/learning-goals", editor: () => "/admin/learning-goals" },
   funding_campaigns: { manager: "/admin/funding-campaigns", editor: () => "/admin/funding-campaigns" },
 };
@@ -39,4 +39,8 @@ export const CONTENT_FIELDS: Record<string, string[]> = {
   client_projects: ["description", "image_url"],
   products: ["description", "images"],
   product_reviews: ["content", "summary", "featured_image"],
+  life_periods: ["description", "detailed_content", "image_url", "themes"],
+  learning_goals: ["description"],
+  funding_campaigns: ["description"],
+  supplies_needed: ["description", "image_url"],
 };
