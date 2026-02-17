@@ -43,7 +43,7 @@ const Supplies = () => {
         .from("supplies_needed")
         .select("*")
         .neq("status", "purchased")
-        .order("priority", { ascending: true })
+        .order("created_at", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Supply[];
@@ -52,10 +52,16 @@ const Supplies = () => {
 
   const categories = ["all", ...new Set(supplies.map((s) => s.category))];
 
+  // Sort supplies by priority order (issue #424)
+  const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sortedSupplies = [...supplies].sort((a, b) => 
+    (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2)
+  );
+
   const filteredSupplies =
     selectedCategory === "all"
-      ? supplies
-      : supplies.filter((s) => s.category === selectedCategory);
+      ? sortedSupplies
+      : sortedSupplies.filter((s) => s.category === selectedCategory);
 
   return (
     <Layout>
@@ -151,7 +157,7 @@ const Supplies = () => {
                             statusColors.needed
                           }`}
                         >
-                          {supply.status.replace("_", " ")}
+                          {supply.status.replace(/_/g, " ")}
                         </span>
                       </div>
 
@@ -256,6 +262,9 @@ const Supplies = () => {
           description={fundingItem.description || undefined}
           targetId={fundingItem.id}
           contributionType="supplies"
+          onSuccess={() => {
+            setFundingItem(null);
+          }}
         />
       )}
     </Layout>

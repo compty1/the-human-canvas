@@ -56,7 +56,8 @@ const Inspirations = () => {
         .from("favorites")
         .select("*")
         .eq("is_childhood_root", true)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .limit(30);
       if (error) throw error;
       return data;
     },
@@ -148,13 +149,14 @@ const Inspirations = () => {
                               src={insp.image_url}
                               alt={insp.title}
                               className="w-full h-full object-cover"
+                              loading="lazy"
                             />
                           </div>
                         )}
                         <div className={`flex-1 p-6 ${!insp.image_url ? "w-full" : ""}`}>
                           <div className="flex items-center gap-3 mb-3">
-                            <span className="text-2xl font-display text-muted-foreground">
-                              #{index + 1}
+                             <span className="text-2xl font-display text-muted-foreground">
+                              #{insp.order_index ?? index + 1}
                             </span>
                             <span className={`px-2 py-1 text-xs font-bold text-white flex items-center gap-1 ${categoryColors[insp.category]}`}>
                               <Icon className="w-3 h-3" />

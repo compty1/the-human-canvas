@@ -274,7 +274,7 @@ Make these realistic and relevant. Focus on genuine opportunities.`;
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "An internal error occurred. Please try again.",
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

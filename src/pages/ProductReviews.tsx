@@ -16,6 +16,7 @@ const ProductReviews = () => {
         .from("product_reviews")
         .select("*")
         .eq("published", true)
+        .not("review_status", "eq", "rejected")
         .order("created_at", { ascending: false });
       
       if (error) throw error;

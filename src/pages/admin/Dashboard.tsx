@@ -49,7 +49,7 @@ const Dashboard = () => {
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [pageViews, projects, articles, updates, artwork, leads, sessions] =
+      const [pageViews, projects, articles, updates, artwork, leads, experiments, favorites, experiences, certifications, products] =
         await Promise.all([
           supabase.from("page_views").select("id", { count: "exact" }),
           supabase.from("projects").select("id", { count: "exact" }),
@@ -57,7 +57,11 @@ const Dashboard = () => {
           supabase.from("updates").select("id", { count: "exact" }),
           supabase.from("artwork").select("id", { count: "exact" }),
           supabase.from("leads").select("id", { count: "exact" }),
-          supabase.from("sessions").select("id", { count: "exact" }),
+          supabase.from("experiments").select("id", { count: "exact" }),
+          supabase.from("favorites").select("id", { count: "exact" }),
+          supabase.from("experiences").select("id", { count: "exact" }),
+          supabase.from("certifications").select("id", { count: "exact" }),
+          supabase.from("products").select("id", { count: "exact" }),
         ]);
 
       return {
@@ -67,7 +71,11 @@ const Dashboard = () => {
         updates: updates.count || 0,
         artwork: artwork.count || 0,
         leads: leads.count || 0,
-        sessions: sessions.count || 0,
+        experiments: experiments.count || 0,
+        favorites: favorites.count || 0,
+        experiences: experiences.count || 0,
+        certifications: certifications.count || 0,
+        products: products.count || 0,
       };
     },
   });
@@ -121,11 +129,11 @@ const Dashboard = () => {
             href="/admin/analytics"
           />
           <StatCard
-            title="Sessions"
-            value={stats?.sessions || 0}
-            icon={Users}
+            title="Experiments"
+            value={stats?.experiments || 0}
+            icon={FolderKanban}
             color="bg-pop-magenta"
-            href="/admin/analytics"
+            href="/admin/experiments"
           />
           <StatCard
             title="Projects"
@@ -161,6 +169,34 @@ const Dashboard = () => {
             icon={Users}
             color="bg-accent text-accent-foreground"
             href="/admin/leads"
+          />
+          <StatCard
+            title="Experiments"
+            value={stats?.experiments || 0}
+            icon={FolderKanban}
+            color="bg-pop-orange"
+            href="/admin/experiments"
+          />
+          <StatCard
+            title="Favorites"
+            value={stats?.favorites || 0}
+            icon={Eye}
+            color="bg-pop-cyan"
+            href="/admin/favorites"
+          />
+          <StatCard
+            title="Experiences"
+            value={stats?.experiences || 0}
+            icon={FileText}
+            color="bg-secondary"
+            href="/admin/experiences"
+          />
+          <StatCard
+            title="Products"
+            value={stats?.products || 0}
+            icon={FolderKanban}
+            color="bg-pop-magenta"
+            href="/admin/products"
           />
         </div>
 
@@ -243,34 +279,31 @@ const Dashboard = () => {
             Quick Actions
           </h2>
           <div className="flex flex-wrap gap-3">
-            <Link
-              to="/admin/articles/new"
-              className="px-4 py-2 bg-pop-cyan text-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform"
-            >
+            <Link to="/admin/articles/new" className="px-4 py-2 bg-pop-cyan text-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
               + New Article
             </Link>
-            <Link
-              to="/admin/updates/new"
-              className="px-4 py-2 bg-pop-magenta text-background font-bold border-2 border-background hover:translate-y-[-2px] transition-transform"
-            >
+            <Link to="/admin/updates/new" className="px-4 py-2 bg-pop-magenta text-background font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
               + New Update
             </Link>
-            <Link
-              to="/admin/projects/new"
-              className="px-4 py-2 bg-pop-yellow text-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform"
-            >
+            <Link to="/admin/projects/new" className="px-4 py-2 bg-pop-yellow text-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
               + New Project
             </Link>
-            <Link
-              to="/admin/ai-writer"
-              className="px-4 py-2 bg-pop-orange text-background font-bold border-2 border-background hover:translate-y-[-2px] transition-transform"
-            >
+            <Link to="/admin/experiments/new" className="px-4 py-2 bg-pop-orange text-background font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
+              + New Experiment
+            </Link>
+            <Link to="/admin/artwork/new" className="px-4 py-2 bg-primary text-primary-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
+              + New Artwork
+            </Link>
+            <Link to="/admin/product-reviews/new" className="px-4 py-2 bg-secondary text-secondary-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
+              + New Review
+            </Link>
+            <Link to="/admin/ai-writer" className="px-4 py-2 bg-pop-orange text-background font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
               ✨ AI Writer
             </Link>
-            <Link
-              to="/admin/leads"
-              className="px-4 py-2 bg-secondary text-secondary-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform"
-            >
+            <Link to="/admin/content-hub" className="px-4 py-2 bg-pop-cyan text-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
+              🧠 Content Hub
+            </Link>
+            <Link to="/admin/leads" className="px-4 py-2 bg-secondary text-secondary-foreground font-bold border-2 border-background hover:translate-y-[-2px] transition-transform">
               🔍 Find Leads
             </Link>
           </div>

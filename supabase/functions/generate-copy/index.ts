@@ -1,10 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const ALLOWED_CONTENT_TYPES = [
+  "project", "project_description", "article", "article_excerpt", "update", "update_post",
+  "artwork", "artwork_description", "about", "about_section", "product_review",
+  "custom", "general", "bulk_import",
+];
 
 interface GenerateCopyRequest {
   contentType?: string;
@@ -17,12 +24,41 @@ interface GenerateCopyRequest {
   fields?: string[];
 }
 
+async function verifyAdmin(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+  
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return false;
+  
+  const { data: isAdmin } = await supabase.rpc("has_role", {
+    _user_id: user.id,
+    _role: "admin",
+  });
+  return !!isAdmin;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Auth check (issue #378)
+    if (!(await verifyAdmin(req))) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const body: GenerateCopyRequest = await req.json();
     const { 
       contentType, 
@@ -35,11 +71,18 @@ serve(async (req) => {
       fields = []
     } = body;
 
+    // Validate contentType (issue #389)
     const actualType = contentType || type || "general";
+    if (!ALLOWED_CONTENT_TYPES.includes(actualType)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid content type" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      throw new Error("AI service is not configured");
     }
 
     // Handle bulk import with enhanced extraction
@@ -57,9 +100,6 @@ EXTRACTION RULES:
 3. For number fields (revenue, costs, etc.), return numbers only (no currency symbols)
 4. If a field cannot be determined from the text, omit it entirely
 5. Be thorough - extract as much relevant information as possible
-6. For case_study field, create a comprehensive narrative if enough information is available
-7. For description fields, summarize the key points concisely
-8. For long_description or detailed_content, preserve more detail and structure
 
 Return ONLY valid JSON with the extracted values. No markdown, no explanations, just the JSON object.`;
 
@@ -72,10 +112,7 @@ Return ONLY valid JSON with the extracted values. No markdown, no explanations, 
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: [
-            { 
-              role: "system", 
-              content: "You are a precise data extraction assistant. Extract structured information from text and return it as valid JSON only. Never include markdown formatting or explanations." 
-            },
+            { role: "system", content: "You are a precise data extraction assistant. Extract structured information from text and return it as valid JSON only." },
             { role: "user", content: extractionPrompt },
           ],
         }),
@@ -83,9 +120,6 @@ Return ONLY valid JSON with the extracted values. No markdown, no explanations, 
 
       if (!response.ok) {
         const status = response.status;
-        const errorText = await response.text();
-        console.error(`AI Gateway error ${status}:`, errorText);
-        
         if (status === 429) {
           return new Response(
             JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait and try again." }),
@@ -98,7 +132,7 @@ Return ONLY valid JSON with the extracted values. No markdown, no explanations, 
             { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        throw new Error(`AI Gateway error: ${status}`);
+        throw new Error("AI service temporarily unavailable");
       }
 
       const data = await response.json();
@@ -106,37 +140,18 @@ Return ONLY valid JSON with the extracted values. No markdown, no explanations, 
       
       let extracted = {};
       try {
-        // Clean up common JSON formatting issues
         const cleanedContent = extractedContent
-          .replace(/```json\n?/g, "")
-          .replace(/```\n?/g, "")
-          .replace(/^[\s\n]*/, "")
-          .replace(/[\s\n]*$/, "")
-          .trim();
-        
+          .replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         extracted = JSON.parse(cleanedContent);
-        console.log("Successfully extracted fields:", Object.keys(extracted));
-      } catch (parseError) {
-        console.error("Initial parse failed, attempting recovery:", parseError);
-        
-        // Try to find JSON object in response
+      } catch {
         const jsonMatch = extractedContent.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          try {
-            extracted = JSON.parse(jsonMatch[0]);
-            console.log("Recovery parse successful, fields:", Object.keys(extracted));
-          } catch {
-            console.error("Recovery parse also failed");
-          }
+          try { extracted = JSON.parse(jsonMatch[0]); } catch {}
         }
       }
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          extracted,
-          usage: data.usage 
-        }),
+        JSON.stringify({ success: true, extracted, usage: data.usage }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -157,29 +172,25 @@ Return ONLY valid JSON with the extracted values. No markdown, no explanations, 
     };
 
     const contentGuides: Record<string, string> = {
-      project: "Write compelling copy for a portfolio project. Highlight the problem solved, technology used, and results achieved.",
-      project_description: "Write compelling copy for a portfolio project. Highlight the problem solved, technology used, and results achieved.",
-      article: "Write engaging copy for a blog article or essay. Focus on the narrative and key insights.",
-      article_excerpt: "Write an engaging excerpt for a blog article. Hook the reader and summarize key points.",
-      update: "Write a short, engaging update or quick note. Keep it personal and informative.",
-      update_post: "Write a short, engaging update or quick note. Keep it personal and informative.",
-      artwork: "Write descriptive copy for artwork. Capture the emotion, technique, and story behind the piece.",
-      artwork_description: "Write descriptive copy for artwork. Capture the emotion, technique, and story behind the piece.",
-      about: "Write biographical copy that showcases personality, skills, and passion.",
-      about_section: "Write biographical copy that showcases personality, skills, and passion.",
-      product_review: "Write a thoughtful product review. Cover strengths, weaknesses, and recommendations.",
+      project: "Write compelling copy for a portfolio project.",
+      project_description: "Write compelling copy for a portfolio project.",
+      article: "Write engaging copy for a blog article or essay.",
+      article_excerpt: "Write an engaging excerpt for a blog article.",
+      update: "Write a short, engaging update or quick note.",
+      update_post: "Write a short, engaging update or quick note.",
+      artwork: "Write descriptive copy for artwork.",
+      artwork_description: "Write descriptive copy for artwork.",
+      about: "Write biographical copy that showcases personality.",
+      about_section: "Write biographical copy that showcases personality.",
+      product_review: "Write a thoughtful product review.",
       custom: "Write copy that fits the context provided.",
       general: "Write copy that fits the context provided.",
     };
 
-    const systemPrompt = `You are a skilled copywriter for a creative portfolio website. Your writing style is bold, engaging, and authentic. 
-    
-The portfolio owner is interested in photography, digital art, pop art style, UX design, web development, and views culture as "future artifacts of humanity."
-
+    const systemPrompt = `You are a skilled copywriter for a creative portfolio website.
 ${contentGuides[actualType] || contentGuides.general}
 ${toneGuide[tone] || toneGuide.professional}
 ${lengthGuide[length] || lengthGuide.standard}
-
 ${variations > 1 ? `Generate ${variations} different variations, separated by "---VARIATION---"` : ""}`;
 
     const userPrompt = existingContent 
@@ -203,9 +214,6 @@ ${variations > 1 ? `Generate ${variations} different variations, separated by "-
 
     if (!response.ok) {
       const status = response.status;
-      const errorText = await response.text();
-      console.error(`AI Gateway error ${status}:`, errorText);
-      
       if (status === 429) {
         return new Response(
           JSON.stringify({ success: false, error: "Rate limit exceeded" }),
@@ -218,7 +226,7 @@ ${variations > 1 ? `Generate ${variations} different variations, separated by "-
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error(`AI Gateway error: ${status}`);
+      throw new Error("AI service temporarily unavailable");
     }
 
     const data = await response.json();
@@ -229,22 +237,13 @@ ${variations > 1 ? `Generate ${variations} different variations, separated by "-
       : [generatedContent.trim()];
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        results,
-        variations: results,
-        content: results[0],
-        usage: data.usage 
-      }),
+      JSON.stringify({ success: true, results, variations: results, content: results[0], usage: data.usage }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error generating copy:", error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
-      }),
+      JSON.stringify({ success: false, error: "An internal error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
