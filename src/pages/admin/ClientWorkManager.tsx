@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -5,7 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Loader2, Briefcase, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-
+import { PROJECT_TYPES, getProjectTypeLabel, getProjectTypeIcon } from "@/lib/clientProjectTypes";
 interface ClientProject {
   id: string;
   client_name: string;
@@ -18,10 +19,12 @@ interface ClientProject {
   start_date: string | null;
   end_date: string | null;
   created_at: string;
+  project_type: string;
 }
 
 const ClientWorkManager = () => {
   const queryClient = useQueryClient();
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["admin-client-projects"],
@@ -63,8 +66,9 @@ const ClientWorkManager = () => {
     }
   };
 
-  const completedCount = projects.filter(p => p.status === "completed").length;
-  const inProgressCount = projects.filter(p => p.status === "in_progress").length;
+  const filteredProjects = projects.filter(p => typeFilter === "all" || p.project_type === typeFilter);
+  const completedCount = filteredProjects.filter(p => p.status === "completed").length;
+  const inProgressCount = filteredProjects.filter(p => p.status === "in_progress").length;
 
   return (
     <AdminLayout>
@@ -84,17 +88,36 @@ const ClientWorkManager = () => {
           </Link>
         </div>
 
+        {/* Type Filter */}
+        <div className="flex flex-wrap gap-1">
+          <button
+            onClick={() => setTypeFilter("all")}
+            className={`px-3 py-1 text-xs font-bold border border-foreground ${typeFilter === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          >
+            All Types
+          </button>
+          {PROJECT_TYPES.map(t => (
+            <button
+              key={t.value}
+              onClick={() => setTypeFilter(t.value)}
+              className={`px-3 py-1 text-xs font-bold border border-foreground ${typeFilter === t.value ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
         {/* Stats */}
         <div className="grid md:grid-cols-3 gap-4">
           <ComicPanel className="p-4 text-center">
-            <div className="text-3xl font-display">{projects.length}</div>
+            <div className="text-3xl font-display">{filteredProjects.length}</div>
             <div className="text-sm text-muted-foreground">Total Projects</div>
           </ComicPanel>
-          <ComicPanel className="p-4 text-center bg-green-100">
+          <ComicPanel className="p-4 text-center">
             <div className="text-3xl font-display">{completedCount}</div>
             <div className="text-sm text-muted-foreground">Completed</div>
           </ComicPanel>
-          <ComicPanel className="p-4 text-center bg-yellow-100">
+          <ComicPanel className="p-4 text-center">
             <div className="text-3xl font-display">{inProgressCount}</div>
             <div className="text-sm text-muted-foreground">In Progress</div>
           </ComicPanel>
@@ -105,7 +128,7 @@ const ClientWorkManager = () => {
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : projects.length === 0 ? (
+        ) : filteredProjects.length === 0 ? (
           <ComicPanel className="p-12 text-center">
             <Briefcase className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-2xl font-display mb-2">No Client Projects Yet</h2>
@@ -118,7 +141,7 @@ const ClientWorkManager = () => {
           </ComicPanel>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+            {filteredProjects.map((project) => (
               <ComicPanel key={project.id} className="p-0 overflow-hidden">
                 {project.image_url && (
                   <div className="aspect-video overflow-hidden">
@@ -130,11 +153,14 @@ const ClientWorkManager = () => {
                   </div>
                 )}
                 <div className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className={`px-2 py-0.5 text-xs font-bold uppercase ${
-                      project.status === "completed" ? "bg-green-500 text-white" : "bg-yellow-400"
+                      project.status === "completed" ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
                     }`}>
                       {project.status === "completed" ? "Completed" : "In Progress"}
+                    </span>
+                    <span className="px-2 py-0.5 text-xs font-bold bg-muted">
+                      {getProjectTypeIcon(project.project_type || "web_design")} {getProjectTypeLabel(project.project_type || "web_design")}
                     </span>
                     {!project.is_public && (
                       <span className="px-2 py-0.5 text-xs font-bold uppercase bg-muted">

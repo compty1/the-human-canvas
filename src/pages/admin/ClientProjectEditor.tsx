@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { PROJECT_TYPES, getProjectTypeLabel } from "@/lib/clientProjectTypes";
 
 const ClientProjectEditor = () => {
   const { id } = useParams();
@@ -35,6 +36,8 @@ const ClientProjectEditor = () => {
     testimonial: "",
     testimonial_author: "",
     is_public: true,
+    project_type: "web_design",
+    type_metadata: {} as Record<string, any>,
   });
 
   const [newTech, setNewTech] = useState("");
@@ -73,6 +76,8 @@ const ClientProjectEditor = () => {
         testimonial: project.testimonial || "",
         testimonial_author: project.testimonial_author || "",
         is_public: project.is_public ?? true,
+        project_type: (project as any).project_type || "web_design",
+        type_metadata: (project as any).type_metadata || {},
       });
     }
   }, [project]);
@@ -129,6 +134,12 @@ const ClientProjectEditor = () => {
     }
   };
 
+  const updateMeta = (key: string, value: any) => {
+    setForm(prev => ({ ...prev, type_metadata: { ...prev.type_metadata, [key]: value } }));
+  };
+
+  const meta = form.type_metadata;
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -165,6 +176,27 @@ const ClientProjectEditor = () => {
             if (data.features) setForm(prev => ({ ...prev, features: Array.isArray(data.features) ? data.features : [] }));
           }}
         />
+
+        {/* Project Type Selector */}
+        <ComicPanel className="p-6">
+          <h2 className="text-xl font-display mb-4">Project Type</h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {PROJECT_TYPES.map(type => (
+              <button
+                key={type.value}
+                onClick={() => setForm(prev => ({ ...prev, project_type: type.value }))}
+                className={`p-3 text-center border-2 transition-all text-sm ${
+                  form.project_type === type.value
+                    ? "border-primary bg-primary/10 font-bold"
+                    : "border-foreground hover:bg-muted"
+                }`}
+              >
+                <span className="text-xl block mb-1">{type.icon}</span>
+                {type.label}
+              </button>
+            ))}
+          </div>
+        </ComicPanel>
 
         {/* Basic Info */}
         <ComicPanel className="p-6">
@@ -277,6 +309,352 @@ const ClientProjectEditor = () => {
             />
           </div>
         </ComicPanel>
+
+        {/* Type-Specific Fields */}
+        {form.project_type === "logo_branding" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">🎨 Branding Details</h2>
+            <div className="grid gap-4">
+              <div>
+                <Label>Brand Colors (comma-separated hex codes)</Label>
+                <Input
+                  value={(meta.brand_colors || []).join(", ")}
+                  onChange={e => updateMeta("brand_colors", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="#FF0000, #00FF00, #0000FF"
+                />
+              </div>
+              <div>
+                <Label>Font Names (comma-separated)</Label>
+                <Input
+                  value={(meta.font_names || []).join(", ")}
+                  onChange={e => updateMeta("font_names", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="Helvetica, Georgia"
+                />
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Logo Variations</Label>
+                  <Input
+                    type="number"
+                    value={meta.logo_variations || ""}
+                    onChange={e => updateMeta("logo_variations", parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label>Brand Guidelines URL</Label>
+                  <Input
+                    value={meta.guidelines_url || ""}
+                    onChange={e => updateMeta("guidelines_url", e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "copywriting" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">✍️ Copywriting Details</h2>
+            <div className="grid gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Content Type</Label>
+                  <select
+                    value={meta.content_type || ""}
+                    onChange={e => updateMeta("content_type", e.target.value)}
+                    className="w-full h-10 px-3 border-2 border-input bg-background"
+                  >
+                    <option value="">Select...</option>
+                    <option value="blog">Blog Posts</option>
+                    <option value="web_copy">Web Copy</option>
+                    <option value="ad_copy">Ad Copy</option>
+                    <option value="email">Email Campaigns</option>
+                    <option value="social">Social Media</option>
+                    <option value="product">Product Descriptions</option>
+                    <option value="script">Scripts</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Word Count</Label>
+                  <Input
+                    type="number"
+                    value={meta.word_count || ""}
+                    onChange={e => updateMeta("word_count", parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label>Tone / Voice</Label>
+                  <Input
+                    value={meta.tone || ""}
+                    onChange={e => updateMeta("tone", e.target.value)}
+                    placeholder="Professional, casual, witty..."
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Sample Excerpt</Label>
+                <Textarea
+                  value={meta.sample_excerpt || ""}
+                  onChange={e => updateMeta("sample_excerpt", e.target.value)}
+                  rows={3}
+                  placeholder="A short sample of the copy written..."
+                />
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "business_plan" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">📊 Business Plan Details</h2>
+            <div className="grid gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Industry</Label>
+                  <Input
+                    value={meta.industry || ""}
+                    onChange={e => updateMeta("industry", e.target.value)}
+                    placeholder="Technology, Healthcare..."
+                  />
+                </div>
+                <div>
+                  <Label>Deliverable Format</Label>
+                  <Input
+                    value={meta.format || ""}
+                    onChange={e => updateMeta("format", e.target.value)}
+                    placeholder="PDF, Presentation, Document..."
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Executive Summary</Label>
+                <Textarea
+                  value={meta.executive_summary || ""}
+                  onChange={e => updateMeta("executive_summary", e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label>Key Sections (comma-separated)</Label>
+                <Input
+                  value={(meta.sections || []).join(", ")}
+                  onChange={e => updateMeta("sections", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="Executive Summary, Market Analysis, Financial Projections..."
+                />
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "product_design" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">📐 Product Design Details</h2>
+            <div className="grid gap-4">
+              <div>
+                <Label>Materials (comma-separated)</Label>
+                <Input
+                  value={(meta.materials || []).join(", ")}
+                  onChange={e => updateMeta("materials", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="Wood, Metal, Plastic..."
+                />
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Dimensions</Label>
+                  <Input
+                    value={meta.dimensions || ""}
+                    onChange={e => updateMeta("dimensions", e.target.value)}
+                    placeholder="10x20x5 cm"
+                  />
+                </div>
+                <div>
+                  <Label>Design Tools (comma-separated)</Label>
+                  <Input
+                    value={(meta.design_tools || []).join(", ")}
+                    onChange={e => updateMeta("design_tools", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                    placeholder="Figma, Blender, AutoCAD..."
+                  />
+                </div>
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "product_review" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">🔍 Review / Analysis Details</h2>
+            <div className="grid gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Product Reviewed</Label>
+                  <Input
+                    value={meta.product_reviewed || ""}
+                    onChange={e => updateMeta("product_reviewed", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Rating (1-10)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={meta.rating || ""}
+                    onChange={e => updateMeta("rating", parseInt(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Key Findings (comma-separated)</Label>
+                <Input
+                  value={(meta.key_findings || []).join(", ")}
+                  onChange={e => updateMeta("key_findings", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                />
+              </div>
+              <div>
+                <Label>Methodology</Label>
+                <Textarea
+                  value={meta.methodology || ""}
+                  onChange={e => updateMeta("methodology", e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "consulting" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">💡 Consulting Details</h2>
+            <div className="grid gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Focus Area</Label>
+                  <Input
+                    value={meta.focus_area || ""}
+                    onChange={e => updateMeta("focus_area", e.target.value)}
+                    placeholder="Growth strategy, operations..."
+                  />
+                </div>
+                <div>
+                  <Label>Duration</Label>
+                  <Input
+                    value={meta.duration || ""}
+                    onChange={e => updateMeta("duration", e.target.value)}
+                    placeholder="3 months, 6 weeks..."
+                  />
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Recommendations Count</Label>
+                  <Input
+                    type="number"
+                    value={meta.recommendations_count || ""}
+                    onChange={e => updateMeta("recommendations_count", parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label>Outcome Metrics</Label>
+                  <Input
+                    value={meta.outcome_metrics || ""}
+                    onChange={e => updateMeta("outcome_metrics", e.target.value)}
+                    placeholder="30% revenue increase..."
+                  />
+                </div>
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "social_media" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">📱 Social Media Details</h2>
+            <div className="grid gap-4">
+              <div>
+                <Label>Platforms (comma-separated)</Label>
+                <Input
+                  value={(meta.platforms || []).join(", ")}
+                  onChange={e => updateMeta("platforms", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="Instagram, TikTok, LinkedIn..."
+                />
+              </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Campaign Type</Label>
+                  <Input
+                    value={meta.campaign_type || ""}
+                    onChange={e => updateMeta("campaign_type", e.target.value)}
+                    placeholder="Brand awareness, launch..."
+                  />
+                </div>
+                <div>
+                  <Label>Reach</Label>
+                  <Input
+                    value={meta.reach || ""}
+                    onChange={e => updateMeta("reach", e.target.value)}
+                    placeholder="50K impressions"
+                  />
+                </div>
+                <div>
+                  <Label>Engagement</Label>
+                  <Input
+                    value={meta.engagement || ""}
+                    onChange={e => updateMeta("engagement", e.target.value)}
+                    placeholder="5% engagement rate"
+                  />
+                </div>
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "photography_video" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">📷 Photography / Video Details</h2>
+            <div className="grid gap-4">
+              <div>
+                <Label>Equipment (comma-separated)</Label>
+                <Input
+                  value={(meta.equipment || []).join(", ")}
+                  onChange={e => updateMeta("equipment", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="Canon R5, DJI Mavic..."
+                />
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Deliverables Count</Label>
+                  <Input
+                    type="number"
+                    value={meta.deliverables_count || ""}
+                    onChange={e => updateMeta("deliverables_count", parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label>Style / Genre</Label>
+                  <Input
+                    value={meta.style || ""}
+                    onChange={e => updateMeta("style", e.target.value)}
+                    placeholder="Documentary, portrait, commercial..."
+                  />
+                </div>
+              </div>
+            </div>
+          </ComicPanel>
+        )}
+
+        {form.project_type === "other" && (
+          <ComicPanel className="p-6">
+            <h2 className="text-xl font-display mb-4">📁 Additional Notes</h2>
+            <Textarea
+              value={meta.notes || ""}
+              onChange={e => updateMeta("notes", e.target.value)}
+              rows={4}
+              placeholder="Describe the project type and any specific details..."
+            />
+          </ComicPanel>
+        )}
 
         {/* Tech Stack */}
         <ComicPanel className="p-6">

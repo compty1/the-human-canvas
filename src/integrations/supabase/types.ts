@@ -383,6 +383,7 @@ export type Database = {
           is_public: boolean | null
           long_description: string | null
           project_name: string
+          project_type: string
           screenshots: string[] | null
           slug: string
           start_date: string | null
@@ -390,6 +391,7 @@ export type Database = {
           tech_stack: string[] | null
           testimonial: string | null
           testimonial_author: string | null
+          type_metadata: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -403,6 +405,7 @@ export type Database = {
           is_public?: boolean | null
           long_description?: string | null
           project_name: string
+          project_type?: string
           screenshots?: string[] | null
           slug: string
           start_date?: string | null
@@ -410,6 +413,7 @@ export type Database = {
           tech_stack?: string[] | null
           testimonial?: string | null
           testimonial_author?: string | null
+          type_metadata?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -423,6 +427,7 @@ export type Database = {
           is_public?: boolean | null
           long_description?: string | null
           project_name?: string
+          project_type?: string
           screenshots?: string[] | null
           slug?: string
           start_date?: string | null
@@ -430,6 +435,7 @@ export type Database = {
           tech_stack?: string[] | null
           testimonial?: string | null
           testimonial_author?: string | null
+          type_metadata?: Json | null
           updated_at?: string | null
         }
         Relationships: []
