@@ -93,6 +93,12 @@ export const ContentHubChat = () => {
     setShowPasteHint(value.length > 200);
   };
 
+  const sendWithPrompt = (prompt: string) => {
+    const text = input.trim();
+    if (!text || streaming) return;
+    sendMessage(`${prompt}\n\n${text}`);
+  };
+
   const saveConversation = async (msgs: ChatMessage[]) => {
     const msgsJson = msgs.map((m) => ({
       role: m.role,
@@ -115,12 +121,11 @@ export const ContentHubChat = () => {
         .single();
       if (data) setConversationId(data.id);
     }
-    // Don't refetch conversations immediately - we have the state we need
     setTimeout(() => refetchConversations(), 1000);
   };
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText || input).trim();
     if (!text || streaming) return;
 
     setActiveConversation(true);
@@ -384,9 +389,32 @@ export const ContentHubChat = () => {
       {/* Input */}
       <div className="border-t border-border p-3">
         {showPasteHint && (
-          <div className="flex items-center gap-2 mb-2 p-2 bg-accent/50 rounded text-xs">
-            <Clipboard className="w-3 h-3" />
-            <span>Looks like you pasted content. I can suggest where to add this!</span>
+          <div className="mb-2 p-3 bg-accent/50 rounded-lg border border-border space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <Clipboard className="w-3 h-3" />
+              <span>Pasted content detected — generate from it:</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { label: "Article", prompt: "Analyze this pasted text and create an article with title, slug, excerpt, category, tags, and full content:" },
+                { label: "Project", prompt: "Analyze this pasted text and create a project entry with title, slug, description, tech_stack, and features:" },
+                { label: "Update", prompt: "Turn this pasted text into a site update with title, slug, and content:" },
+                { label: "Experience", prompt: "Extract an experience entry from this text with title, slug, category, description, skills_used, and key_achievements:" },
+                { label: "Product Review", prompt: "Create a product review from this text with product_name, company, slug, summary, strengths, pain_points, and content:" },
+                { label: "Auto-detect", prompt: "Analyze this pasted content and suggest the best content type and fields for it. Create a structured plan:" },
+              ].map((action) => (
+                <Button
+                  key={action.label}
+                  size="sm"
+                  variant={action.label === "Auto-detect" ? "default" : "outline"}
+                  className="h-6 text-xs px-2"
+                  onClick={() => sendWithPrompt(action.prompt)}
+                  disabled={streaming}
+                >
+                  {action.label}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
         <div className="flex gap-2">
@@ -400,7 +428,7 @@ export const ContentHubChat = () => {
             rows={1}
           />
           <Button
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={!input.trim() || streaming}
             size="sm"
             className="h-auto"
