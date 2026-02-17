@@ -37,11 +37,12 @@ export const FundingModal = ({
   const [showPublicly, setShowPublicly] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const amount = selectedAmount || (customAmount ? parseFloat(customAmount) : 0);
+  const parsedCustom = customAmount ? parseFloat(customAmount) : 0;
+  const amount = selectedAmount || (Number.isFinite(parsedCustom) ? parsedCustom : 0);
 
   const handleSubmit = async () => {
-    if (amount <= 0) {
-      toast.error("Please select an amount");
+    if (!amount || amount <= 0 || amount > 10000) {
+      toast.error(amount > 10000 ? "Maximum contribution is $10,000" : "Please select a valid amount");
       return;
     }
 
@@ -111,6 +112,8 @@ export const FundingModal = ({
                 type="number"
                 placeholder="Other"
                 value={customAmount}
+                min="1"
+                max="10000"
                 onChange={(e) => {
                   setCustomAmount(e.target.value);
                   setSelectedAmount(null);
@@ -129,6 +132,7 @@ export const FundingModal = ({
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Add a message of support..."
               rows={2}
+              maxLength={500}
               className="mt-1"
             />
           </div>

@@ -52,6 +52,7 @@ const Store = () => {
                       <img
                         src={product.images[0]}
                         alt={product.name}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />
                     ) : (
@@ -68,10 +69,10 @@ const Store = () => {
                     )}
                     <h3 className="text-lg font-display mt-1">{product.name}</h3>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xl font-bold">${product.price}</span>
+                      <span className="text-xl font-bold">${product.price.toFixed(2)}</span>
                       {product.compare_at_price && product.compare_at_price > product.price && (
                         <span className="text-muted-foreground line-through">
-                          ${product.compare_at_price}
+                          ${product.compare_at_price.toFixed(2)}
                         </span>
                       )}
                     </div>

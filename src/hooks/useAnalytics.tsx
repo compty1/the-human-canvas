@@ -72,7 +72,7 @@ export const useAnalytics = () => {
         visitor_id: visitorId.current,
         session_id: sessionId.current,
         referrer: document.referrer || null,
-        user_agent: navigator.userAgent,
+        user_agent: navigator.userAgent.substring(0, 200),
         device_type: getDeviceType(),
         screen_size: getScreenSize(),
       });
@@ -141,7 +141,8 @@ export const useAnalytics = () => {
   // Track page views on route change
   useEffect(() => {
     // Track time on previous page
-    if (pageLoadTime.current !== Date.now()) {
+    // Track time on previous page (skip first load)
+    if (Date.now() - pageLoadTime.current > 1000) {
       trackTimeOnPage();
     }
 
@@ -150,6 +151,9 @@ export const useAnalytics = () => {
 
     // Track session start
     trackSessionStart();
+
+    // Skip tracking for admin pages
+    if (location.pathname.startsWith("/admin")) return;
 
     // Track new page view
     trackPageView(location.pathname);
@@ -173,7 +177,8 @@ export const useAnalytics = () => {
       if (link) {
         const href = link.getAttribute("href");
         const text = link.textContent?.trim() || "";
-        if (href) {
+        // Only track external links, not internal navigation
+        if (href && (href.startsWith("http") || href.startsWith("mailto:"))) {
           trackLinkClick(href, text);
         }
       }

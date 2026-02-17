@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Loader2, Plus, X, Image } from "lucide-react";
 import { toast } from "sonner";
+import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 
 const LifePeriodEditor = () => {
   const { id } = useParams();
@@ -139,6 +140,12 @@ const LifePeriodEditor = () => {
       toast.error("Failed to save");
       console.error(error);
     },
+  });
+
+  useEditorShortcuts({
+    onSave: () => saveMutation.mutate(),
+    onExit: () => navigate("/admin/life-periods"),
+    isDirty: form.title !== (period?.title || ""),
   });
 
   const addTheme = () => {
