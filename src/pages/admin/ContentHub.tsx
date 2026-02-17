@@ -50,7 +50,8 @@ const ContentHub = () => {
       const tables = [
         "articles", "updates", "projects", "artwork", "experiments",
         "favorites", "inspirations", "experiences", "certifications",
-        "client_projects", "skills", "products",
+        "client_projects", "skills", "products", "product_reviews",
+        "life_periods", "learning_goals", "funding_campaigns", "supplies_needed",
       ];
       const counts: Record<string, { total: number; published?: number; draft?: number }> = {};
       await Promise.all(
