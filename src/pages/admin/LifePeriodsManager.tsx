@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, History, Star } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, History, Star, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useState } from "react";
 
 interface LifePeriod {
   id: string;
@@ -18,10 +19,16 @@ interface LifePeriod {
   is_current: boolean;
   order_index: number;
   created_at: string;
+  category: string | null;
 }
+
+const LIFE_PERIOD_CATEGORIES = [
+  "creative", "professional", "personal", "educational", "transitional", "uncategorized",
+];
 
 const LifePeriodsManager = () => {
   const queryClient = useQueryClient();
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   const { data: periods = [], isLoading } = useQuery({
     queryKey: ["admin-life-periods"],
@@ -88,6 +95,26 @@ const LifePeriodsManager = () => {
           </Link>
         </div>
 
+        {/* Category Filter */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <button
+            onClick={() => setCategoryFilter("all")}
+            className={`px-3 py-1 text-sm font-bold border-2 transition-colors ${categoryFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "border-foreground hover:bg-muted"}`}
+          >
+            All
+          </button>
+          {LIFE_PERIOD_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-3 py-1 text-sm font-bold border-2 transition-colors capitalize ${categoryFilter === cat ? "bg-primary text-primary-foreground border-primary" : "border-foreground hover:bg-muted"}`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {/* Current Period Highlight */}
         {currentPeriod && (
           <ComicPanel className="p-6 bg-pop-yellow/20">
@@ -132,8 +159,8 @@ const LifePeriodsManager = () => {
             {/* Timeline line */}
             <div className="absolute left-8 top-0 bottom-0 w-1 bg-foreground hidden md:block" />
             
-            <div className="space-y-6">
-              {periods.map((period) => (
+          <div className="space-y-6">
+              {periods.filter(p => categoryFilter === "all" || (p.category || "uncategorized") === categoryFilter).map((period) => (
                 <div key={period.id} className="flex gap-6">
                   {/* Timeline dot */}
                   <div className="hidden md:flex flex-shrink-0 w-16 items-start justify-center pt-4">
@@ -165,6 +192,11 @@ const LifePeriodsManager = () => {
                           )}
                         </div>
                         <h3 className="text-xl font-display">{period.title}</h3>
+                        {period.category && period.category !== "uncategorized" && (
+                          <span className="px-2 py-0.5 text-xs font-bold bg-primary/20 text-primary capitalize">
+                            {period.category}
+                          </span>
+                        )}
                         {period.description && (
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{period.description}</p>
                         )}

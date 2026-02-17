@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save, ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 
 const categories = [
   { value: "technical", label: "Technical" },
@@ -416,6 +417,12 @@ const CertificationEditor = () => {
             placeholder="Private notes about this certification..."
           />
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget
+          entityType="certification"
+          entityId={isEditing ? id : undefined}
+        />
 
         {/* AI Chat */}
         <ItemAIChatPanel

@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Save, ArrowLeft, Loader2, Link as LinkIcon, Plus, X, Music, Film, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { 
   streamingPlatforms, 
   musicPlatforms, 
@@ -653,6 +654,12 @@ const FavoriteEditor = () => {
             </button>
           </div>
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget
+          entityType="favorite"
+          entityId={isEditing ? id : undefined}
+        />
 
         {/* AI Chat */}
         <ItemAIChatPanel

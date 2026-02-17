@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 
 type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research" | "metaphysics";
 
@@ -604,6 +605,12 @@ const ArticleEditor = () => {
             </PopButton>
           </div>
         </div>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget
+          entityType="article"
+          entityId={isEditing ? id : undefined}
+        />
 
         {/* AI Chat */}
         <ItemAIChatPanel

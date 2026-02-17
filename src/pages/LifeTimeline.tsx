@@ -16,6 +16,7 @@ interface LifePeriod {
   image_url: string | null;
   is_current: boolean;
   order_index: number;
+  category: string | null;
 }
 
 const LifeTimeline = () => {
@@ -139,6 +140,11 @@ const LifeTimeline = () => {
                             </div>
 
                             <h3 className="text-2xl font-display mb-2">{period.title}</h3>
+                            {period.category && period.category !== "uncategorized" && (
+                              <span className="px-2 py-0.5 text-xs font-bold bg-primary/20 text-primary capitalize mb-2 inline-block">
+                                {period.category}
+                              </span>
+                            )}
                             
                             {period.description && (
                               <p className="text-muted-foreground mb-4 line-clamp-2">

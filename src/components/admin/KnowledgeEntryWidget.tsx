@@ -167,6 +167,7 @@ export const KnowledgeEntryWidget = ({
                     <option value="lesson">Lesson</option>
                     <option value="process">Process</option>
                     <option value="reference">Reference</option>
+                    <option value="ai_generated">AI Generated</option>
                   </select>
                 </div>
                 <div>
