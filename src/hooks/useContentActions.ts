@@ -259,72 +259,66 @@ export function useContentActions() {
   };
 
   const fetchSiteContext = async () => {
-    const tables = [
-      "articles", "updates", "projects", "artwork", "experiments",
-      "favorites", "inspirations", "experiences", "certifications",
-      "client_projects", "skills", "products", "product_reviews",
-      "life_periods", "learning_goals", "funding_campaigns", "supplies_needed",
-    ];
+    // Per-table lightweight select strings — only columns that actually exist
+    const tableSelects: Record<string, string> = {
+      articles:         "id, title, slug, published, review_status, updated_at, category",
+      updates:          "id, title, slug, published, updated_at",
+      projects:         "id, title, slug, published, review_status, status, updated_at, description",
+      artwork:          "id, title, category, created_at",
+      experiments:      "id, name, slug, status, review_status, updated_at, platform, description",
+      favorites:        "id, title, type, created_at",
+      inspirations:     "id, title, category, created_at",
+      experiences:      "id, title, slug, published, category, updated_at, description",
+      certifications:   "id, name, issuer, status, updated_at",
+      client_projects:  "id, project_name, client_name, slug, status, updated_at, description",
+      skills:           "id, name, category, created_at",
+      products:         "id, name, slug, status, updated_at, price, description",
+      product_reviews:  "id, product_name, company, slug, published, review_status, updated_at",
+      life_periods:     "id, title, start_date, end_date, is_current, created_at",
+      learning_goals:   "id, title, progress_percent, created_at, description",
+      funding_campaigns:"id, title, campaign_type, status, target_amount, raised_amount, updated_at",
+      supplies_needed:  "id, name, price, priority, status, category, created_at",
+    };
+
     const publishableTables = ["articles", "updates", "projects", "experiments", "product_reviews", "experiences"];
+    const tablesWithUpdatedAt = ["articles", "updates", "projects", "experiments", "experiences", "product_reviews", "client_projects", "certifications", "products", "funding_campaigns"];
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
     const context: Record<string, any> = {};
 
     await Promise.all(
-      tables.map(async (table) => {
+      Object.entries(tableSelects).map(async ([table, selectStr]) => {
         try {
           const { data, count } = await (supabase.from(table as any) as any)
-            .select("*", { count: "exact", head: false })
+            .select(selectStr, { count: "exact", head: false })
             .order("created_at", { ascending: false })
-            .limit(10);
+            .limit(5);
 
           const items = data || [];
           const entry: any = {
             count: count || items.length,
-            recent: items.slice(0, 5).map((item: any) => {
-              const summary: any = { id: item.id };
-              // Common fields
-              if (item.title) summary.title = item.title;
-              if (item.name) summary.name = item.name;
-              if (item.slug) summary.slug = item.slug;
-              if (item.status) summary.status = item.status;
-              if (item.published !== undefined) summary.published = item.published;
-              if (item.review_status) summary.review_status = item.review_status;
-              if (item.category) summary.category = item.category;
-              if (item.description) summary.description = item.description?.substring(0, 100);
-              // Table-specific enrichment
-              if (item.start_date) summary.start_date = item.start_date;
-              if (item.end_date) summary.end_date = item.end_date;
-              if (item.is_current !== undefined) summary.is_current = item.is_current;
-              if (item.themes) summary.themes = item.themes;
-              if (item.type) summary.type = item.type;
-              if (item.platform) summary.platform = item.platform;
-              if (item.price !== undefined) summary.price = item.price;
-              if (item.priority) summary.priority = item.priority;
-              if (item.project_name) summary.project_name = item.project_name;
-              if (item.client_name) summary.client_name = item.client_name;
-              if (item.product_name) summary.product_name = item.product_name;
-              if (item.company) summary.company = item.company;
-              if (item.issuer) summary.issuer = item.issuer;
-              if (item.campaign_type) summary.campaign_type = item.campaign_type;
-              if (item.progress_percent !== undefined) summary.progress_percent = item.progress_percent;
+            recent: items.map((item: any) => {
+              const summary: any = { ...item };
+              // Truncate description to 150 chars
+              if (summary.description && summary.description.length > 150) {
+                summary.description = summary.description.substring(0, 150) + "...";
+              }
               return summary;
             }),
           };
 
-          // Published/draft breakdown
           if (publishableTables.includes(table)) {
             const pub = items.filter((i: any) => i.published === true).length;
             entry.published = pub;
             entry.draft = items.length - pub;
           }
 
-          // Stale content count
-          const stale = items.filter((i: any) => i.updated_at && i.updated_at < ninetyDaysAgo);
-          if (stale.length > 0) entry.stale = stale.length;
+          if (tablesWithUpdatedAt.includes(table)) {
+            const stale = items.filter((i: any) => i.updated_at && i.updated_at < ninetyDaysAgo);
+            if (stale.length > 0) entry.stale = stale.length;
+          }
 
-          // Missing descriptions
-          const missingDesc = items.filter((i: any) => !i.description || i.description.trim() === "");
+          const missingDesc = items.filter((i: any) => 'description' in i && (!i.description || i.description.trim() === ""));
           if (missingDesc.length > 0) entry.missingDescription = missingDesc.length;
 
           context[table] = entry;
@@ -334,23 +328,15 @@ export function useContentActions() {
       })
     );
 
-    // Fetch recent AI change history so the AI knows what it recently did
     try {
       const { data: recentChanges } = await supabase
         .from("ai_change_history")
-        .select("action_type, table_name, record_id, new_data, created_at, reverted")
+        .select("action_type, table_name, record_id, created_at, reverted")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(5);
 
       if (recentChanges && recentChanges.length > 0) {
-        context.RECENT_AI_CHANGES = recentChanges.map((c: any) => ({
-          action: c.action_type,
-          table: c.table_name,
-          record_id: c.record_id,
-          reverted: c.reverted,
-          created_at: c.created_at,
-          summary: c.new_data?.title || c.new_data?.name || c.new_data?.product_name || "unknown",
-        }));
+        context.RECENT_AI_CHANGES = recentChanges;
       }
     } catch {
       // non-critical

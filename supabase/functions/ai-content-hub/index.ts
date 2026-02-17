@@ -399,9 +399,89 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const contextMessage = siteContent
-      ? `\n\nCURRENT SITE CONTENT SUMMARY:\n${JSON.stringify(siteContent, null, 2)}`
+    // Build context string and enforce size limit
+    let contextStr = siteContent ? JSON.stringify(siteContent) : "";
+    const MAX_CONTEXT_BYTES = 50_000;
+    if (contextStr.length > MAX_CONTEXT_BYTES) {
+      console.warn(`Context payload too large (${contextStr.length} bytes), truncating to ${MAX_CONTEXT_BYTES}`);
+      contextStr = contextStr.substring(0, MAX_CONTEXT_BYTES) + '..."truncated"}';
+    }
+    const contextMessage = contextStr
+      ? `\n\nCURRENT SITE CONTENT SUMMARY:\n${contextStr}`
       : "";
+
+    const requestBody = JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT + contextMessage,
+        },
+        ...messages,
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "content_plan",
+            description:
+              "Create a structured plan to modify site content. Use this whenever the user asks to create, update, or delete any content.",
+            parameters: {
+              type: "object",
+              properties: {
+                title: {
+                  type: "string",
+                  description: "Short title for this plan",
+                },
+                summary: {
+                  type: "string",
+                  description:
+                    "Human-readable summary of what this plan will do",
+                },
+                actions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      type: {
+                        type: "string",
+                        enum: ["create", "update", "delete"],
+                      },
+                      table: {
+                        type: "string",
+                        description: "Database table name (must be one of: articles, updates, projects, artwork, experiments, favorites, inspirations, experiences, certifications, client_projects, skills, products, product_reviews, life_periods, learning_goals, funding_campaigns, supplies_needed)",
+                      },
+                      record_id: {
+                        type: "string",
+                        description:
+                          "UUID of existing record (for update/delete)",
+                      },
+                      data: {
+                        type: "object",
+                        description:
+                          "Fields and values to set",
+                      },
+                      description: {
+                        type: "string",
+                        description:
+                          "Human-readable description of this action",
+                      },
+                    },
+                    required: ["type", "table", "description"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["title", "summary", "actions"],
+              additionalProperties: false,
+            },
+          },
+        },
+      ],
+      stream: true,
+    });
+
+    console.log(`AI request payload size: ${requestBody.length} bytes`);
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -411,76 +491,7 @@ serve(async (req) => {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            {
-              role: "system",
-              content: SYSTEM_PROMPT + contextMessage,
-            },
-            ...messages,
-          ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "content_plan",
-                description:
-                  "Create a structured plan to modify site content. Use this whenever the user asks to create, update, or delete any content.",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    title: {
-                      type: "string",
-                      description: "Short title for this plan",
-                    },
-                    summary: {
-                      type: "string",
-                      description:
-                        "Human-readable summary of what this plan will do",
-                    },
-                    actions: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          type: {
-                            type: "string",
-                            enum: ["create", "update", "delete"],
-                          },
-                          table: {
-                            type: "string",
-                            description: "Database table name (must be one of: articles, updates, projects, artwork, experiments, favorites, inspirations, experiences, certifications, client_projects, skills, products, product_reviews, life_periods, learning_goals, funding_campaigns, supplies_needed)",
-                          },
-                          record_id: {
-                            type: "string",
-                            description:
-                              "UUID of existing record (for update/delete)",
-                          },
-                          data: {
-                            type: "object",
-                            description:
-                              "Fields and values to set",
-                          },
-                          description: {
-                            type: "string",
-                            description:
-                              "Human-readable description of this action",
-                          },
-                        },
-                        required: ["type", "table", "description"],
-                        additionalProperties: false,
-                      },
-                    },
-                  },
-                  required: ["title", "summary", "actions"],
-                  additionalProperties: false,
-                },
-              },
-            },
-          ],
-          stream: true,
-        }),
+        body: requestBody,
       }
     );
 
