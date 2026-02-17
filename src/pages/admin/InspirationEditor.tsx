@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
-import { MultiImageUploader } from "@/components/admin/MultiImageUploader";
+import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
@@ -179,6 +179,7 @@ const InspirationEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-inspirations"] });
+      queryClient.invalidateQueries({ queryKey: ["inspirations"] });
       toast.success(isEditing ? "Inspiration updated" : "Inspiration added");
       navigate("/admin/inspirations");
     },
@@ -315,10 +316,11 @@ const InspirationEditor = () => {
               folder="inspirations"
             />
 
-            <MultiImageUploader
-              value={form.images}
-              onChange={(urls) => updateForm({ images: urls })}
-              label="Additional Images"
+            <EnhancedImageManager
+              mainImage=""
+              screenshots={form.images}
+              onMainImageChange={() => {}}
+              onScreenshotsChange={(urls) => updateForm({ images: urls })}
               folder="inspirations/gallery"
               maxImages={10}
             />

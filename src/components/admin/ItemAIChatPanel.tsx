@@ -154,6 +154,7 @@ export const ItemAIChatPanel = ({
     onSuccess: () => {
       toast.success("Saved to Knowledge Base");
       queryClient.invalidateQueries({ queryKey: ["knowledge-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["knowledge-base-all"] });
     },
     onError: () => toast.error("Failed to save to Knowledge Base"),
   });

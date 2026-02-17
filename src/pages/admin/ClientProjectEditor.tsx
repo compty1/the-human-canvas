@@ -104,6 +104,7 @@ const ClientProjectEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-client-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["client-projects"] });
       toast.success(isEditing ? "Project updated" : "Project created");
       navigate("/admin/client-work");
     },
