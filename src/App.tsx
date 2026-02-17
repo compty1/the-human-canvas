@@ -98,6 +98,7 @@ import ContentLibrary from "./pages/admin/ContentLibrary";
 import QuickCapture from "./pages/admin/QuickCapture";
 import MediaLibrary from "./pages/admin/MediaLibrary";
 import ContentHub from "./pages/admin/ContentHub";
+import KnowledgeBase from "./pages/admin/KnowledgeBase";
 
 // Additional Public pages
 import Experiences from "./pages/Experiences";
@@ -235,6 +236,7 @@ const App = () => (
                 <Route path="/admin/quick-capture" element={<Admin><QuickCapture /></Admin>} />
                 <Route path="/admin/media-library" element={<Admin><MediaLibrary /></Admin>} />
                 <Route path="/admin/content-hub" element={<Admin><ContentHub /></Admin>} />
+                <Route path="/admin/knowledge-base" element={<Admin><KnowledgeBase /></Admin>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { RichTextEditor } from "@/components/editor";
-import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -331,21 +332,13 @@ const ProductReviewEditor = () => {
               />
             </div>
 
-            {/* Featured Image */}
-            <ImageUploader
-              value={formData.featured_image}
-              onChange={(url) => setFormData({ ...formData, featured_image: url })}
-              label="Featured Image"
+            {/* Images */}
+            <EnhancedImageManager
+              mainImage={formData.featured_image}
+              screenshots={formData.screenshots}
+              onMainImageChange={(url) => setFormData({ ...formData, featured_image: url })}
+              onScreenshotsChange={(urls) => setFormData({ ...formData, screenshots: urls })}
               folder="product-reviews"
-            />
-
-            {/* Screenshots */}
-            <MultiImageUploader
-              value={formData.screenshots}
-              onChange={(urls) => setFormData({ ...formData, screenshots: urls })}
-              label="Screenshots"
-              folder="product-reviews/screenshots"
-              maxImages={10}
             />
           </div>
         </ComicPanel>
@@ -529,6 +522,9 @@ const ProductReviewEditor = () => {
             rows={3}
           />
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget entityType="product_review" entityId={isEditing ? id : undefined} />
 
         {/* Save Button */}
         <div className="flex justify-end">

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
-import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
+import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -267,19 +268,12 @@ const ClientProjectEditor = () => {
               <Label htmlFor="is_public">Show on public site (uncheck for NDA projects)</Label>
             </div>
 
-            <ImageUploader
-              value={form.image_url}
-              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
-              label="Featured Image"
+            <EnhancedImageManager
+              mainImage={form.image_url}
+              screenshots={form.screenshots}
+              onMainImageChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+              onScreenshotsChange={(urls) => setForm(prev => ({ ...prev, screenshots: urls }))}
               folder="client-projects"
-            />
-
-            <MultiImageUploader
-              value={form.screenshots}
-              onChange={(urls) => setForm(prev => ({ ...prev, screenshots: urls }))}
-              label="Screenshots"
-              folder="client-projects/screenshots"
-              maxImages={8}
             />
           </div>
         </ComicPanel>
@@ -361,6 +355,9 @@ const ClientProjectEditor = () => {
             </div>
           </div>
         </ComicPanel>
+
+        {/* Knowledge Base */}
+        <KnowledgeEntryWidget entityType="client_project" entityId={isEditing ? id : undefined} />
 
         {/* Save Button */}
         <div className="flex justify-end">
