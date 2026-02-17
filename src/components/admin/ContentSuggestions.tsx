@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ADMIN_ROUTES, PUBLISHABLE_TABLES, CONTENT_FIELDS } from "@/lib/adminRoutes";
+import { ADMIN_ROUTES, PUBLISHABLE_TABLES, CONTENT_FIELDS, TABLE_COLUMNS, getTableSelectFields } from "@/lib/adminRoutes";
 import { AlertTriangle, FileText, Clock, Eye, Sparkles, FolderOpen, RefreshCw, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -21,14 +21,11 @@ interface ContentSuggestionsProps {
   onSendToChat?: (prompt: string) => void;
 }
 
-// Base fields that exist on most tables
-const BASE_FIELDS = ["id", "title", "name", "slug", "updated_at", "published", "review_status"];
-
-// Build per-table select strings using only columns that actually exist
-function getSelectFields(table: string): string {
-  const contentFields = CONTENT_FIELDS[table] || [];
-  const allFields = [...new Set([...BASE_FIELDS, ...contentFields])];
-  return allFields.join(", ");
+/** Get the display label for a record based on its table's label column */
+function getRecordLabel(item: any, table: string): string {
+  const config = TABLE_COLUMNS[table];
+  if (!config) return item.id;
+  return item[config.label] || item.title || item.name || item.id;
 }
 
 export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) => {
@@ -45,9 +42,21 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
 
       await Promise.all(
         tables.map(async (table) => {
+          const config = TABLE_COLUMNS[table];
+          if (!config) return;
+
           try {
-            const selectStr = getSelectFields(table);
-            const { data: allData } = await (supabase.from(table as any) as any).select(selectStr);
+            // Build select string with only columns that exist + content fields
+            const contentFields = CONTENT_FIELDS[table] || [];
+            const selectFields = [getTableSelectFields(table), ...contentFields].join(", ");
+
+            const { data: allData, error } = await (supabase.from(table as any) as any).select(selectFields);
+            
+            if (error) {
+              console.warn(`ContentSuggestions: query failed for ${table}:`, error.message);
+              return;
+            }
+            
             const items = allData || [];
 
             if (items.length === 0) {
@@ -63,8 +72,8 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
               return;
             }
 
-            // Check unpublished drafts
-            if (PUBLISHABLE_TABLES.includes(table)) {
+            // Check unpublished drafts — only for tables that have a published column
+            if (config.hasPublished && PUBLISHABLE_TABLES.includes(table)) {
               const unpublished = items.filter((i: any) => i.published === false);
               if (unpublished.length > 0) {
                 results.push({
@@ -74,17 +83,16 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
                   title: `${unpublished.length} unpublished ${table.replace(/_/g, " ")}`,
                   description: `These items are in draft and may be ready to publish.`,
                   table,
-                  records: unpublished.slice(0, 5).map((i: any) => ({ id: i.id, title: i.title || i.name || i.slug })),
-                  fixPrompt: `Review these unpublished ${table.replace(/_/g, " ")} and suggest which ones are ready to publish: ${unpublished.slice(0, 5).map((i: any) => i.title || i.name).join(", ")}`,
+                  records: unpublished.slice(0, 5).map((i: any) => ({ id: i.id, title: getRecordLabel(i, table) })),
+                  fixPrompt: `Review these unpublished ${table.replace(/_/g, " ")} and suggest which ones are ready to publish: ${unpublished.slice(0, 5).map((i: any) => getRecordLabel(i, table)).join(", ")}`,
                 });
               }
             }
 
-            // Check missing content fields - only for fields that exist in this table's CONTENT_FIELDS
+            // Check missing content fields
             const fields = CONTENT_FIELDS[table] || [];
             for (const field of fields) {
               const missing = items.filter((i: any) => {
-                // Only check if the field key actually exists in the returned data
                 if (!(field in i)) return false;
                 const val = i[field];
                 if (val === null || val === undefined) return true;
@@ -100,28 +108,30 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
                   title: `${missing.length} ${table.replace(/_/g, " ")} missing ${field.replace(/_/g, " ")}`,
                   description: `These records have no ${field.replace(/_/g, " ")} set.`,
                   table,
-                  records: missing.slice(0, 5).map((i: any) => ({ id: i.id, title: i.title || i.name || i.slug })),
-                  fixPrompt: `Generate ${field.replace(/_/g, " ")} for these ${table.replace(/_/g, " ")}: ${missing.slice(0, 5).map((i: any) => `"${i.title || i.name}" (id: ${i.id})`).join(", ")}`,
+                  records: missing.slice(0, 5).map((i: any) => ({ id: i.id, title: getRecordLabel(i, table) })),
+                  fixPrompt: `Generate ${field.replace(/_/g, " ")} for these ${table.replace(/_/g, " ")}: ${missing.slice(0, 5).map((i: any) => `"${getRecordLabel(i, table)}" (id: ${i.id})`).join(", ")}`,
                 });
               }
             }
 
-            // Check stale content
-            const stale = items.filter((i: any) => i.updated_at && i.updated_at < ninetyDaysAgo);
-            if (stale.length > 0) {
-              results.push({
-                id: `stale-${table}`,
-                type: "stale",
-                severity: "low",
-                title: `${stale.length} stale ${table.replace(/_/g, " ")}`,
-                description: `Not updated in over 90 days.`,
-                table,
-                records: stale.slice(0, 5).map((i: any) => ({ id: i.id, title: i.title || i.name || i.slug })),
-                fixPrompt: `Review and suggest updates for these stale ${table.replace(/_/g, " ")}: ${stale.slice(0, 5).map((i: any) => i.title || i.name).join(", ")}`,
-              });
+            // Check stale content — only for tables that have updated_at
+            if (config.hasUpdatedAt) {
+              const stale = items.filter((i: any) => i.updated_at && i.updated_at < ninetyDaysAgo);
+              if (stale.length > 0) {
+                results.push({
+                  id: `stale-${table}`,
+                  type: "stale",
+                  severity: "low",
+                  title: `${stale.length} stale ${table.replace(/_/g, " ")}`,
+                  description: `Not updated in over 90 days.`,
+                  table,
+                  records: stale.slice(0, 5).map((i: any) => ({ id: i.id, title: getRecordLabel(i, table) })),
+                  fixPrompt: `Review and suggest updates for these stale ${table.replace(/_/g, " ")}: ${stale.slice(0, 5).map((i: any) => getRecordLabel(i, table)).join(", ")}`,
+                });
+              }
             }
-          } catch {
-            // table query failed, skip
+          } catch (err) {
+            console.warn(`ContentSuggestions: unexpected error for ${table}:`, err);
           }
         })
       );
@@ -253,7 +263,7 @@ export const ContentSuggestions = ({ onSendToChat }: ContentSuggestionsProps) =>
 export const useSuggestionsCount = () => {
   const { data } = useQuery({
     queryKey: ["content-suggestions"],
-    enabled: false, // Don't refetch, just read from cache
+    enabled: false,
   });
   return (data as Suggestion[] | undefined)?.length ?? 0;
 };

@@ -25,6 +25,47 @@ export const PUBLISHABLE_TABLES = ["articles", "updates", "projects", "experimen
 /** Tables that have a `review_status` column */
 export const REVIEWABLE_TABLES = ["articles", "experiments", "product_reviews", "projects"];
 
+/** Per-table column metadata so queries only select columns that actually exist */
+export interface TableColumnConfig {
+  label: string;           // the display-name column: "title", "name", "project_name", "product_name"
+  hasSlug: boolean;
+  hasUpdatedAt: boolean;
+  hasPublished: boolean;
+  hasReviewStatus: boolean;
+}
+
+export const TABLE_COLUMNS: Record<string, TableColumnConfig> = {
+  articles:         { label: "title",        hasSlug: true,  hasUpdatedAt: true,  hasPublished: true,  hasReviewStatus: true },
+  projects:         { label: "title",        hasSlug: true,  hasUpdatedAt: true,  hasPublished: true,  hasReviewStatus: true },
+  updates:          { label: "title",        hasSlug: true,  hasUpdatedAt: true,  hasPublished: true,  hasReviewStatus: false },
+  experiments:      { label: "name",         hasSlug: true,  hasUpdatedAt: true,  hasPublished: false, hasReviewStatus: true },
+  experiences:      { label: "title",        hasSlug: true,  hasUpdatedAt: true,  hasPublished: true,  hasReviewStatus: false },
+  product_reviews:  { label: "product_name", hasSlug: true,  hasUpdatedAt: true,  hasPublished: true,  hasReviewStatus: true },
+  client_projects:  { label: "project_name", hasSlug: true,  hasUpdatedAt: true,  hasPublished: false, hasReviewStatus: false },
+  certifications:   { label: "name",         hasSlug: false, hasUpdatedAt: true,  hasPublished: false, hasReviewStatus: false },
+  products:         { label: "name",         hasSlug: true,  hasUpdatedAt: true,  hasPublished: false, hasReviewStatus: false },
+  artwork:          { label: "title",        hasSlug: false, hasUpdatedAt: false, hasPublished: false, hasReviewStatus: false },
+  favorites:        { label: "title",        hasSlug: false, hasUpdatedAt: false, hasPublished: false, hasReviewStatus: false },
+  inspirations:     { label: "title",        hasSlug: false, hasUpdatedAt: false, hasPublished: false, hasReviewStatus: false },
+  life_periods:     { label: "title",        hasSlug: false, hasUpdatedAt: false, hasPublished: false, hasReviewStatus: false },
+  skills:           { label: "name",         hasSlug: false, hasUpdatedAt: false, hasPublished: false, hasReviewStatus: false },
+  learning_goals:   { label: "title",        hasSlug: false, hasUpdatedAt: false, hasPublished: false, hasReviewStatus: false },
+  funding_campaigns:{ label: "title",        hasSlug: false, hasUpdatedAt: true,  hasPublished: false, hasReviewStatus: false },
+  supplies_needed:  { label: "name",         hasSlug: false, hasUpdatedAt: false, hasPublished: false, hasReviewStatus: false },
+};
+
+/** Build a PostgREST select string for a table using only columns that exist */
+export function getTableSelectFields(table: string): string {
+  const config = TABLE_COLUMNS[table];
+  if (!config) return "id";
+  const fields = ["id", config.label];
+  if (config.hasSlug) fields.push("slug");
+  if (config.hasUpdatedAt) fields.push("updated_at");
+  if (config.hasPublished) fields.push("published");
+  if (config.hasReviewStatus) fields.push("review_status");
+  return fields.join(", ");
+}
+
 /** Tables with text fields to check for completeness. 
  * Only truly important fields are listed — optional fields like image_url, tags, themes are excluded 
  * to reduce false-positive noise in suggestions. */
