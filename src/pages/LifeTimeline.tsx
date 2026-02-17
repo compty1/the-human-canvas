@@ -116,10 +116,11 @@ const LifeTimeline = () => {
                         <div className="flex flex-col md:flex-row">
                           {period.image_url && (
                             <div className="md:w-1/3 aspect-video md:aspect-auto overflow-hidden">
-                              <img
+                               <img
                                 src={period.image_url}
                                 alt={period.title}
                                 className="w-full h-full object-cover"
+                                loading="lazy"
                               />
                             </div>
                           )}

@@ -177,10 +177,11 @@ const Favorites = () => {
                   <ComicPanel key={fav.id} className="p-0 overflow-hidden">
                     {fav.image_url && (
                       <Link to={`/favorites/${fav.id}`} className="block aspect-video overflow-hidden border-b-2 border-foreground">
-                        <img
+                       <img
                           src={fav.image_url}
                           alt={fav.title}
                           className="w-full h-full object-cover hover:scale-105 transition-transform"
+                          loading="lazy"
                         />
                       </Link>
                     )}
