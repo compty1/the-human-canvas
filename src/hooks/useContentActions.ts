@@ -262,10 +262,12 @@ export function useContentActions() {
     const tables = [
       "articles", "updates", "projects", "artwork", "experiments",
       "favorites", "inspirations", "experiences", "certifications",
-      "client_projects", "skills", "products",
+      "client_projects", "skills", "products", "product_reviews",
     ];
+    const publishableTables = ["articles", "updates", "projects", "experiments", "product_reviews", "experiences"];
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-    const context: Record<string, { count: number; recent: any[] }> = {};
+    const context: Record<string, { count: number; published?: number; draft?: number; stale?: number; missingDescription?: number; recent: any[] }> = {};
 
     await Promise.all(
       tables.map(async (table) => {
@@ -273,22 +275,41 @@ export function useContentActions() {
           const { data, count } = await (supabase.from(table as any) as any)
             .select("*", { count: "exact", head: false })
             .order("created_at", { ascending: false })
-            .limit(5);
+            .limit(10);
 
-          context[table] = {
-            count: count || (data?.length ?? 0),
-            recent: (data || []).map((item: any) => {
+          const items = data || [];
+          const entry: any = {
+            count: count || items.length,
+            recent: items.slice(0, 5).map((item: any) => {
               const summary: any = { id: item.id };
               if (item.title) summary.title = item.title;
               if (item.name) summary.name = item.name;
               if (item.slug) summary.slug = item.slug;
               if (item.status) summary.status = item.status;
               if (item.published !== undefined) summary.published = item.published;
+              if (item.review_status) summary.review_status = item.review_status;
               if (item.category) summary.category = item.category;
               if (item.description) summary.description = item.description?.substring(0, 100);
               return summary;
             }),
           };
+
+          // Published/draft breakdown
+          if (publishableTables.includes(table)) {
+            const pub = items.filter((i: any) => i.published === true).length;
+            entry.published = pub;
+            entry.draft = items.length - pub;
+          }
+
+          // Stale content count
+          const stale = items.filter((i: any) => i.updated_at && i.updated_at < ninetyDaysAgo);
+          if (stale.length > 0) entry.stale = stale.length;
+
+          // Missing descriptions
+          const missingDesc = items.filter((i: any) => !i.description || i.description.trim() === "");
+          if (missingDesc.length > 0) entry.missingDescription = missingDesc.length;
+
+          context[table] = entry;
         } catch {
           context[table] = { count: 0, recent: [] };
         }

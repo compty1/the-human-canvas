@@ -17,8 +17,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Play, Save, Pencil, Check, X, Loader2, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Save, Pencil, Check, X, Loader2, Eye, ChevronUp, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { ADMIN_ROUTES } from "@/lib/adminRoutes";
 
 interface ContentPlanCardProps {
   plan: ContentPlan;
@@ -30,12 +32,14 @@ interface ContentPlanCardProps {
 type CurrentDataMap = Record<number, Record<string, any> | null>;
 
 export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: ContentPlanCardProps) => {
+  const navigate = useNavigate();
   const { executePlan, savePlanForLater } = useContentActions();
   const [executing, setExecuting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [editing, setEditing] = useState(false);
   const [editedActions, setEditedActions] = useState<ContentAction[]>(plan.actions);
   const [done, setDone] = useState(false);
+  const [executedRecords, setExecutedRecords] = useState<{ table: string; id: string; type: string }[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const [loadingReview, setLoadingReview] = useState(false);
   const [currentData, setCurrentData] = useState<CurrentDataMap>({});
@@ -104,6 +108,11 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
     if (result.success) {
       toast({ title: "Plan executed successfully!" });
       setDone(true);
+      // Collect executed record info for deep links
+      const records = editedActions
+        .filter((a) => a.type !== "delete")
+        .map((a) => ({ table: a.table, id: a.record_id || "", type: a.type }));
+      setExecutedRecords(records);
       onExecuted?.(result.planId!);
     } else {
       toast({ title: "Some actions failed", variant: "destructive" });
@@ -140,6 +149,11 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
     return "destructive";
   };
 
+  const openInEditor = (table: string, id: string) => {
+    const route = ADMIN_ROUTES[table];
+    if (route) navigate(route.editor(id));
+  };
+
   if (done) {
     return (
       <div className="border-2 border-green-500/30 bg-green-500/5 rounded-lg p-4">
@@ -148,6 +162,26 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
           <span className="font-bold">{plan.title}</span>
           <span className="text-sm">— Executed successfully</span>
         </div>
+        {executedRecords.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {executedRecords.map((r, i) => {
+              const route = ADMIN_ROUTES[r.table];
+              if (!route || !r.id) return null;
+              return (
+                <Button
+                  key={i}
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => openInEditor(r.table, r.id)}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Open {r.table.replace(/_/g, " ")} in editor
+                </Button>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }
@@ -177,9 +211,17 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
               <Badge variant={actionBadge(action.type) as any}>{action.type.toUpperCase()}</Badge>
               <span className="text-xs font-mono">{action.table}</span>
               {action.record_id && (
-                <span className="text-xs font-mono text-muted-foreground">
-                  {action.record_id.slice(0, 8)}...
-                </span>
+                <>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {action.record_id.slice(0, 8)}...
+                  </span>
+                  <button
+                    onClick={() => openInEditor(action.table, action.record_id!)}
+                    className="text-xs text-primary hover:underline flex items-center gap-0.5 ml-auto"
+                  >
+                    <ExternalLink className="w-3 h-3" /> Open
+                  </button>
+                </>
               )}
             </div>
             <p className="text-sm mb-2">{action.description}</p>
@@ -196,7 +238,7 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
                       <span className="font-mono font-bold min-w-[100px]">{key}:</span>
                       {changed ? (
                         <span>
-                          <span className="line-through text-red-600/70">{oldVal != null ? String(typeof oldVal === "object" ? JSON.stringify(oldVal) : oldVal) : "(empty)"}</span>
+                          <span className="line-through text-destructive/70">{oldVal != null ? String(typeof oldVal === "object" ? JSON.stringify(oldVal) : oldVal) : "(empty)"}</span>
                           <span className="mx-1">→</span>
                           <span className="text-green-700 font-medium">{String(typeof newVal === "object" ? JSON.stringify(newVal) : newVal)}</span>
                         </span>
@@ -209,7 +251,7 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
               </div>
             )}
 
-            {/* Review for create: show all new fields */}
+            {/* Review for create */}
             {reviewing && action.type === "create" && action.data && (
               <div className="mb-2 space-y-1 bg-background/50 rounded p-2 text-xs">
                 <p className="font-bold text-green-700 mb-1">New record:</p>
@@ -222,20 +264,20 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
               </div>
             )}
 
-            {/* Review for delete: show existing data */}
+            {/* Review for delete */}
             {reviewing && action.type === "delete" && currentData[idx] && (
-              <div className="mb-2 space-y-1 bg-red-500/5 rounded p-2 text-xs">
-                <p className="font-bold text-red-700 mb-1">Will be deleted:</p>
+              <div className="mb-2 space-y-1 bg-destructive/5 rounded p-2 text-xs">
+                <p className="font-bold text-destructive mb-1">Will be deleted:</p>
                 {Object.entries(currentData[idx]!).slice(0, 8).map(([key, val]) => (
                   <div key={key} className="flex items-start gap-1">
                     <span className="font-mono font-bold min-w-[100px]">{key}:</span>
-                    <span className="line-through text-red-600/70">{typeof val === "object" ? JSON.stringify(val) : String(val ?? "")}</span>
+                    <span className="line-through text-destructive/70">{typeof val === "object" ? JSON.stringify(val) : String(val ?? "")}</span>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Edit mode fields */}
+            {/* Edit mode */}
             {editing && action.data && (
               <div className="space-y-1">
                 {Object.entries(action.data).map(([key, val]) => (
@@ -259,7 +301,7 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
               </div>
             )}
 
-            {/* Default non-editing, non-reviewing data display */}
+            {/* Default display */}
             {!editing && !reviewing && action.data && (
               <div className="space-y-1">
                 {Object.entries(action.data).map(([key, val]) => (
@@ -284,7 +326,6 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
       )}
 
       <div className="p-4 border-t border-border flex gap-2 flex-wrap">
-        {/* Review button */}
         <Button
           onClick={toggleReview}
           variant={reviewing ? "secondary" : "outline"}
@@ -301,7 +342,6 @@ export const ContentPlanCard = ({ plan, conversationId, onExecuted, onSaved }: C
           {reviewing ? "Hide Review" : "Review Changes"}
         </Button>
 
-        {/* Execute with confirmation */}
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button size="sm" disabled={executing}>
