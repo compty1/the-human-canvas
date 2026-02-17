@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, User, LogIn, Settings, Sun, Moon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { PopButton } from "@/components/pop-art";
@@ -34,6 +35,7 @@ export const Header = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminCheck();
   const { theme, setTheme } = useTheme();
+  const prevPathRef = useRef(location.pathname);
 
   // Fetch nav items from DB, fall back to defaults
   const { data: dbNavItems } = useQuery({
@@ -59,9 +61,12 @@ export const Header = () => {
     (item: { visible?: boolean }) => item.visible !== false
   );
 
-  // Close mobile menu on route change
+  // Close mobile menu ONLY on actual route change (not on initial mount)
   useEffect(() => {
-    setMobileMenuOpen(false);
+    if (prevPathRef.current !== location.pathname) {
+      setMobileMenuOpen(false);
+    }
+    prevPathRef.current = location.pathname;
   }, [location.pathname]);
 
   // Prevent body scroll when mobile menu is open
@@ -80,113 +85,21 @@ export const Header = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-4 border-foreground">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="font-display text-3xl text-primary tracking-wider">
-              LeCompte
-            </span>
-          </Link>
+  // Debounced toggle to prevent touch double-fire
+  const lastToggleRef = useRef(0);
+  const handleMenuToggle = useCallback(() => {
+    const now = Date.now();
+    if (now - lastToggleRef.current < 300) return;
+    lastToggleRef.current = now;
+    setMobileMenuOpen((prev) => !prev);
+  }, []);
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item: { label: string; href: string }) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={cn(
-                  "px-4 py-2 font-bold uppercase text-sm tracking-wide transition-colors",
-                  location.pathname === item.href
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Auth Buttons + Dark Mode */}
-          <div className="hidden lg:flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="p-2 border-2 border-foreground hover:bg-muted transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              {theme === "dark" ? (
-                <Sun className="w-4 h-4" />
-              ) : (
-                <Moon className="w-4 h-4" />
-              )}
-            </button>
-            {user ? (
-              <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    className="flex items-center gap-2 px-3 py-2 bg-pop-gold border-2 border-foreground hover:bg-pop-gold/80 transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span className="font-bold text-sm">Admin</span>
-                  </Link>
-                )}
-                <Link
-                  to="/profile"
-                  className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
-                >
-                  <User className="w-4 h-4" />
-                  <span className="font-bold text-sm">Profile</span>
-                </Link>
-                <button
-                  onClick={() => signOut()}
-                  className="px-3 py-2 font-bold text-sm hover:text-primary transition-colors"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <Link to="/auth">
-                <PopButton size="sm" variant="primary">
-                  <LogIn className="w-4 h-4 mr-1" />
-                  Sign In
-                </PopButton>
-              </Link>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="flex lg:hidden items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="p-2 border-2 border-foreground"
-              aria-label="Toggle dark mode"
-            >
-              {theme === "dark" ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </button>
-            <button
-              className="p-2 border-2 border-foreground"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <nav className="lg:hidden bg-background border-t-2 border-foreground fixed top-16 left-0 right-0 bottom-0 z-[60] overflow-y-auto overscroll-contain -webkit-overflow-scrolling-touch">
+  const mobileMenu = mobileMenuOpen
+    ? createPortal(
+        <nav
+          className="lg:hidden bg-background border-t-2 border-foreground fixed top-16 left-0 right-0 bottom-0 z-[9999] overflow-y-auto"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           <div className="px-4 py-4 pb-24">
             {navItems.map((item: { label: string; href: string }) => (
               <Link
@@ -241,8 +154,120 @@ export const Header = () => {
               )}
             </div>
           </div>
-        </nav>
-      )}
-    </header>
+        </nav>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-4 border-foreground">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2">
+              <span className="font-display text-3xl text-primary tracking-wider">
+                LeCompte
+              </span>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {navItems.map((item: { label: string; href: string }) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "px-4 py-2 font-bold uppercase text-sm tracking-wide transition-colors",
+                    location.pathname === item.href
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Auth Buttons + Dark Mode */}
+            <div className="hidden lg:flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 border-2 border-foreground hover:bg-muted transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {theme === "dark" ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </button>
+              {user ? (
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="flex items-center gap-2 px-3 py-2 bg-pop-gold border-2 border-foreground hover:bg-pop-gold/80 transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span className="font-bold text-sm">Admin</span>
+                    </Link>
+                  )}
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="font-bold text-sm">Profile</span>
+                  </Link>
+                  <button
+                    onClick={() => signOut()}
+                    className="px-3 py-2 font-bold text-sm hover:text-primary transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <Link to="/auth">
+                  <PopButton size="sm" variant="primary">
+                    <LogIn className="w-4 h-4 mr-1" />
+                    Sign In
+                  </PopButton>
+                </Link>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="flex lg:hidden items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 border-2 border-foreground"
+                aria-label="Toggle dark mode"
+              >
+                {theme === "dark" ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
+              </button>
+              <button
+                className="p-2 border-2 border-foreground"
+                onClick={handleMenuToggle}
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Menu - rendered via portal to avoid z-index/overflow issues */}
+      {mobileMenu}
+    </>
   );
 };
