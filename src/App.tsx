@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProtectedAdminRoute } from "@/components/admin/ProtectedAdminRoute";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 import Index from "./pages/Index";
 import ArtGallery from "./pages/ArtGallery";
@@ -121,6 +122,7 @@ const Admin = ({ children }: { children: React.ReactNode }) => (
 // Analytics wrapper component
 const AnalyticsWrapper = ({ children }: { children: React.ReactNode }) => {
   useAnalytics();
+  useThemeColors();
   return <>{children}</>;
 };
 
