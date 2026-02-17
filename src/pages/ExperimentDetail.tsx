@@ -217,9 +217,9 @@ const ExperimentDetail = () => {
                       Duration
                     </span>
                     <span className="font-bold">
-                      {new Date(experiment.start_date).toLocaleDateString()}
+                      {new Date(experiment.start_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                       {experiment.end_date
-                        ? ` - ${new Date(experiment.end_date).toLocaleDateString()}`
+                        ? ` - ${new Date(experiment.end_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
                         : " - Present"}
                     </span>
                   </div>

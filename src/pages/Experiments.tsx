@@ -80,9 +80,23 @@ const Experiments = () => {
                     <h3 className="text-xl font-display mb-2">{exp.name}</h3>
                     
                     {exp.description && (
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                         {exp.description}
                       </p>
+                    )}
+
+                    {/* Screenshot thumbnails */}
+                    {exp.screenshots && exp.screenshots.length > 0 && (
+                      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-thin">
+                        {exp.screenshots.map((url, i) => (
+                          <img
+                            key={i}
+                            src={url}
+                            alt={`${exp.name} screenshot ${i + 1}`}
+                            className="w-16 h-16 object-cover border-2 border-foreground flex-shrink-0"
+                          />
+                        ))}
+                      </div>
                     )}
 
                     {/* Stats */}
@@ -111,9 +125,9 @@ const Experiments = () => {
                       {exp.start_date && (
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Calendar className="w-4 h-4" />
-                          <span>{new Date(exp.start_date).getFullYear()}</span>
+                          <span>{new Date(exp.start_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>
                           {exp.end_date && (
-                            <span>- {new Date(exp.end_date).getFullYear()}</span>
+                            <span>- {new Date(exp.end_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>
                           )}
                         </div>
                       )}
