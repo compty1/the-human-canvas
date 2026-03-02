@@ -21,6 +21,7 @@ import { Save, ArrowLeft, Loader2, Plus, X, Image, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 
 const LIFE_PERIOD_CATEGORIES = [
@@ -210,7 +211,10 @@ const LifePeriodEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("life_period", id, form as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-life-periods"] });
       queryClient.invalidateQueries({ queryKey: ["life-periods"] });
@@ -282,6 +286,13 @@ const LifePeriodEditor = () => {
             </h1>
           </div>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="life_period"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
           <UndoRedoControls
             canUndo={canUndo}
             canRedo={canRedo}

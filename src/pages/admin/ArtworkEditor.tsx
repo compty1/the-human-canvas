@@ -12,6 +12,7 @@ import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,7 +78,7 @@ const ArtworkEditor = () => {
       if (isEditing) { const { error } = await supabase.from("artwork").update(form).eq("id", id); if (error) throw error; }
       else { const { error } = await supabase.from("artwork").insert(form); if (error) throw error; }
     },
-    onSuccess: () => { clearDraft(); queryClient.invalidateQueries({ queryKey: ["admin-artwork"] }); queryClient.invalidateQueries({ queryKey: ["artwork-gallery"] }); toast.success(isEditing ? "Artwork updated" : "Artwork added"); navigate("/admin/artwork"); },
+    onSuccess: async () => { if (isEditing && id) { await saveContentVersion("artwork", id, form as unknown as Record<string, unknown>); } clearDraft(); queryClient.invalidateQueries({ queryKey: ["admin-artwork"] }); queryClient.invalidateQueries({ queryKey: ["artwork-gallery"] }); toast.success(isEditing ? "Artwork updated" : "Artwork added"); navigate("/admin/artwork"); },
     onError: (error) => { toast.error("Failed to save artwork"); console.error(error); },
   });
 
@@ -108,6 +109,13 @@ const ArtworkEditor = () => {
           <button onClick={() => navigate("/admin/artwork")} className="p-2 hover:bg-muted rounded"><ArrowLeft className="w-5 h-5" /></button>
           <div className="flex-grow"><h1 className="text-3xl font-display">{isEditing ? "Edit Artwork" : "Add Artwork"}</h1></div>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="artwork"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
           <UndoRedoControls canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         </div>
 

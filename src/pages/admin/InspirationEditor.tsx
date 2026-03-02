@@ -22,6 +22,7 @@ import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { useAutosave } from "@/hooks/useAutosave";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 
 interface RelatedLink {
   title: string;
@@ -215,7 +216,10 @@ const InspirationEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("inspiration", id, form as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-inspirations"] });
       queryClient.invalidateQueries({ queryKey: ["inspirations"] });
@@ -280,6 +284,13 @@ const InspirationEditor = () => {
             </h1>
           </div>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="inspiration"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
           <UndoRedoControls
             canUndo={canUndo}
             canRedo={canRedo}

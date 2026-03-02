@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { PROJECT_TYPES, getProjectTypeLabel } from "@/lib/clientProjectTypes";
 import { useAutosave } from "@/hooks/useAutosave";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 
 const ClientProjectEditor = () => {
   const { id } = useParams();
@@ -142,7 +143,10 @@ const ClientProjectEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("client_project", id, form as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-client-projects"] });
       queryClient.invalidateQueries({ queryKey: ["client-projects"] });
@@ -221,6 +225,13 @@ const ClientProjectEditor = () => {
             </h1>
           </div>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="client_project"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
         </div>
 
         {/* Draft Recovery */}

@@ -13,6 +13,7 @@ import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -171,7 +172,10 @@ const ExperienceEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("experience", id, form as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-experiences"] });
       queryClient.invalidateQueries({ queryKey: ["experiences"] });
@@ -230,6 +234,13 @@ const ExperienceEditor = () => {
           <button onClick={() => navigate("/admin/experiences")} className="p-2 hover:bg-muted rounded"><ArrowLeft className="w-5 h-5" /></button>
           <div className="flex-grow"><h1 className="text-3xl font-display">{isEditing ? "Edit Experience" : "Add Experience"}</h1></div>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="experience"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
           <UndoRedoControls canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         </div>
 

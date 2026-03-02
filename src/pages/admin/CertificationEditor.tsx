@@ -11,6 +11,7 @@ import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,7 +97,7 @@ const CertificationEditor = () => {
       if (isEditing) { const { error } = await supabase.from("certifications").update(data).eq("id", id); if (error) throw error; }
       else { const { error } = await supabase.from("certifications").insert(data); if (error) throw error; }
     },
-    onSuccess: () => { clearDraft(); queryClient.invalidateQueries({ queryKey: ["admin-certifications"] }); queryClient.invalidateQueries({ queryKey: ["certifications"] }); toast.success(isEditing ? "Certification updated" : "Certification created"); navigate("/admin/certifications"); },
+    onSuccess: async () => { if (isEditing && id) { await saveContentVersion("certification", id, form as unknown as Record<string, unknown>); } clearDraft(); queryClient.invalidateQueries({ queryKey: ["admin-certifications"] }); queryClient.invalidateQueries({ queryKey: ["certifications"] }); toast.success(isEditing ? "Certification updated" : "Certification created"); navigate("/admin/certifications"); },
     onError: (error) => { toast.error("Failed to save"); console.error(error); },
   });
 
@@ -120,6 +121,13 @@ const CertificationEditor = () => {
           <button onClick={() => navigate("/admin/certifications")} className="p-2 hover:bg-muted rounded"><ArrowLeft className="w-5 h-5" /></button>
           <div className="flex-grow"><h1 className="text-3xl font-display">{isEditing ? "Edit Certification" : "Add Certification"}</h1></div>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="certification"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
           <UndoRedoControls canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         </div>
 

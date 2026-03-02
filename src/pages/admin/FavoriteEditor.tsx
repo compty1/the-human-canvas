@@ -21,6 +21,7 @@ import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { useAutosave } from "@/hooks/useAutosave";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { 
   streamingPlatforms, 
   musicPlatforms, 
@@ -231,7 +232,10 @@ const FavoriteEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("favorite", id, form as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-favorites"] });
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
