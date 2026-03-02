@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Search, Image, Upload, MoreVertical, ExternalLink, ChevronRight, Copy } from "lucide-react";
@@ -82,6 +83,12 @@ const resolveImageUrl = (url: string): string => {
   return localAssetMap[url] || url;
 };
 
+const ART_SORT: SortOption[] = [
+  { label: "Newest First", key: "created_at", direction: "desc" },
+  { label: "Oldest First", key: "created_at", direction: "asc" },
+  { label: "Title A-Z", key: "title", direction: "asc" },
+];
+
 const ArtworkManager = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -138,12 +145,14 @@ const ArtworkManager = () => {
     ? ["all", ...new Set(artwork.map(a => a.category || "uncategorized"))]
     : ["all"];
 
-  const filteredArtwork = artwork?.filter(a => {
+  const filteredArtwork = (artwork ?? []).filter(a => {
     const matchesSearch = a.title.toLowerCase().includes(search.toLowerCase()) ||
       a.description?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || a.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredArtwork, ART_SORT);
 
   return (
     <AdminLayout>
@@ -205,6 +214,8 @@ const ArtworkManager = () => {
           </div>
         </div>
 
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredArtwork.length} />
+
         {/* Artwork Grid */}
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -212,9 +223,9 @@ const ArtworkManager = () => {
               <div key={i} className="aspect-square bg-muted animate-pulse" />
             ))}
           </div>
-        ) : filteredArtwork && filteredArtwork.length > 0 ? (
+        ) : filteredArtwork.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredArtwork.map((art) => (
+            {paginated.map((art) => (
               <ComicPanel key={art.id} className="group relative overflow-hidden">
                 <img 
                   src={resolveImageUrl(art.image_url)} 

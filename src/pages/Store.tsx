@@ -9,7 +9,7 @@ import { ShoppingBag, Tag } from "lucide-react";
 const Store = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  const { data: products, isLoading } = useQuery({
+  const { data: products, isLoading, isError } = useQuery({
     queryKey: ["products-public"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -79,6 +79,12 @@ const Store = () => {
               </div>
             ))}
           </div>
+        ) : isError ? (
+          <ComicPanel className="p-12 text-center max-w-xl mx-auto">
+            <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-destructive" />
+            <h2 className="text-2xl font-display mb-2">Oops!</h2>
+            <p className="text-muted-foreground">Something went wrong loading products. Please try again later.</p>
+          </ComicPanel>
         ) : filteredProducts && filteredProducts.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((product) => (

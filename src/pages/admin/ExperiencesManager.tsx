@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { 
@@ -47,6 +48,11 @@ const categoryColors: Record<string, string> = {
   service: "bg-orange-500",
   other: "bg-gray-500",
 };
+const EXP_SORT: SortOption[] = [
+  { label: "Order Index", key: "order_index", direction: "asc" },
+  { label: "Title A-Z", key: "title", direction: "asc" },
+  { label: "Newest First", key: "created_at", direction: "desc" },
+];
 
 const ExperiencesManager = () => {
   const queryClient = useQueryClient();
@@ -101,6 +107,8 @@ const ExperiencesManager = () => {
     return matchesCategory && matchesSearch;
   });
 
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredExperiences, EXP_SORT);
+
   const categories = ["all", "creative", "business", "technical", "service", "other"];
 
   return (
@@ -153,6 +161,7 @@ const ExperiencesManager = () => {
             className="pl-10"
           />
         </div>
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredExperiences.length} />
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -170,7 +179,7 @@ const ExperiencesManager = () => {
           </ComicPanel>
         ) : (
           <div className="space-y-4">
-            {filteredExperiences.map((exp) => {
+            {paginated.map((exp) => {
               const Icon = categoryIcons[exp.category] || Briefcase;
               return (
                 <ComicPanel key={exp.id} className="p-4">
