@@ -122,6 +122,7 @@ const ProductReviewEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-product-reviews"] });
       toast.success(isEditing ? "Review updated!" : "Review created!");
       navigate("/admin/product-reviews");
     },

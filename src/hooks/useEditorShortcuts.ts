@@ -5,6 +5,7 @@ interface UseEditorShortcutsOptions {
   onSaveAndExit?: () => void;
   onTogglePublish?: () => void;
   onExit?: () => void;
+  onUnsavedExit?: () => void;
   isDirty?: boolean;
   enabled?: boolean;
 }
@@ -14,6 +15,7 @@ export const useEditorShortcuts = ({
   onSaveAndExit,
   onTogglePublish,
   onExit,
+  onUnsavedExit,
   isDirty = false,
   enabled = true,
 }: UseEditorShortcutsOptions) => {
@@ -53,17 +55,15 @@ export const useEditorShortcuts = ({
 
       // Escape - Exit with confirmation if dirty
       if (e.key === "Escape") {
-        if (isDirty) {
-          if (confirm("You have unsaved changes. Are you sure you want to leave?")) {
-            onExit?.();
-          }
+        if (isDirty && onUnsavedExit) {
+          onUnsavedExit();
         } else {
           onExit?.();
         }
         return;
       }
     },
-    [onSave, onSaveAndExit, onTogglePublish, onExit, isDirty, enabled]
+    [onSave, onSaveAndExit, onTogglePublish, onExit, onUnsavedExit, isDirty, enabled]
   );
 
   useEffect(() => {

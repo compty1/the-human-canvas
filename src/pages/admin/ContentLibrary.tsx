@@ -391,7 +391,13 @@ const ContentLibrary = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link 
-                            to={`/admin/${item.type === "article" ? "articles" : item.type === "update" ? "updates" : "projects"}/new?clone=${item.id}`} 
+                            to={`/admin/${
+                              item.type === "article" ? "articles" :
+                              item.type === "update" ? "updates" :
+                              item.type === "experiment" ? "experiments" :
+                              item.type === "product_review" ? "product-reviews" :
+                              "projects"
+                            }/new?clone=${item.id}`} 
                             className="flex items-center gap-2"
                           >
                             <Copy className="w-4 h-4" /> Duplicate

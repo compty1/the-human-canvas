@@ -58,6 +58,7 @@ interface ArtworkItem {
   image: string;
   category: string;
   likes: number;
+  images?: string[];
   created_at?: string;
 }
 
@@ -69,6 +70,9 @@ const categories = [
   { id: "sketch", label: "Pencil & Sketch" },
   { id: "mixed", label: "Mixed Media" },
   { id: "graphic_design", label: "Graphic Design" },
+  { id: "portrait", label: "Portrait" },
+  { id: "landscape", label: "Landscape" },
+  { id: "pop_art", label: "Pop Art" },
 ];
 
 // Period sections
@@ -120,11 +124,26 @@ const ArtGallery = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("artwork")
-        .select("id, title, description, image_url, category, created_at")
+        .select("id, title, description, image_url, category, created_at, images")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
+  });
+
+  // Fetch like counts for all artwork
+  const { data: likeCounts = {} } = useQuery({
+    queryKey: ["artwork-like-counts"],
+    queryFn: async () => {
+      const counts: Record<string, number> = {};
+      for (const item of dbArtwork) {
+        const { data } = await supabase.rpc("get_like_count", { p_type: "artwork", p_id: item.id });
+        counts[item.id] = data || 0;
+      }
+      return counts;
+    },
+    enabled: dbArtwork.length > 0,
+    staleTime: 60_000,
   });
 
   // Map database artwork to display format
@@ -134,7 +153,8 @@ const ArtGallery = () => {
     description: item.description || "",
     image: resolveImageUrl(item.image_url),
     category: item.category || "mixed",
-    likes: 0,
+    likes: likeCounts[item.id] || 0,
+    images: item.images?.map(resolveImageUrl) || [],
     created_at: item.created_at,
   }));
 
@@ -386,6 +406,24 @@ const ArtGallery = () => {
                   <p className="text-lg font-sans text-muted-foreground mb-6">
                     {selectedArtwork.description}
                   </p>
+
+                  {/* Process/Stage Images */}
+                  {selectedArtwork.images && selectedArtwork.images.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-bold uppercase text-muted-foreground mb-2">Process Images</h3>
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {selectedArtwork.images.map((img, i) => (
+                          <img
+                            key={i}
+                            src={img}
+                            alt={`${selectedArtwork.title} process ${i + 1}`}
+                            className="w-20 h-20 object-cover border-2 border-foreground flex-shrink-0"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <LikeButton
                     count={
                       selectedArtwork.likes +

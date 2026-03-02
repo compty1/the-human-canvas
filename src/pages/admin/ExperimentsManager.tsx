@@ -4,8 +4,9 @@ import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Star, TrendingUp, ExternalLink } from "lucide-react";
+import { Plus, Edit2, Trash2, Star, TrendingUp, ExternalLink, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 const ExperimentsManager = () => {
@@ -128,6 +129,7 @@ const ExperimentsManager = () => {
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Link>
+                    <DuplicateButton id={exp.id} type="experiment" />
                     <Link
                       to={`/admin/experiments/${exp.id}/edit`}
                       className="p-2 hover:bg-muted"
