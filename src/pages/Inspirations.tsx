@@ -33,8 +33,11 @@ const categoryColors: Record<string, string> = {
 
 const categories = ["all", "person", "concept", "movement", "experience"];
 
+const INSP_PAGE_SIZE = 12;
+
 const Inspirations = () => {
   const [activeCategory, setActiveCategory] = useState("all");
+  const [page, setPage] = useState(1);
 
   const { data: inspirations = [], isLoading } = useQuery({
     queryKey: ["inspirations"],
@@ -63,9 +66,11 @@ const Inspirations = () => {
     },
   });
 
-  const filteredInspirations = activeCategory === "all"
+  const allFiltered = activeCategory === "all"
     ? inspirations
     : inspirations.filter(i => i.category === activeCategory);
+  const totalPages = Math.ceil(allFiltered.length / INSP_PAGE_SIZE);
+  const filteredInspirations = allFiltered.slice(0, page * INSP_PAGE_SIZE);
 
   return (
     <Layout>
@@ -105,7 +110,7 @@ const Inspirations = () => {
               return (
                 <button
                   key={cat}
-                  onClick={() => setActiveCategory(cat)}
+                  onClick={() => { setActiveCategory(cat); setPage(1); }}
                   className={`px-4 py-2 font-bold text-sm uppercase flex items-center gap-2 border-2 transition-colors ${
                     activeCategory === cat
                       ? cat === "all" 
@@ -191,6 +196,16 @@ const Inspirations = () => {
                   </Link>
                 );
               })}
+            </div>
+          )}
+          {page < totalPages && (
+            <div className="text-center mt-8">
+              <button
+                onClick={() => setPage(p => p + 1)}
+                className="px-6 py-3 font-bold border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                Load More ({allFiltered.length - filteredInspirations.length} remaining)
+              </button>
             </div>
           )}
         </div>

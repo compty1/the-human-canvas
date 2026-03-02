@@ -55,8 +55,11 @@ const typeColors: Record<string, string> = {
 
 const types = ["all", "art", "music", "movie", "show", "book", "article", "research", "podcast", "creator", "other"];
 
+const PAGE_SIZE = 24;
+
 const Favorites = () => {
   const [activeType, setActiveType] = useState("all");
+  const [page, setPage] = useState(1);
 
   const { data: favorites = [], isLoading } = useQuery({
     queryKey: ["favorites"],
@@ -72,9 +75,11 @@ const Favorites = () => {
 
   const currentlyEnjoying = favorites.filter(f => f.is_current);
   const creators = favorites.filter(f => f.type === "creator");
-  const filteredFavorites = activeType === "all" 
+  const allFiltered = activeType === "all" 
     ? favorites 
     : favorites.filter(f => f.type === activeType);
+  const totalPages = Math.ceil(allFiltered.length / PAGE_SIZE);
+  const filteredFavorites = allFiltered.slice(0, page * PAGE_SIZE);
 
   return (
     <Layout>
@@ -139,7 +144,7 @@ const Favorites = () => {
               return (
                 <button
                   key={type}
-                  onClick={() => setActiveType(type)}
+                  onClick={() => { setActiveType(type); setPage(1); }}
                   className={`px-4 py-2 font-bold text-sm uppercase flex items-center gap-2 border-2 transition-colors ${
                     activeType === type
                       ? "bg-foreground text-background border-foreground"
@@ -296,6 +301,16 @@ const Favorites = () => {
                   </ComicPanel>
                 );
               })}
+            </div>
+          )}
+          {page < totalPages && (
+            <div className="text-center mt-8">
+              <button
+                onClick={() => setPage(p => p + 1)}
+                className="px-6 py-3 font-bold border-2 border-foreground hover:bg-muted transition-colors"
+              >
+                Load More ({allFiltered.length - filteredFavorites.length} remaining)
+              </button>
             </div>
           )}
         </div>

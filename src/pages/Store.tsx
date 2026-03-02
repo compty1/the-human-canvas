@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -6,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ShoppingBag, Tag } from "lucide-react";
 
 const Store = () => {
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
   const { data: products, isLoading } = useQuery({
     queryKey: ["products-public"],
     queryFn: async () => {
@@ -18,6 +21,14 @@ const Store = () => {
       return data;
     },
   });
+
+  const categories = products
+    ? ["all", ...new Set(products.map((p) => p.category).filter(Boolean))]
+    : ["all"];
+
+  const filteredProducts = categoryFilter === "all"
+    ? products
+    : products?.filter((p) => p.category === categoryFilter);
 
   return (
     <Layout>
@@ -33,6 +44,32 @@ const Store = () => {
           </p>
         </div>
 
+        {/* Category Filters */}
+        {categories.length > 1 && (
+          <div className="flex flex-wrap gap-2 mb-8 justify-center">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat as string)}
+                className={`px-4 py-2 font-bold text-sm border-2 border-foreground transition-colors ${
+                  categoryFilter === cat
+                    ? "bg-foreground text-background"
+                    : "bg-background hover:bg-muted"
+                }`}
+              >
+                {cat === "all" ? (
+                  <>All</>
+                ) : (
+                  <>
+                    <Tag className="w-4 h-4 inline mr-1" />
+                    {cat}
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
@@ -42,9 +79,9 @@ const Store = () => {
               </div>
             ))}
           </div>
-        ) : products && products.length > 0 ? (
+        ) : filteredProducts && filteredProducts.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <Link key={product.id} to={`/store/${product.slug}`}>
                 <ComicPanel className="h-full hover:-translate-y-1 transition-transform group">
                   <div className="aspect-square overflow-hidden border-b-4 border-foreground bg-muted">
@@ -94,29 +131,15 @@ const Store = () => {
         ) : (
           <ComicPanel className="p-12 text-center max-w-xl mx-auto">
             <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-2xl font-display mb-2">Coming Soon!</h2>
+            <h2 className="text-2xl font-display mb-2">
+              {categoryFilter !== "all" ? "No products in this category" : "Coming Soon!"}
+            </h2>
             <p className="text-muted-foreground">
-              The store is being set up. Check back soon for unique items and merchandise.
+              {categoryFilter !== "all"
+                ? "Try selecting a different category."
+                : "The store is being set up. Check back soon for unique items and merchandise."}
             </p>
           </ComicPanel>
-        )}
-
-        {/* Categories */}
-        {products && products.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-display mb-4">Categories</h2>
-            <div className="flex flex-wrap gap-2">
-              {[...new Set(products.map((p) => p.category).filter(Boolean))].map((cat) => (
-                <span
-                  key={cat}
-                  className="px-4 py-2 bg-muted font-bold text-sm border-2 border-foreground hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
-                >
-                  <Tag className="w-4 h-4 inline mr-2" />
-                  {cat}
-                </span>
-              ))}
-            </div>
-          </div>
         )}
       </div>
     </Layout>

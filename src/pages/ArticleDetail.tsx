@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
@@ -48,6 +49,8 @@ const ArticleDetail = () => {
     },
     enabled: !!slug,
   });
+
+  usePageMeta({ title: article?.title, description: article?.excerpt });
 
   const { data: isAdmin } = useQuery({
     queryKey: ["is-admin", user?.id],

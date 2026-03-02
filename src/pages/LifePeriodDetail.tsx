@@ -8,6 +8,7 @@ import { ArrowLeft, Calendar, Star, Loader2, Image } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 interface LifePeriod {
   id: string;
@@ -41,6 +42,8 @@ const LifePeriodDetail = () => {
     },
     enabled: !!id,
   });
+
+  usePageMeta({ title: period?.title, description: period?.description });
 
   // Fetch key works if any
   const { data: keyArtworks = [] } = useQuery({
