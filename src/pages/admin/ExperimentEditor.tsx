@@ -12,6 +12,7 @@ import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
 import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
 import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
@@ -325,11 +326,17 @@ const ExperimentEditor = () => {
             </div>
           </div>
           <div className="mt-4">
-            <Label htmlFor="description">Short Description</Label>
+            <div className="flex items-center justify-between mb-1">
+              <Label htmlFor="description">Short Description</Label>
+              <AIGenerateButton fieldName="description" fieldLabel="Description" contentType="experiment" context={{ name: form.name, platform: form.platform, status: form.status }} currentValue={form.description} onGenerated={(value) => updateForm({ description: value })} variant="small" />
+            </div>
             <Textarea id="description" value={form.description} onChange={(e) => updateForm({ description: e.target.value })} rows={2} />
           </div>
           <div className="mt-4">
-            <Label htmlFor="long_description">Full Description</Label>
+            <div className="flex items-center justify-between mb-1">
+              <Label htmlFor="long_description">Full Description</Label>
+              <AIGenerateButton fieldName="long_description" fieldLabel="Full Description" contentType="experiment" context={{ name: form.name, platform: form.platform, description: form.description }} currentValue={form.long_description} onGenerated={(value) => updateForm({ long_description: value })} variant="small" />
+            </div>
             <Textarea id="long_description" value={form.long_description} onChange={(e) => updateForm({ long_description: e.target.value })} rows={6} />
           </div>
         </ComicPanel>
@@ -431,7 +438,10 @@ const ExperimentEditor = () => {
 
         {/* Case Study */}
         <ComicPanel className="p-6">
-          <h2 className="text-xl font-display mb-4">Case Study</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display">Case Study</h2>
+            <AIGenerateButton fieldName="content" fieldLabel="Case Study" contentType="experiment" context={{ name: form.name, platform: form.platform, description: form.description, revenue: form.revenue, lessons_learned: form.lessons_learned }} currentValue={form.case_study} onGenerated={(value) => updateForm({ case_study: value })} variant="small" />
+          </div>
           <Textarea value={form.case_study} onChange={(e) => updateForm({ case_study: e.target.value })} rows={8} placeholder="Write a detailed case study..." />
         </ComicPanel>
 

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
@@ -17,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Sparkles, Loader2, Trash2 } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 
@@ -33,7 +34,6 @@ const ArtworkEditor = () => {
     title: "", image_url: "", images: [] as string[],
     category: "mixed", description: "", admin_notes: "",
   });
-  const [generatingDesc, setGeneratingDesc] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Undo/Redo
@@ -88,16 +88,6 @@ const ArtworkEditor = () => {
     onError: () => toast.error("Failed to delete"),
   });
 
-  const generateDescription = async () => {
-    if (!form.title) { toast.error("Please enter a title first"); return; }
-    setGeneratingDesc(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-copy", { body: { type: "artwork_description", context: `Artwork title: ${form.title}, Category: ${form.category}`, tone: "creative", length: "short" } });
-      if (error) throw error;
-      if (data?.content) { updateForm({ description: data.content }); toast.success("Description generated!"); }
-    } catch { toast.error("Failed to generate description"); } finally { setGeneratingDesc(false); }
-  };
-
   if (isLoading) return (<AdminLayout><div className="animate-pulse space-y-4"><div className="h-8 bg-muted w-48" /><div className="h-64 bg-muted" /></div></AdminLayout>);
 
   return (
@@ -127,7 +117,10 @@ const ArtworkEditor = () => {
               <option value="portrait">Portrait</option><option value="landscape">Landscape</option><option value="pop_art">Pop Art</option><option value="graphic_design">Graphic Design</option><option value="mixed">Mixed Media</option><option value="photography">Photography</option><option value="sketch">Sketch</option><option value="colored">Colored</option>
             </select></div>
             <div>
-              <div className="flex items-center justify-between mb-1"><Label>Description</Label><button onClick={generateDescription} disabled={generatingDesc} className="text-xs flex items-center gap-1 text-primary hover:underline">{generatingDesc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} Generate with AI</button></div>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Description</Label>
+                <AIGenerateButton fieldName="description" fieldLabel="Description" contentType="artwork" context={{ title: form.title, category: form.category }} currentValue={form.description} onGenerated={(value) => updateForm({ description: value })} variant="small" />
+              </div>
               <Textarea value={form.description} onChange={(e) => updateForm({ description: e.target.value })} rows={3} placeholder="Describe this artwork..." />
             </div>
             <div><Label>Admin Notes (Private)</Label><Textarea value={form.admin_notes} onChange={(e) => updateForm({ admin_notes: e.target.value })} rows={2} placeholder="Internal notes..." /></div>
