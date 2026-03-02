@@ -5,8 +5,10 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, Briefcase, Eye, EyeOff } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit2, Trash2, Loader2, Briefcase, Eye, EyeOff, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PROJECT_TYPES, getProjectTypeLabel, getProjectTypeIcon } from "@/lib/clientProjectTypes";
 interface ClientProject {
@@ -28,6 +30,8 @@ const ClientWorkManager = () => {
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["admin-client-projects"],
@@ -69,7 +73,11 @@ const ClientWorkManager = () => {
     }
   };
 
-  const filteredProjects = projects.filter(p => typeFilter === "all" || p.project_type === typeFilter);
+  const filteredProjects = projects.filter(p => {
+    const matchesType = typeFilter === "all" || p.project_type === typeFilter;
+    const matchesSearch = !search || p.project_name.toLowerCase().includes(search.toLowerCase()) || p.client_name.toLowerCase().includes(search.toLowerCase());
+    return matchesType && matchesSearch;
+  });
   const completedCount = filteredProjects.filter(p => p.status === "completed").length;
   const inProgressCount = filteredProjects.filter(p => p.status === "in_progress").length;
 
@@ -110,7 +118,16 @@ const ClientWorkManager = () => {
           ))}
         </div>
 
-        {/* Stats */}
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search client projects..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         <div className="grid md:grid-cols-3 gap-4">
           <ComicPanel className="p-4 text-center">
             <div className="text-3xl font-display">{filteredProjects.length}</div>
@@ -174,6 +191,7 @@ const ClientWorkManager = () => {
                   )}
 
                   <div className="flex items-center gap-2">
+                    <SelectableCheckbox id={project.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                     <Link to={`/admin/client-work/${project.id}/edit`}>
                       <button className="p-2 border-2 border-foreground hover:bg-muted">
                         <Edit2 className="w-4 h-4" />
@@ -200,6 +218,14 @@ const ClientWorkManager = () => {
           </div>
         )}
       </div>
+
+      <BulkActionsBar
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        tableName="client_projects"
+        queryKey={["admin-client-projects"]}
+        actions={["delete"]}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}

@@ -5,14 +5,18 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Star, TrendingUp, ExternalLink, Copy } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit2, Trash2, Star, TrendingUp, ExternalLink, Copy, Search } from "lucide-react";
 import { toast } from "sonner";
 
 const ExperimentsManager = () => {
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState("");
+  const [search, setSearch] = useState("");
+  const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
   const { data: experiments, isLoading } = useQuery({
     queryKey: ["admin-experiments"],
@@ -69,7 +73,16 @@ const ExperimentsManager = () => {
           </Link>
         </div>
 
-        {/* List */}
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search experiments..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -78,9 +91,12 @@ const ExperimentsManager = () => {
           </div>
         ) : experiments && experiments.length > 0 ? (
           <div className="space-y-4">
-            {experiments.map((exp) => (
+            {experiments
+              .filter(exp => !search || exp.name.toLowerCase().includes(search.toLowerCase()) || exp.platform?.toLowerCase().includes(search.toLowerCase()))
+              .map((exp) => (
               <ComicPanel key={exp.id} className="p-4">
                 <div className="flex items-center gap-4">
+                  <SelectableCheckbox id={exp.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                   {/* Image */}
                   {exp.image_url && (
                     <div className="w-20 h-20 flex-shrink-0 border-2 border-foreground overflow-hidden">
@@ -161,6 +177,14 @@ const ExperimentsManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <BulkActionsBar
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        tableName="experiments"
+        queryKey={["admin-experiments"]}
+        actions={["delete"]}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}

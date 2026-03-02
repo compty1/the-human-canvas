@@ -44,7 +44,7 @@ export const BulkActionsBar = ({
       value: boolean | string;
     }) => {
       const { error } = await supabase
-        .from(tableName as "articles" | "projects" | "updates" | "experiments" | "products" | "product_reviews")
+        .from(tableName as any)
         .update({ [field]: value })
         .in("id", selectedIds);
       if (error) throw error;
@@ -62,7 +62,7 @@ export const BulkActionsBar = ({
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
-        .from(tableName as "articles" | "projects" | "updates" | "experiments" | "products" | "product_reviews")
+        .from(tableName as any)
         .delete()
         .in("id", selectedIds);
       if (error) throw error;

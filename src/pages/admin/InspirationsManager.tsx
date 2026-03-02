@@ -5,8 +5,10 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical, Search } from "lucide-react";
 import { toast } from "sonner";
 
 interface Inspiration {
@@ -39,6 +41,8 @@ const InspirationsManager = () => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
   const { data: inspirations = [], isLoading } = useQuery({
     queryKey: ["admin-inspirations"],
@@ -168,7 +172,16 @@ const InspirationsManager = () => {
           Drag items to reorder. Items will swap positions automatically.
         </p>
 
-        {/* Inspirations List */}
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search inspirations..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -186,7 +199,9 @@ const InspirationsManager = () => {
           </ComicPanel>
         ) : (
           <div className="space-y-2">
-            {inspirations.map((insp, index) => {
+            {inspirations
+              .filter(insp => !search || insp.title.toLowerCase().includes(search.toLowerCase()) || insp.description?.toLowerCase().includes(search.toLowerCase()))
+              .map((insp, index) => {
               const Icon = categoryIcons[insp.category] || Sparkles;
               const isDragging = draggedId === insp.id;
               const isDragOver = dragOverId === insp.id;
@@ -208,6 +223,7 @@ const InspirationsManager = () => {
                 >
                   <div className="flex items-start gap-4">
                     {/* Drag Handle */}
+                    <SelectableCheckbox id={insp.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                     <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded self-center">
                       <GripVertical className="w-5 h-5 text-muted-foreground" />
                     </div>
@@ -262,6 +278,14 @@ const InspirationsManager = () => {
           </div>
         )}
       </div>
+
+      <BulkActionsBar
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        tableName="inspirations"
+        queryKey={["admin-inspirations"]}
+        actions={["delete"]}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}
