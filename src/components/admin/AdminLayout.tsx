@@ -6,6 +6,7 @@ import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
+import { QuickCreateModal } from "./QuickCreateModal";
 import {
   LayoutDashboard,
   BarChart3,
@@ -132,13 +133,17 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
-
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   // Global Ctrl+K shortcut for command palette
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         setCommandOpen(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        setQuickCreateOpen(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -184,6 +189,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     <div className="min-h-screen flex bg-background">
       {/* Command Palette */}
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+      <QuickCreateModal open={quickCreateOpen} onOpenChange={setQuickCreateOpen} />
 
       {/* Mobile Menu Button */}
       <button
