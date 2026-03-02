@@ -71,6 +71,17 @@ export const useEditorShortcuts = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  // Warn before closing/navigating away with unsaved changes
+  useEffect(() => {
+    if (!enabled || !isDirty) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [enabled, isDirty]);
+
   return {
     shortcuts: [
       { keys: "Ctrl+S", action: "Save" },

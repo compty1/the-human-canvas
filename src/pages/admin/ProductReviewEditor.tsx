@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { Save, ArrowLeft, Loader2, Plus, X, Star, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -254,7 +255,10 @@ const ProductReviewEditor = () => {
 
         {/* Summary */}
         <ComicPanel className="p-6">
-          <h2 className="text-xl font-display mb-4">Executive Summary</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display">Executive Summary</h2>
+            <AIGenerateButton fieldName="description" fieldLabel="Summary" contentType="product_review" context={{ product_name: formData.product_name, company: formData.company, category: formData.category, overall_rating: formData.overall_rating }} currentValue={formData.summary} onGenerated={(value) => setFormData({ ...formData, summary: value })} variant="small" />
+          </div>
           <Textarea value={formData.summary} onChange={(e) => setFormData({ ...formData, summary: e.target.value })} placeholder="Brief overview..." rows={4} />
         </ComicPanel>
 
@@ -285,7 +289,10 @@ const ProductReviewEditor = () => {
 
         {/* Full Content */}
         <ComicPanel className="p-6">
-          <h2 className="text-xl font-display mb-4">Full Review Content</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display">Full Review Content</h2>
+            <AIGenerateButton fieldName="content" fieldLabel="Review" contentType="product_review" context={{ product_name: formData.product_name, company: formData.company, summary: formData.summary, strengths: formData.strengths, pain_points: formData.pain_points }} currentValue={formData.content} onGenerated={(value) => setFormData({ ...formData, content: value })} variant="small" />
+          </div>
           <RichTextEditor content={formData.content} onChange={(content) => setFormData({ ...formData, content })} placeholder="Write your detailed product review here..." />
         </ComicPanel>
 

@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { MultiImageUploader } from "@/components/admin/ImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
 import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
@@ -117,8 +118,20 @@ const ProductEditor = () => {
             <div><Label>Category</Label><Input value={form.category} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} placeholder="e.g., Prints" /></div>
             <div><Label>Status</Label><select value={form.status} onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))} className="w-full h-10 px-3 border-2 border-input bg-background"><option value="draft">Draft</option><option value="active">Active</option><option value="archived">Archived</option></select></div>
           </div>
-          <div className="mt-4"><Label>Short Description</Label><Textarea value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} rows={2} /></div>
-          <div className="mt-4"><Label>Full Description</Label><Textarea value={form.long_description} onChange={(e) => setForm(prev => ({ ...prev, long_description: e.target.value }))} rows={5} /></div>
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1">
+              <Label>Short Description</Label>
+              <AIGenerateButton fieldName="description" fieldLabel="Description" contentType="product" context={{ name: form.name, category: form.category, price: form.price }} currentValue={form.description} onGenerated={(value) => setForm(prev => ({ ...prev, description: value }))} variant="small" />
+            </div>
+            <Textarea value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} rows={2} />
+          </div>
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1">
+              <Label>Full Description</Label>
+              <AIGenerateButton fieldName="long_description" fieldLabel="Full Description" contentType="product" context={{ name: form.name, category: form.category, description: form.description }} currentValue={form.long_description} onGenerated={(value) => setForm(prev => ({ ...prev, long_description: value }))} variant="small" />
+            </div>
+            <Textarea value={form.long_description} onChange={(e) => setForm(prev => ({ ...prev, long_description: e.target.value }))} rows={5} />
+          </div>
         </ComicPanel>
 
         <ComicPanel className="p-6"><h2 className="text-xl font-display mb-4">Images</h2><MultiImageUploader value={form.images} onChange={(urls) => setForm(prev => ({ ...prev, images: urls }))} label="Product Images" folder="products" /></ComicPanel>
