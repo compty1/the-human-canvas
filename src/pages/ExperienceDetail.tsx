@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -64,6 +65,8 @@ const ExperienceDetail = () => {
     },
     enabled: !!slug,
   });
+
+  usePageMeta({ title: experience?.title, description: experience?.description });
 
   if (isLoading) {
     return (

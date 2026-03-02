@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -25,6 +26,8 @@ const ClientProjectDetail = () => {
     },
     enabled: !!slug,
   });
+
+  usePageMeta({ title: project?.project_name, description: project?.description });
 
   if (isLoading) {
     return (

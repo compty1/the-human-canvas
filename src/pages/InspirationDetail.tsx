@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
@@ -28,6 +29,8 @@ const InspirationDetail = () => {
     },
     enabled: !!id,
   });
+
+  usePageMeta({ title: inspiration?.title, description: inspiration?.description });
 
   if (isLoading) {
     return (

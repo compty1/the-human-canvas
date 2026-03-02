@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -5,7 +6,10 @@ import { ComicPanel, SpeechBubble } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Star, TrendingUp, Calendar, Package } from "lucide-react";
 
+const statusOptions = ["all", "active", "paused", "closed", "sold"];
+
 const Experiments = () => {
+  const [statusFilter, setStatusFilter] = useState("all");
   const { data: experiments, isLoading } = useQuery({
     queryKey: ["experiments"],
     queryFn: async () => {
@@ -26,6 +30,10 @@ const Experiments = () => {
     sold: "bg-pop-cyan text-foreground",
   };
 
+  const filteredExperiments = statusFilter === "all"
+    ? experiments
+    : experiments?.filter(e => e.status === statusFilter);
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -41,6 +49,23 @@ const Experiments = () => {
           </p>
         </div>
 
+        {/* Status Filters */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {statusOptions.map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-4 py-2 font-bold text-sm uppercase border-2 border-foreground transition-colors ${
+                statusFilter === s
+                  ? "bg-foreground text-background"
+                  : "hover:bg-muted"
+              }`}
+            >
+              {s === "all" ? "All" : s} {s !== "all" && experiments ? `(${experiments.filter(e => e.status === s).length})` : ""}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
@@ -50,9 +75,9 @@ const Experiments = () => {
               </div>
             ))}
           </div>
-        ) : experiments && experiments.length > 0 ? (
+        ) : filteredExperiments && filteredExperiments.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {experiments.map((exp) => (
+            {filteredExperiments.map((exp) => (
               <Link key={exp.id} to={`/experiments/${exp.slug}`}>
                 <ComicPanel className="h-full hover:-translate-y-1 transition-transform">
                   {exp.image_url && (

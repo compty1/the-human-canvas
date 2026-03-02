@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
@@ -20,6 +21,8 @@ interface LifePeriod {
 }
 
 const LifeTimeline = () => {
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
   const { data: periods = [], isLoading } = useQuery({
     queryKey: ["life-periods"],
     queryFn: async () => {
@@ -31,6 +34,9 @@ const LifeTimeline = () => {
       return data as LifePeriod[];
     },
   });
+
+  const categories = ["all", ...new Set(periods.map(p => p.category).filter(Boolean) as string[])];
+  const filteredPeriods = categoryFilter === "all" ? periods : periods.filter(p => p.category === categoryFilter);
 
   const currentPeriod = periods.find(p => p.is_current);
 
@@ -49,6 +55,29 @@ const LifeTimeline = () => {
           </p>
         </div>
       </section>
+
+      {/* Category Filters */}
+      {categories.length > 1 && (
+        <section className="py-6 border-b-2 border-foreground sticky top-16 bg-background z-20">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-wrap gap-2 justify-center">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-4 py-2 font-bold text-sm uppercase border-2 border-foreground transition-colors ${
+                    categoryFilter === cat
+                      ? "bg-foreground text-background"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  {cat === "all" ? "All" : cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Current Period Highlight */}
       {currentPeriod && (
@@ -91,7 +120,7 @@ const LifeTimeline = () => {
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
-          ) : periods.length === 0 ? (
+          ) : filteredPeriods.length === 0 ? (
             <div className="text-center py-12">
               <History className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
               <h2 className="text-2xl font-display mb-2">No Timeline Yet</h2>
@@ -103,7 +132,7 @@ const LifeTimeline = () => {
               <div className="absolute left-8 top-0 bottom-0 w-1 bg-foreground hidden md:block" />
 
               <div className="space-y-12">
-                {periods.map((period) => (
+                {filteredPeriods.map((period) => (
                   <div key={period.id} className="flex gap-8">
                     {/* Timeline dot */}
                     <div className="hidden md:flex flex-shrink-0 w-16 items-start justify-center">

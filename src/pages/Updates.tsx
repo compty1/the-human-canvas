@@ -22,6 +22,7 @@ interface Update {
 const Updates = () => {
   const { user } = useAuth();
   const [likedItems, setLikedItems] = useState<Set<string>>(new Set());
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   const { data: updates, isLoading } = useQuery({
     queryKey: ["updates"],
@@ -36,6 +37,11 @@ const Updates = () => {
       return data as Update[];
     },
   });
+
+  const allTags = Array.from(new Set((updates || []).flatMap(u => u.tags || [])));
+  const filteredUpdates = tagFilter
+    ? updates?.filter(u => u.tags?.includes(tagFilter))
+    : updates;
 
   const { data: isAdmin } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -91,6 +97,35 @@ const Updates = () => {
         </div>
       </section>
 
+      {/* Tag Filters */}
+      {allTags.length > 0 && (
+        <section className="py-6 border-b-2 border-foreground sticky top-16 bg-background z-20">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                onClick={() => setTagFilter(null)}
+                className={`px-3 py-1 font-bold text-sm border-2 border-foreground transition-colors ${
+                  !tagFilter ? "bg-foreground text-background" : "hover:bg-muted"
+                }`}
+              >
+                All
+              </button>
+              {allTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setTagFilter(tag)}
+                  className={`px-3 py-1 font-bold text-sm border-2 border-foreground transition-colors ${
+                    tagFilter === tag ? "bg-foreground text-background" : "hover:bg-muted"
+                  }`}
+                >
+                  <Tag className="w-3 h-3 inline mr-1" />{tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Updates Feed */}
       <section className="py-16 screen-print">
         <div className="container mx-auto px-4">
@@ -103,9 +138,9 @@ const Updates = () => {
                 />
               ))}
             </div>
-          ) : updates && updates.length > 0 ? (
+          ) : filteredUpdates && filteredUpdates.length > 0 ? (
             <div className="space-y-8 max-w-3xl mx-auto">
-              {updates.map((update, index) => (
+              {filteredUpdates.map((update, index) => (
                 <ComicPanel
                   key={update.id}
                   className={`p-6 animate-fade-in stagger-${(index % 5) + 1}`}

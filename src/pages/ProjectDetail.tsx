@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
@@ -58,6 +59,8 @@ const ProjectDetail = () => {
     },
     enabled: !!slug,
   });
+
+  usePageMeta({ title: project?.title, description: project?.description });
 
   if (isLoading) {
     return (

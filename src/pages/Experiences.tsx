@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -47,6 +49,7 @@ const formatDateRange = (startDate?: string | null, endDate?: string | null, isO
 
 const Experiences = () => {
   const [activeCategory, setActiveCategory] = useState("all");
+  const [search, setSearch] = useState("");
 
   const { data: experiences = [], isLoading } = useQuery({
     queryKey: ["experiences"],
@@ -61,9 +64,16 @@ const Experiences = () => {
     },
   });
 
-  const filteredExperiences = activeCategory === "all"
-    ? experiences
-    : experiences.filter(e => e.category === activeCategory);
+  const filteredExperiences = useMemo(() => {
+    return experiences.filter(e => {
+      const matchesCat = activeCategory === "all" || e.category === activeCategory;
+      const matchesSearch = !search || 
+        e.title.toLowerCase().includes(search.toLowerCase()) ||
+        (e.description || "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.skills_used || []).some(s => s.toLowerCase().includes(search.toLowerCase()));
+      return matchesCat && matchesSearch;
+    });
+  }, [experiences, activeCategory, search]);
 
   return (
     <Layout>
@@ -84,7 +94,7 @@ const Experiences = () => {
 
       {/* Category Filters */}
       <section className="py-8 border-b-2 border-foreground sticky top-16 bg-background z-20">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 space-y-4">
           <div className="flex flex-wrap gap-3 justify-center">
             {categories.map((cat) => {
               const Icon = cat === "all" ? Briefcase : categoryIcons[cat];
@@ -108,6 +118,15 @@ const Experiences = () => {
                 </button>
               );
             })}
+          </div>
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search experiences, skills..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </div>
       </section>
