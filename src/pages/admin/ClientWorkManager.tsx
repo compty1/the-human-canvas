@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit2, Trash2, Loader2, Briefcase, Eye, EyeOff, Search } from "lucide-react";
@@ -25,6 +26,12 @@ interface ClientProject {
   created_at: string;
   project_type: string;
 }
+
+const CW_SORT: SortOption[] = [
+  { label: "Newest First", key: "created_at", direction: "desc" },
+  { label: "Project Name A-Z", key: "project_name", direction: "asc" },
+  { label: "Client A-Z", key: "client_name", direction: "asc" },
+];
 
 const ClientWorkManager = () => {
   const queryClient = useQueryClient();
@@ -78,6 +85,7 @@ const ClientWorkManager = () => {
     const matchesSearch = !search || p.project_name.toLowerCase().includes(search.toLowerCase()) || p.client_name.toLowerCase().includes(search.toLowerCase());
     return matchesType && matchesSearch;
   });
+  const { sortIndex, setSortIndex, page: listPage, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredProjects, CW_SORT);
   const completedCount = filteredProjects.filter(p => p.status === "completed").length;
   const inProgressCount = filteredProjects.filter(p => p.status === "in_progress").length;
 
@@ -143,6 +151,8 @@ const ClientWorkManager = () => {
           </ComicPanel>
         </div>
 
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={listPage} totalPages={totalPages} onPageChange={setPage} totalItems={filteredProjects.length} />
+        
         {/* Projects Grid */}
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -161,7 +171,7 @@ const ClientWorkManager = () => {
           </ComicPanel>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project) => (
+            {paginated.map((project) => (
               <ComicPanel key={project.id} className="p-0 overflow-hidden">
                 {project.image_url && (
                   <div className="aspect-video overflow-hidden">

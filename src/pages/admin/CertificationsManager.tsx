@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { 
@@ -35,6 +36,12 @@ const statusColors: Record<string, string> = {
   planned: "bg-blue-500",
   wanted: "bg-purple-500",
 };
+
+const CERT_SORT: SortOption[] = [
+  { label: "Order Index", key: "order_index", direction: "asc" },
+  { label: "Name A-Z", key: "name", direction: "asc" },
+  { label: "Newest First", key: "created_at", direction: "desc" },
+];
 
 const CertificationsManager = () => {
   const queryClient = useQueryClient();
@@ -75,6 +82,7 @@ const CertificationsManager = () => {
     return matchesStatus && matchesSearch;
   });
 
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredCertifications, CERT_SORT);
   const statuses = ["all", "earned", "in_progress", "planned", "wanted"];
 
   return (
@@ -125,6 +133,7 @@ const CertificationsManager = () => {
             className="pl-10"
           />
         </div>
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredCertifications.length} />
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -142,7 +151,7 @@ const CertificationsManager = () => {
           </ComicPanel>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCertifications.map((cert) => (
+            {paginated.map((cert) => (
               <ComicPanel key={cert.id} className="p-4">
                 <SelectableCheckbox id={cert.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                 <div className="flex items-start justify-between gap-2 mb-3">

@@ -6,16 +6,11 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Eye, 
-  EyeOff,
-  Loader2,
-  FileText,
-  CheckSquare
+  Plus, Pencil, Trash2, Eye, EyeOff, Loader2, FileText, CheckSquare, Search
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -31,10 +26,19 @@ interface Article {
   updated_at: string;
 }
 
+const SORT_OPTIONS: SortOption[] = [
+  { label: "Newest First", key: "created_at", direction: "desc" },
+  { label: "Oldest First", key: "created_at", direction: "asc" },
+  { label: "Title A-Z", key: "title", direction: "asc" },
+  { label: "Title Z-A", key: "title", direction: "desc" },
+  { label: "Recently Updated", key: "updated_at", direction: "desc" },
+];
+
 const ArticlesManager = () => {
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data: articles = [], isLoading } = useQuery({
     queryKey: ["admin-articles"],
@@ -48,6 +52,12 @@ const ArticlesManager = () => {
     },
   });
 
+  const filtered = articles.filter(a =>
+    !search || a.title.toLowerCase().includes(search.toLowerCase()) || a.excerpt?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filtered, SORT_OPTIONS);
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("articles").delete().eq("id", id);
@@ -57,26 +67,19 @@ const ArticlesManager = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-articles"] });
       toast.success("Article deleted");
     },
-    onError: () => {
-      toast.error("Failed to delete article");
-    },
+    onError: () => { toast.error("Failed to delete article"); },
   });
 
   const togglePublishMutation = useMutation({
     mutationFn: async ({ id, published }: { id: string; published: boolean }) => {
-      const { error } = await supabase
-        .from("articles")
-        .update({ published })
-        .eq("id", id);
+      const { error } = await supabase.from("articles").update({ published }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-articles"] });
       toast.success("Article updated");
     },
-    onError: () => {
-      toast.error("Failed to update article");
-    },
+    onError: () => { toast.error("Failed to update article"); },
   });
 
   const categoryColors: Record<string, string> = {
@@ -88,135 +91,79 @@ const ArticlesManager = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === articles.length) {
-      clearSelection();
-    } else {
-      selectAll(articles.map((a) => a.id));
-    }
+    if (selectedIds.length === filtered.length) clearSelection();
+    else selectAll(filtered.map((a) => a.id));
   };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-display">Articles</h1>
-            <p className="text-muted-foreground">
-              Manage blog articles and essays
-            </p>
+            <p className="text-muted-foreground">Manage blog articles and essays</p>
           </div>
           <div className="flex items-center gap-2">
-            {articles.length > 0 && (
-              <button
-                onClick={handleSelectAll}
-                className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
-              >
+            {filtered.length > 0 && (
+              <button onClick={handleSelectAll} className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors">
                 <CheckSquare className="w-4 h-4" />
-                {selectedIds.length === articles.length ? "Deselect All" : "Select All"}
+                {selectedIds.length === filtered.length ? "Deselect All" : "Select All"}
               </button>
             )}
             <Link to="/admin/articles/new">
-              <PopButton>
-                <Plus className="w-4 h-4 mr-2" />
-                New Article
-              </PopButton>
+              <PopButton><Plus className="w-4 h-4 mr-2" />New Article</PopButton>
             </Link>
           </div>
         </div>
 
-        {/* Articles List */}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin" />
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="relative flex-grow max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search articles..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
           </div>
-        ) : articles.length === 0 ? (
+        </div>
+
+        <SortPaginationBar
+          sortOptions={sortOptions}
+          sortIndex={sortIndex}
+          onSortChange={setSortIndex}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={filtered.length}
+        />
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin" /></div>
+        ) : filtered.length === 0 ? (
           <ComicPanel className="p-12 text-center">
             <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-display mb-2">No Articles Yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Start writing your first article
-            </p>
-            <Link to="/admin/articles/new">
-              <PopButton>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Article
-              </PopButton>
-            </Link>
+            <p className="text-muted-foreground mb-4">Start writing your first article</p>
+            <Link to="/admin/articles/new"><PopButton><Plus className="w-4 h-4 mr-2" />Create Article</PopButton></Link>
           </ComicPanel>
         ) : (
           <div className="space-y-3">
-            {articles.map((article) => (
+            {paginated.map((article) => (
               <ComicPanel key={article.id} className="p-4">
                 <div className="flex items-center gap-4">
-                  {/* Selection checkbox */}
-                  <SelectableCheckbox
-                    id={article.id}
-                    selectedIds={selectedIds}
-                    onToggle={toggleSelection}
-                  />
-
-                  {/* Status indicator */}
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      article.published ? "bg-green-500" : "bg-orange-400"
-                    }`}
-                    title={article.published ? "Published" : "Draft"}
-                  />
-
-                  {/* Content */}
+                  <SelectableCheckbox id={article.id} selectedIds={selectedIds} onToggle={toggleSelection} />
+                  <div className={`w-3 h-3 rounded-full ${article.published ? "bg-green-500" : "bg-orange-400"}`} title={article.published ? "Published" : "Draft"} />
                   <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`px-2 py-0.5 text-xs font-bold uppercase ${
-                          categoryColors[article.category] || "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {article.category.replace("_", " ")}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(article.created_at), "MMM d, yyyy")}
-                      </span>
+                      <span className={`px-2 py-0.5 text-xs font-bold uppercase ${categoryColors[article.category] || "bg-gray-100 text-gray-700"}`}>{article.category.replace("_", " ")}</span>
+                      <span className="text-xs text-muted-foreground">{format(new Date(article.created_at), "MMM d, yyyy")}</span>
                     </div>
                     <h3 className="font-display text-lg truncate">{article.title}</h3>
-                    {article.excerpt && (
-                      <p className="text-sm text-muted-foreground line-clamp-1">
-                        {article.excerpt}
-                      </p>
-                    )}
+                    {article.excerpt && <p className="text-sm text-muted-foreground line-clamp-1">{article.excerpt}</p>}
                   </div>
-
-                  {/* Actions */}
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={() =>
-                        togglePublishMutation.mutate({
-                          id: article.id,
-                          published: !article.published,
-                        })
-                      }
-                      className="p-2 hover:bg-muted rounded"
-                      title={article.published ? "Unpublish" : "Publish"}
-                    >
-                      {article.published ? (
-                        <Eye className="w-4 h-4" />
-                      ) : (
-                        <EyeOff className="w-4 h-4" />
-                      )}
+                    <button onClick={() => togglePublishMutation.mutate({ id: article.id, published: !article.published })} className="p-2 hover:bg-muted rounded" title={article.published ? "Unpublish" : "Publish"}>
+                      {article.published ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                     <DuplicateButton id={article.id} type="article" />
-                    <Link
-                      to={`/admin/articles/${article.id}/edit`}
-                      className="p-2 hover:bg-muted rounded"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Link>
-                    <button
-                      onClick={() => setDeleteId(article.id)}
-                      className="p-2 hover:bg-destructive/10 rounded text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <Link to={`/admin/articles/${article.id}/edit`} className="p-2 hover:bg-muted rounded"><Pencil className="w-4 h-4" /></Link>
+                    <button onClick={() => setDeleteId(article.id)} className="p-2 hover:bg-destructive/10 rounded text-destructive"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               </ComicPanel>
@@ -224,15 +171,7 @@ const ArticlesManager = () => {
           </div>
         )}
 
-        {/* Bulk Actions Bar */}
-        <BulkActionsBar
-          selectedIds={selectedIds}
-          onClearSelection={clearSelection}
-          tableName="articles"
-          queryKey={["admin-articles"]}
-          actions={["publish", "unpublish", "delete"]}
-          statusField="published"
-        />
+        <BulkActionsBar selectedIds={selectedIds} onClearSelection={clearSelection} tableName="articles" queryKey={["admin-articles"]} actions={["publish", "unpublish", "delete"]} statusField="published" />
       </div>
 
       <DeleteConfirmDialog

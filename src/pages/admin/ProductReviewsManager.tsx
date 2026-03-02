@@ -4,12 +4,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Search, Eye, Star, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
+
+const PR_SORT: SortOption[] = [
+  { label: "Newest First", key: "created_at", direction: "desc" },
+  { label: "Product A-Z", key: "product_name", direction: "asc" },
+  { label: "Highest Rated", key: "overall_rating", direction: "desc" },
+];
 
 const ProductReviewsManager = () => {
   const [search, setSearch] = useState("");
@@ -38,10 +45,12 @@ const ProductReviewsManager = () => {
     onError: () => { toast.error("Failed to delete review"); },
   });
 
-  const filteredReviews = reviews?.filter(r => 
+  const filteredReviews = (reviews ?? []).filter(r => 
     r.product_name.toLowerCase().includes(search.toLowerCase()) ||
     r.company.toLowerCase().includes(search.toLowerCase())
   );
+
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredReviews, PR_SORT);
 
   const getRatingColor = (rating: number | null) => {
     if (!rating) return "bg-muted";
@@ -51,10 +60,8 @@ const ProductReviewsManager = () => {
   };
 
   const handleSelectAll = () => {
-    if (filteredReviews) {
-      if (selectedIds.length === filteredReviews.length) clearSelection();
-      else selectAll(filteredReviews.map((r) => r.id));
-    }
+    if (selectedIds.length === filteredReviews.length) clearSelection();
+    else selectAll(filteredReviews.map((r) => r.id));
   };
 
   return (
@@ -66,7 +73,7 @@ const ProductReviewsManager = () => {
             <p className="text-muted-foreground">Manage your UX reviews and case studies</p>
           </div>
           <div className="flex items-center gap-2">
-            {filteredReviews && filteredReviews.length > 0 && (
+            {filteredReviews.length > 0 && (
               <button onClick={handleSelectAll} className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors">
                 <CheckSquare className="w-4 h-4" />
                 {selectedIds.length === filteredReviews.length ? "Deselect All" : "Select All"}
@@ -81,11 +88,13 @@ const ProductReviewsManager = () => {
           <Input placeholder="Search reviews..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
 
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredReviews.length} />
+
         {isLoading ? (
           <div className="space-y-4">{[1, 2, 3].map((i) => (<div key={i} className="h-24 bg-muted animate-pulse rounded" />))}</div>
-        ) : filteredReviews && filteredReviews.length > 0 ? (
+        ) : filteredReviews.length > 0 ? (
           <div className="space-y-4">
-            {filteredReviews.map((review) => (
+            {paginated.map((review) => (
               <ComicPanel key={review.id} className="p-4">
                 <div className="flex items-start gap-4">
                   <SelectableCheckbox id={review.id} selectedIds={selectedIds} onToggle={toggleSelection} />

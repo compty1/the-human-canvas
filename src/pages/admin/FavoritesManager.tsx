@@ -6,9 +6,11 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star, CheckSquare } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star, CheckSquare, Search } from "lucide-react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 interface Favorite {
   id: string;
@@ -43,10 +45,17 @@ const typeColors: Record<string, string> = {
   other: "bg-gray-500",
 };
 
+const FAV_SORT: SortOption[] = [
+  { label: "Newest First", key: "created_at", direction: "desc" },
+  { label: "Title A-Z", key: "title", direction: "asc" },
+  { label: "Type", key: "type", direction: "asc" },
+];
+
 const FavoritesManager = () => {
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data: favorites = [], isLoading } = useQuery({
     queryKey: ["admin-favorites"],
@@ -90,14 +99,14 @@ const FavoritesManager = () => {
     return acc;
   }, {} as Record<string, number>);
 
+  const filtered = favorites.filter(f => !search || f.title.toLowerCase().includes(search.toLowerCase()) || f.creator_name?.toLowerCase().includes(search.toLowerCase()));
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filtered, FAV_SORT);
+
   const currentlyEnjoying = favorites.filter(f => f.is_current);
 
   const handleSelectAll = () => {
-    if (selectedIds.length === favorites.length) {
-      clearSelection();
-    } else {
-      selectAll(favorites.map((f) => f.id));
-    }
+    if (selectedIds.length === filtered.length) clearSelection();
+    else selectAll(filtered.map((f) => f.id));
   };
 
   return (
@@ -118,7 +127,7 @@ const FavoritesManager = () => {
                 className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors"
               >
                 <CheckSquare className="w-4 h-4" />
-                {selectedIds.length === favorites.length ? "Deselect All" : "Select All"}
+                {selectedIds.length === filtered.length ? "Deselect All" : "Select All"}
               </button>
             )}
             <Link to="/admin/favorites/new">
@@ -158,12 +167,17 @@ const FavoritesManager = () => {
           </ComicPanel>
         )}
 
+        {/* Search + Sort */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search favorites..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+        </div>
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filtered.length} />
+
         {/* All Favorites */}
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : favorites.length === 0 ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin" /></div>
+        ) : filtered.length === 0 ? (
           <ComicPanel className="p-12 text-center">
             <Heart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-2xl font-display mb-2">No Favorites Yet</h2>
@@ -176,7 +190,7 @@ const FavoritesManager = () => {
           </ComicPanel>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {favorites.map((fav) => {
+            {paginated.map((fav) => {
               const Icon = typeIcons[fav.type] || Star;
               return (
               <ComicPanel key={fav.id} className="p-0 overflow-hidden">

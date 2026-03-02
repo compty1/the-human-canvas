@@ -4,11 +4,19 @@ import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, ExternalLink, DollarSign, Package, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
+
+const PROD_SORT: SortOption[] = [
+  { label: "Newest First", key: "created_at", direction: "desc" },
+  { label: "Name A-Z", key: "name", direction: "asc" },
+  { label: "Price High-Low", key: "price", direction: "desc" },
+  { label: "Price Low-High", key: "price", direction: "asc" },
+];
 
 const ProductsManager = () => {
   const queryClient = useQueryClient();
@@ -48,14 +56,12 @@ const ProductsManager = () => {
     archived: "bg-muted",
   };
 
+  const allProducts = products ?? [];
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(allProducts, PROD_SORT);
+
   const handleSelectAll = () => {
-    if (products) {
-      if (selectedIds.length === products.length) {
-        clearSelection();
-      } else {
-        selectAll(products.map((p) => p.id));
-      }
-    }
+    if (selectedIds.length === allProducts.length) clearSelection();
+    else selectAll(allProducts.map((p) => p.id));
   };
 
   return (
@@ -67,17 +73,17 @@ const ProductsManager = () => {
             <p className="text-muted-foreground">Manage store products (Shopify-ready)</p>
           </div>
           <div className="flex items-center gap-2">
-            {products && products.length > 0 && (
+            {allProducts.length > 0 && (
               <button onClick={handleSelectAll} className="flex items-center gap-2 px-3 py-2 border-2 border-foreground hover:bg-muted transition-colors">
                 <CheckSquare className="w-4 h-4" />
-                {selectedIds.length === products.length ? "Deselect All" : "Select All"}
+                {selectedIds.length === allProducts.length ? "Deselect All" : "Select All"}
               </button>
             )}
-            <Link to="/admin/products/new">
-              <PopButton><Plus className="w-4 h-4 mr-2" />Add Product</PopButton>
-            </Link>
+            <Link to="/admin/products/new"><PopButton><Plus className="w-4 h-4 mr-2" />Add Product</PopButton></Link>
           </div>
         </div>
+
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={allProducts.length} />
 
         <ComicPanel className="p-4 bg-pop-cyan/10">
           <p className="text-sm">
@@ -88,9 +94,9 @@ const ProductsManager = () => {
 
         {isLoading ? (
           <div className="space-y-4">{[1, 2, 3].map((i) => (<div key={i} className="animate-pulse h-20 bg-muted" />))}</div>
-        ) : products && products.length > 0 ? (
+        ) : allProducts.length > 0 ? (
           <div className="space-y-4">
-            {products.map((product) => (
+            {paginated.map((product) => (
               <ComicPanel key={product.id} className="p-4">
                 <div className="flex items-center gap-4">
                   <SelectableCheckbox id={product.id} selectedIds={selectedIds} onToggle={toggleSelection} />

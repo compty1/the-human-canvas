@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical, Search } from "lucide-react";
@@ -35,6 +36,12 @@ const categoryColors: Record<string, string> = {
   movement: "bg-green-500",
   experience: "bg-orange-500",
 };
+
+const INSP_SORT: SortOption[] = [
+  { label: "Order Index", key: "order_index", direction: "asc" },
+  { label: "Title A-Z", key: "title", direction: "asc" },
+  { label: "Newest First", key: "created_at", direction: "desc" },
+];
 
 const InspirationsManager = () => {
   const queryClient = useQueryClient();
@@ -137,6 +144,9 @@ const InspirationsManager = () => {
     return acc;
   }, {} as Record<string, number>);
 
+  const filteredInspirations = inspirations.filter(insp => !search || insp.title.toLowerCase().includes(search.toLowerCase()) || insp.description?.toLowerCase().includes(search.toLowerCase()));
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredInspirations, INSP_SORT);
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -182,6 +192,7 @@ const InspirationsManager = () => {
             className="pl-10"
           />
         </div>
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredInspirations.length} />
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -199,9 +210,7 @@ const InspirationsManager = () => {
           </ComicPanel>
         ) : (
           <div className="space-y-2">
-            {inspirations
-              .filter(insp => !search || insp.title.toLowerCase().includes(search.toLowerCase()) || insp.description?.toLowerCase().includes(search.toLowerCase()))
-              .map((insp, index) => {
+            {paginated.map((insp, index) => {
               const Icon = categoryIcons[insp.category] || Sparkles;
               const isDragging = draggedId === insp.id;
               const isDragOver = dragOverId === insp.id;

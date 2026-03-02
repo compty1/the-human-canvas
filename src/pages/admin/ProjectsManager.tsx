@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { 
@@ -18,6 +19,13 @@ import {
   CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
+
+const PROJECT_SORT_OPTIONS: SortOption[] = [
+  { label: "Newest First", key: "created_at", direction: "desc" },
+  { label: "Oldest First", key: "created_at", direction: "asc" },
+  { label: "Title A-Z", key: "title", direction: "asc" },
+  { label: "Recently Updated", key: "updated_at", direction: "desc" },
+];
 
 const ProjectsManager = () => {
   const [search, setSearch] = useState("");
@@ -58,7 +66,9 @@ const ProjectsManager = () => {
       p.description?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || p.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }) ?? [];
+
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredProjects, PROJECT_SORT_OPTIONS);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -133,6 +143,8 @@ const ProjectsManager = () => {
           </div>
         </div>
 
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredProjects.length} />
+
         {/* Projects List */}
         {isLoading ? (
           <div className="space-y-4">
@@ -140,9 +152,9 @@ const ProjectsManager = () => {
               <div key={i} className="h-24 bg-muted animate-pulse rounded" />
             ))}
           </div>
-        ) : filteredProjects && filteredProjects.length > 0 ? (
+        ) : filteredProjects.length > 0 ? (
           <div className="space-y-4">
-            {filteredProjects.map((project) => (
+            {paginated.map((project) => (
               <ComicPanel key={project.id} className="p-4">
                 <div className="flex items-start gap-4">
                   {/* Selection checkbox */}

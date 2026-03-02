@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit2, Trash2, Loader2, History, Star, Filter, Search } from "lucide-react";
@@ -28,6 +29,12 @@ interface LifePeriod {
 
 const LIFE_PERIOD_CATEGORIES = [
   "creative", "professional", "personal", "educational", "transitional", "uncategorized",
+];
+
+const LP_SORT: SortOption[] = [
+  { label: "Most Recent", key: "start_date", direction: "desc" },
+  { label: "Earliest First", key: "start_date", direction: "asc" },
+  { label: "Title A-Z", key: "title", direction: "asc" },
 ];
 
 const LifePeriodsManager = () => {
@@ -80,6 +87,13 @@ const LifePeriodsManager = () => {
       toast.success(currentValue ? "Unmarked as current" : "Marked as current period");
     }
   };
+
+  const filteredPeriods = periods.filter(p => {
+    const matchesCategory = categoryFilter === "all" || (p.category || "uncategorized") === categoryFilter;
+    const matchesSearch = !search || p.title.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredPeriods, LP_SORT);
 
   const currentPeriod = periods.find(p => p.is_current);
 
@@ -153,6 +167,7 @@ const LifePeriodsManager = () => {
           </ComicPanel>
         )}
 
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredPeriods.length} />
         {/* Timeline */}
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -174,11 +189,7 @@ const LifePeriodsManager = () => {
             <div className="absolute left-8 top-0 bottom-0 w-1 bg-foreground hidden md:block" />
             
           <div className="space-y-6">
-              {periods.filter(p => {
-                const matchesCategory = categoryFilter === "all" || (p.category || "uncategorized") === categoryFilter;
-                const matchesSearch = !search || p.title.toLowerCase().includes(search.toLowerCase());
-                return matchesCategory && matchesSearch;
-              }).map((period) => (
+              {paginated.map((period) => (
                 <div key={period.id} className="flex gap-6">
                   <div className="hidden md:flex flex-shrink-0 w-16 items-start justify-center pt-4">
                     <div className={`w-4 h-4 rounded-full border-4 border-foreground ${
