@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -34,6 +34,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Search,
   Upload,
   Trash2,
@@ -59,10 +67,13 @@ import {
   AlertTriangle,
   Eye,
   FolderOpen,
+  CheckSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AddToContentModal } from "@/components/admin/AddToContentModal";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+
+const ITEMS_PER_PAGE = 48;
 
 const artworkCategories = [
   { value: "mixed", label: "Mixed Media" },
@@ -91,6 +102,14 @@ interface MediaItem {
   folder: string | null;
 }
 
+// Generate admin thumbnail URL (does not affect public URLs)
+const getThumbUrl = (url: string) => {
+  if (url.includes("/storage/v1/object/public/")) {
+    return `${url}?width=200&height=200&resize=cover`;
+  }
+  return url;
+};
+
 const MediaLibrary = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -115,6 +134,7 @@ const MediaLibrary = () => {
   const [folderFilter, setFolderFilter] = useState<string>("all");
   const [showDeleteDupesDialog, setShowDeleteDupesDialog] = useState(false);
   const [duplicatesToDelete, setDuplicatesToDelete] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
 
   // New state for inline rename
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -137,6 +157,12 @@ const MediaLibrary = () => {
   // Sort state
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "filename" | "size" | "duplicates" | "type">("date-desc");
 
+  // Lazy storage scan state
+  const [storageScanEnabled, setStorageScanEnabled] = useState(false);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [search, usageFilter, tagFilter, folderFilter, sortBy]);
+
   // Focus rename input when editing
   useEffect(() => {
     if (editingId && renameInputRef.current) {
@@ -156,35 +182,43 @@ const MediaLibrary = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Fetch files directly from storage bucket (scan all known subfolders)
+  // Fetch files directly from storage bucket -- LAZY: only when user clicks "Scan Storage"
+  // Parallelized with Promise.all instead of sequential loop
   const { data: storageFiles = [], isLoading: storageLoading, refetch: refetchStorage } = useQuery({
     queryKey: ["media-storage-bucket"],
     queryFn: async () => {
       const folders = ["", "artwork", "edited", "experiences", "life-periods", "experiments", "uploads", "artwork/process", "life-periods/gallery", "inspirations", "inspirations/gallery", "favorites", "certifications", "content"];
-      const allFiles: any[] = [];
       
-      for (const folder of folders) {
-        try {
-          const { data } = await supabase.storage
+      const results = await Promise.all(
+        folders.map(folder =>
+          supabase.storage
             .from("content-images")
-            .list(folder, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
-          
-          if (data) {
-            const prefix = folder ? `${folder}/` : "";
-            data.filter(f => f.name && !f.id?.includes("folder")).forEach(f => {
-              allFiles.push({ ...f, name: `${prefix}${f.name}` });
-            });
-          }
-        } catch {}
+            .list(folder, { limit: 1000, sortBy: { column: "created_at", order: "desc" } })
+            .then(({ data }) => ({ folder, data }))
+            .catch(() => ({ folder, data: null }))
+        )
+      );
+      
+      const allFiles: any[] = [];
+      for (const { folder, data } of results) {
+        if (data) {
+          const prefix = folder ? `${folder}/` : "";
+          data.filter(f => f.name && !f.id?.includes("folder")).forEach(f => {
+            allFiles.push({ ...f, name: `${prefix}${f.name}` });
+          });
+        }
       }
       
       return allFiles;
     },
+    enabled: storageScanEnabled,
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Fetch URLs used in content tables
+  // Fetch URLs used in content tables -- cached aggressively
   const { data: usedUrls = [], isLoading: usageLoading } = useQuery({
     queryKey: ["media-usage"],
     queryFn: async () => {
@@ -254,10 +288,11 @@ const MediaLibrary = () => {
       
       return urls;
     },
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Combine and deduplicate media from both sources
-  const allMedia: MediaItem[] = (() => {
+  // Memoize: Combine and deduplicate media from both sources
+  const allMedia = useMemo<MediaItem[]>(() => {
     const items: MediaItem[] = [];
     const seenUrls = new Set<string>();
     
@@ -301,33 +336,35 @@ const MediaLibrary = () => {
     });
     
     return items;
-  })();
+  }, [libraryMedia, storageFiles, usedUrls]);
 
-  // Collect all unique tags for filtering
-  const allTags = Array.from(new Set(allMedia.flatMap(m => m.tags || []))).sort();
+  // Memoize: Collect all unique tags
+  const allTags = useMemo(() => 
+    Array.from(new Set(allMedia.flatMap(m => m.tags || []))).sort(),
+    [allMedia]
+  );
 
-  // Detect duplicates (same URL or similar filename ignoring UUID prefixes)
-  const duplicateIds = new Set<string>();
-  (() => {
+  // Memoize: Detect duplicates
+  const duplicateIds = useMemo(() => {
+    const ids = new Set<string>();
     const urlMap = new Map<string, string[]>();
     const nameMap = new Map<string, string[]>();
     allMedia.forEach(item => {
-      // Group by URL
-      const ids = urlMap.get(item.url) || [];
-      ids.push(item.id);
-      urlMap.set(item.url, ids);
-      // Group by cleaned filename (strip UUID prefix patterns)
+      const urlIds = urlMap.get(item.url) || [];
+      urlIds.push(item.id);
+      urlMap.set(item.url, urlIds);
       const cleanName = item.filename.replace(/^[a-f0-9-]{36,}-?/i, "").toLowerCase();
       const nameIds = nameMap.get(cleanName) || [];
       nameIds.push(item.id);
       nameMap.set(cleanName, nameIds);
     });
-    urlMap.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
-    nameMap.forEach(ids => { if (ids.length > 1) ids.forEach(id => duplicateIds.add(id)); });
-  })();
+    urlMap.forEach(ids_ => { if (ids_.length > 1) ids_.forEach(id => ids.add(id)); });
+    nameMap.forEach(ids_ => { if (ids_.length > 1) ids_.forEach(id => ids.add(id)); });
+    return ids;
+  }, [allMedia]);
 
-  // Apply filters
-  const filteredMedia = allMedia.filter((item) => {
+  // Memoize: Apply filters
+  const filteredMedia = useMemo(() => allMedia.filter((item) => {
     const searchLower = search.toLowerCase();
     const matchesSearch =
       item.filename.toLowerCase().includes(searchLower) ||
@@ -346,10 +383,10 @@ const MediaLibrary = () => {
       (tagFilter === "uncategorized" ? (!item.tags || item.tags.length === 0) : item.tags?.includes(tagFilter));
     
     return matchesSearch && matchesUsage && matchesTag;
-  });
+  }), [allMedia, search, usageFilter, tagFilter, duplicateIds]);
 
-  // Apply sorting
-  const sortedMedia = [...filteredMedia].sort((a, b) => {
+  // Memoize: Apply sorting
+  const sortedMedia = useMemo(() => [...filteredMedia].sort((a, b) => {
     switch (sortBy) {
       case "date-asc":
         return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime();
@@ -367,13 +404,20 @@ const MediaLibrary = () => {
         const bExt = b.filename.split(".").pop()?.toLowerCase() || "";
         return aExt.localeCompare(bExt);
       }
-      default: // date-desc
+      default:
         return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
     }
-  });
+  }), [filteredMedia, sortBy, duplicateIds]);
 
-  // Group media by first tag for grouped view
-  const groupedMedia = (() => {
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedMedia.length / ITEMS_PER_PAGE));
+  const paginatedMedia = useMemo(() => 
+    sortedMedia.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE),
+    [sortedMedia, page]
+  );
+
+  // Memoize: Group media by first tag for grouped view
+  const groupedMedia = useMemo(() => {
     const groups: Record<string, MediaItem[]> = {};
     sortedMedia.forEach(item => {
       const tag = item.tags && item.tags.length > 0 ? item.tags[0] : "Uncategorized";
@@ -386,7 +430,13 @@ const MediaLibrary = () => {
       return a.localeCompare(b);
     });
     return sortedKeys.map(key => ({ tag: key, items: groups[key] }));
-  })();
+  }, [sortedMedia]);
+
+  // Memoize: Get unique folders
+  const allFolders = useMemo(() => 
+    Array.from(new Set(allMedia.map(m => m.folder).filter(Boolean) as string[])).sort(),
+    [allMedia]
+  );
 
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
@@ -615,6 +665,16 @@ const MediaLibrary = () => {
     );
   };
 
+  const handleSelectAllVisible = () => {
+    const visibleIds = paginatedMedia.map(m => m.id);
+    const allSelected = visibleIds.every(id => selectedItems.includes(id));
+    if (allSelected) {
+      setSelectedItems(prev => prev.filter(id => !visibleIds.includes(id)));
+    } else {
+      setSelectedItems(prev => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
   const handleAddToArtwork = async () => {
     if (selectedItems.length === 0) return;
     
@@ -702,7 +762,6 @@ const MediaLibrary = () => {
       if (error) throw error;
       if (data?.results) {
         setAnalysisResults(data.results);
-        // Auto-update alt_text and tags for library items
         let updated = 0;
         for (const result of data.results) {
           if (result.error) continue;
@@ -729,7 +788,6 @@ const MediaLibrary = () => {
   };
 
   const handleBulkDeleteDuplicates = async () => {
-    // Group duplicates by cleaned filename
     const nameMap = new Map<string, MediaItem[]>();
     allMedia.forEach(item => {
       const cleanName = item.filename.replace(/^[a-f0-9-]{36,}-?/i, "").toLowerCase();
@@ -741,7 +799,6 @@ const MediaLibrary = () => {
     const toDelete: string[] = [];
     nameMap.forEach(items => {
       if (items.length > 1) {
-        // Keep the oldest (first uploaded), delete the rest
         const sorted = items.sort((a, b) => new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime());
         sorted.slice(1).forEach(item => toDelete.push(item.id));
       }
@@ -756,9 +813,6 @@ const MediaLibrary = () => {
     setShowDeleteDupesDialog(true);
   };
 
-  // Get unique folders for filter
-  const allFolders = Array.from(new Set(allMedia.map(m => m.folder).filter(Boolean) as string[])).sort();
-
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "Unknown";
     if (bytes < 1024) return `${bytes} B`;
@@ -766,7 +820,7 @@ const MediaLibrary = () => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const isLoading = libraryLoading || storageLoading || usageLoading;
+  const isLoading = libraryLoading || usageLoading;
   const usedCount = allMedia.filter(m => m.inUse).length;
   const unusedCount = allMedia.filter(m => !m.inUse).length;
   const duplicateCount = duplicateIds.size;
@@ -784,7 +838,6 @@ const MediaLibrary = () => {
   };
   const handleMediaDragEnd = async () => {
     if (draggedId && dragOverId && draggedId !== dragOverId) {
-      // Swap uploaded_at timestamps to persist order
       const draggedItem = allMedia.find(m => m.id === draggedId);
       const overItem = allMedia.find(m => m.id === dragOverId);
       if (draggedItem?.source === "library" && overItem?.source === "library") {
@@ -798,7 +851,7 @@ const MediaLibrary = () => {
     setDragOverId(null);
   };
 
-  // Render a single media card
+  // Render a single media card -- uses thumbnail URL for admin grid
   const renderMediaCard = (item: MediaItem) => (
     <div
       key={item.id}
@@ -843,10 +896,10 @@ const MediaLibrary = () => {
         </div>
       )}
 
-      {/* Image */}
+      {/* Image -- uses thumbnail transform for admin grid only */}
       <div className="aspect-square overflow-hidden bg-muted">
         <img
-          src={item.url}
+          src={getThumbUrl(item.url)}
           alt={item.filename}
           className="w-full h-full object-cover"
           loading="lazy"
@@ -966,6 +1019,7 @@ const MediaLibrary = () => {
               variant="outline"
               onClick={() => {
                 setScanning(true);
+                setStorageScanEnabled(true);
                 refetchStorage().finally(() => setScanning(false));
               }}
               disabled={scanning}
@@ -998,6 +1052,14 @@ const MediaLibrary = () => {
             </PopButton>
           </div>
         </div>
+
+        {/* Lazy storage scan banner */}
+        {!storageScanEnabled && (
+          <div className="flex items-center gap-3 px-4 py-3 bg-muted border-2 border-dashed border-foreground/30 text-sm">
+            <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span>Showing library items. Click <strong>"Scan Storage"</strong> to find untracked files in storage.</span>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4">
@@ -1071,6 +1133,18 @@ const MediaLibrary = () => {
               <SelectItem value="type">By type</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Select All Visible */}
+          {viewMode === "grid" && paginatedMedia.length > 0 && (
+            <button
+              onClick={handleSelectAllVisible}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold border-2 border-foreground hover:bg-muted"
+              title="Select all visible items"
+            >
+              <CheckSquare className="w-4 h-4" />
+              {paginatedMedia.every(m => selectedItems.includes(m.id)) ? "Deselect All" : "Select All"}
+            </button>
+          )}
 
           {selectedItems.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-muted border-2 border-foreground flex-wrap">
@@ -1198,9 +1272,53 @@ const MediaLibrary = () => {
             <p className="text-muted-foreground">Upload your first image or scan storage</p>
           </ComicPanel>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {sortedMedia.map(renderMediaCard)}
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {paginatedMedia.map(renderMediaCard)}
+            </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 7) {
+                      pageNum = i + 1;
+                    } else if (page <= 4) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 3) {
+                      pageNum = totalPages - 6 + i;
+                    } else {
+                      pageNum = page - 3 + i;
+                    }
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          isActive={pageNum === page}
+                          onClick={() => setPage(pageNum)}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+          </>
         ) : (
           <div className="space-y-4">
             {groupedMedia.map(group => (
@@ -1225,6 +1343,8 @@ const MediaLibrary = () => {
         <div className="text-sm text-muted-foreground">
           {allMedia.length} items • {usedCount} in use • {unusedCount} unused • Total:{" "}
           {formatFileSize(allMedia.reduce((acc, m) => acc + (m.file_size || 0), 0))}
+          {sortedMedia.length !== allMedia.length && ` • Showing ${sortedMedia.length} filtered`}
+          {viewMode === "grid" && totalPages > 1 && ` • Page ${page} of ${totalPages}`}
         </div>
 
         {/* Crop Dialog */}
