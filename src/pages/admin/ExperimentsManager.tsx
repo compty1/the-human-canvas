@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Star, TrendingUp, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 const ExperimentsManager = () => {
   const queryClient = useQueryClient();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteName, setDeleteName] = useState("");
 
   const { data: experiments, isLoading } = useQuery({
     queryKey: ["admin-experiments"],
@@ -36,9 +40,8 @@ const ExperimentsManager = () => {
   });
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Delete "${name}"? This cannot be undone.`)) {
-      deleteMutation.mutate(id);
-    }
+    setDeleteId(id);
+    setDeleteName(name);
   };
 
   const statusColors: Record<string, string> = {
@@ -156,6 +159,14 @@ const ExperimentsManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title={`Delete "${deleteName}"?`}
+        description="This cannot be undone."
+      />
     </AdminLayout>
   );
 };

@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2, Loader2 } from "lucide-react";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 
 interface FormState {
   title: string;
@@ -39,6 +40,7 @@ const UpdateEditor = () => {
     tags: "",
     published: false,
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Undo/Redo history
   const [history, setHistory] = useState<FormState[]>([]);
@@ -205,9 +207,7 @@ const UpdateEditor = () => {
   });
 
   const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this update?")) {
-      deleteMutation.mutate();
-    }
+    setShowDeleteDialog(true);
   };
 
   if (isLoadingUpdate) {
@@ -382,6 +382,14 @@ const UpdateEditor = () => {
           entityId={isEditing ? id : undefined}
           entityTitle={form.title || "New Update"}
           context={`Excerpt: ${form.excerpt}\nTags: ${form.tags}`}
+        />
+
+        <DeleteConfirmDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          onConfirm={() => { deleteMutation.mutate(); setShowDeleteDialog(false); }}
+          title="Delete this update?"
+          description="This action cannot be undone."
         />
       </div>
     </AdminLayout>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ const NotesManager = () => {
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | "all">("all");
   const [editingNote, setEditingNote] = useState<AdminNote | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newNote, setNewNote] = useState({
     title: "",
     content: "",
@@ -269,11 +271,7 @@ const NotesManager = () => {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => {
-                            if (confirm("Delete this note?")) {
-                              deleteMutation.mutate(note.id);
-                            }
-                          }}
+                          onClick={() => setDeleteId(note.id)}
                           className="p-1 hover:bg-destructive/10 text-destructive rounded"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -313,6 +311,14 @@ const NotesManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this note?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

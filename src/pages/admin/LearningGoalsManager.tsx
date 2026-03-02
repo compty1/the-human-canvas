@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ interface LearningGoal {
 const LearningGoalsManager = () => {
   const [editingGoal, setEditingGoal] = useState<LearningGoal | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [newGoal, setNewGoal] = useState({
     title: "",
     description: "",
@@ -244,11 +246,7 @@ const LearningGoalsManager = () => {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => {
-                            if (confirm("Delete this goal?")) {
-                              deleteMutation.mutate(goal.id);
-                            }
-                          }}
+                          onClick={() => setDeleteId(goal.id)}
                           className="p-2 hover:bg-destructive/10 text-destructive rounded"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -290,6 +288,14 @@ const LearningGoalsManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this goal?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

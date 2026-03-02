@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -33,6 +34,7 @@ const statusColors: Record<string, string> = {
 const CertificationsManager = () => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: certifications = [], isLoading } = useQuery({
     queryKey: ["admin-certifications"],
@@ -155,11 +157,7 @@ const CertificationsManager = () => {
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
-                        onClick={() => {
-                          if (confirm("Delete this certification?")) {
-                            deleteMutation.mutate(cert.id);
-                          }
-                        }}
+                        onClick={() => setDeleteId(cert.id)}
                         className="flex items-center gap-2 text-destructive"
                       >
                         <Trash2 className="w-4 h-4" /> Delete
@@ -206,6 +204,14 @@ const CertificationsManager = () => {
           </div>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this certification?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

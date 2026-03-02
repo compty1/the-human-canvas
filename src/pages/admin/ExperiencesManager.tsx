@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -45,6 +46,7 @@ const categoryColors: Record<string, string> = {
 const ExperiencesManager = () => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: experiences = [], isLoading } = useQuery({
     queryKey: ["admin-experiences"],
@@ -215,11 +217,7 @@ const ExperiencesManager = () => {
                           )}
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => {
-                            if (confirm("Delete this experience?")) {
-                              deleteMutation.mutate(exp.id);
-                            }
-                          }}
+                          onClick={() => setDeleteId(exp.id)}
                           className="flex items-center gap-2 text-destructive"
                         >
                           <Trash2 className="w-4 h-4" /> Delete
@@ -233,6 +231,14 @@ const ExperiencesManager = () => {
           </div>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this experience?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

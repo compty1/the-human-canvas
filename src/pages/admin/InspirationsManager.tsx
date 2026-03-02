@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +37,7 @@ const InspirationsManager = () => {
   const queryClient = useQueryClient();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: inspirations = [], isLoading } = useQuery({
     queryKey: ["admin-inspirations"],
@@ -245,11 +247,7 @@ const InspirationsManager = () => {
                         </button>
                       </Link>
                       <button
-                        onClick={() => {
-                          if (confirm("Delete this inspiration?")) {
-                            deleteMutation.mutate(insp.id);
-                          }
-                        }}
+                        onClick={() => setDeleteId(insp.id)}
                         className="p-2 border-2 border-foreground hover:bg-destructive hover:text-destructive-foreground"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -262,6 +260,14 @@ const InspirationsManager = () => {
           </div>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this inspiration?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

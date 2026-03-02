@@ -28,6 +28,7 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 
 type WritingCategory = "philosophy" | "narrative" | "cultural" | "ux_review" | "research" | "metaphysics";
 
@@ -71,6 +72,7 @@ const ArticleEditor = () => {
     featuredImage: "",
     published: false,
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Undo/Redo history
   const [history, setHistory] = useState<FormState[]>([]);
@@ -344,9 +346,7 @@ const ArticleEditor = () => {
   });
 
   const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this article?")) {
-      deleteMutation.mutate();
-    }
+    setShowDeleteDialog(true);
   };
 
   if (isLoadingArticle) {
