@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AddToContentModal } from "@/components/admin/AddToContentModal";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 
 const artworkCategories = [
   { value: "mixed", label: "Mixed Media" },
@@ -112,6 +113,8 @@ const MediaLibrary = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<Array<{ url: string; description: string; alt_text: string; details: string; suggested_tags: string[] }> | null>(null);
   const [folderFilter, setFolderFilter] = useState<string>("all");
+  const [showDeleteDupesDialog, setShowDeleteDupesDialog] = useState(false);
+  const [duplicatesToDelete, setDuplicatesToDelete] = useState<string[]>([]);
 
   // New state for inline rename
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -749,8 +752,8 @@ const MediaLibrary = () => {
       return;
     }
 
-    if (!confirm(`Delete ${toDelete.length} duplicate(s)? The oldest version of each will be kept.`)) return;
-    deleteMutation.mutate(toDelete);
+    setDuplicatesToDelete(toDelete);
+    setShowDeleteDupesDialog(true);
   };
 
   // Get unique folders for filter
@@ -1322,6 +1325,18 @@ const MediaLibrary = () => {
           onApprove={handleApproveEdits}
           isProcessing={processingEdit}
           title="Review Image Edits"
+        />
+
+        {/* Delete Duplicates Confirmation */}
+        <DeleteConfirmDialog
+          open={showDeleteDupesDialog}
+          onOpenChange={setShowDeleteDupesDialog}
+          onConfirm={() => {
+            deleteMutation.mutate(duplicatesToDelete);
+            setShowDeleteDupesDialog(false);
+          }}
+          title={`Delete ${duplicatesToDelete.length} duplicate(s)?`}
+          description="The oldest version of each file will be kept. This action cannot be undone."
         />
       </div>
     </AdminLayout>
