@@ -9,6 +9,7 @@ import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/a
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { 
   Plus, 
   Edit, 
@@ -19,7 +20,8 @@ import {
   DollarSign,
   MoreVertical,
   Copy,
-  Search
+  Search,
+  SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -43,10 +45,18 @@ const CERT_SORT: SortOption[] = [
   { label: "Newest First", key: "created_at", direction: "desc" },
 ];
 
+const QUICK_EDIT_FIELDS: QuickEditField[] = [
+  { key: "name", label: "Name", type: "text" },
+  { key: "description", label: "Description", type: "textarea" },
+  { key: "status", label: "Status", type: "text" },
+  { key: "skills", label: "Skills", type: "tags" },
+];
+
 const CertificationsManager = () => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
@@ -182,6 +192,9 @@ const CertificationsManager = () => {
                           <Copy className="w-4 h-4" /> Duplicate
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setQuickEditId(cert.id)} className="flex items-center gap-2">
+                        <SlidersHorizontal className="w-4 h-4" /> Quick Edit
+                      </DropdownMenuItem>
                       {cert.credential_url && (
                         <DropdownMenuItem asChild>
                           <a href={cert.credential_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
@@ -243,7 +256,16 @@ const CertificationsManager = () => {
         onClearSelection={clearSelection}
         tableName="certifications"
         queryKey={["admin-certifications"]}
-        actions={["delete"]}
+        actions={["delete", "set-tags"]}
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="certifications"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-certifications"]}
       />
 
       <DeleteConfirmDialog

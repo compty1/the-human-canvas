@@ -9,7 +9,8 @@ import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/a
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Loader2, Briefcase, Eye, EyeOff, Search } from "lucide-react";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
+import { Plus, Edit2, Trash2, Loader2, Briefcase, Eye, EyeOff, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { PROJECT_TYPES, getProjectTypeLabel, getProjectTypeIcon } from "@/lib/clientProjectTypes";
 interface ClientProject {
@@ -33,10 +34,17 @@ const CW_SORT: SortOption[] = [
   { label: "Client A-Z", key: "client_name", direction: "asc" },
 ];
 
+const CW_QUICK_EDIT_FIELDS: QuickEditField[] = [
+  { key: "project_name", label: "Project Name", type: "text" },
+  { key: "description", label: "Description", type: "textarea" },
+  { key: "tech_stack", label: "Tech Stack", type: "tags" },
+];
+
 const ClientWorkManager = () => {
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
@@ -208,6 +216,13 @@ const ClientWorkManager = () => {
                       </button>
                     </Link>
                     <DuplicateButton id={project.id} type="client-project" />
+                    <button
+                      onClick={() => setQuickEditId(project.id)}
+                      className="p-2 border-2 border-foreground hover:bg-muted"
+                      title="Quick Edit"
+                    >
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </button>
                     <button 
                       onClick={() => toggleVisibility(project.id, project.is_public)}
                       className="p-2 border-2 border-foreground hover:bg-muted"
@@ -234,7 +249,16 @@ const ClientWorkManager = () => {
         onClearSelection={clearSelection}
         tableName="client_projects"
         queryKey={["admin-client-projects"]}
-        actions={["delete"]}
+        actions={["delete", "set-tags"]}
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="client_projects"
+        recordId={quickEditId}
+        fields={CW_QUICK_EDIT_FIELDS}
+        queryKey={["admin-client-projects"]}
       />
 
       <DeleteConfirmDialog

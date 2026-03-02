@@ -8,7 +8,8 @@ import { useAdminListControls, SortPaginationBar, SortOption } from "@/component
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, ExternalLink, DollarSign, Package, CheckSquare } from "lucide-react";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
+import { Plus, Edit2, Trash2, ExternalLink, DollarSign, Package, CheckSquare, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 const PROD_SORT: SortOption[] = [
@@ -18,11 +19,18 @@ const PROD_SORT: SortOption[] = [
   { label: "Price Low-High", key: "price", direction: "asc" },
 ];
 
+const PROD_QUICK_EDIT_FIELDS: QuickEditField[] = [
+  { key: "name", label: "Name", type: "text" },
+  { key: "category", label: "Category", type: "text" },
+  { key: "status", label: "Status", type: "text" },
+];
+
 const ProductsManager = () => {
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState("");
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["admin-products"],
@@ -126,6 +134,7 @@ const ProductsManager = () => {
                       <Link to={`/store/${product.slug}`} target="_blank" className="p-2 hover:bg-muted" title="View"><ExternalLink className="w-4 h-4" /></Link>
                     )}
                     <DuplicateButton id={product.id} type="product" className="p-2 hover:bg-muted" />
+                    <button onClick={() => setQuickEditId(product.id)} className="p-2 hover:bg-muted" title="Quick Edit"><SlidersHorizontal className="w-4 h-4" /></button>
                     <Link to={`/admin/products/${product.id}/edit`} className="p-2 hover:bg-muted" title="Edit"><Edit2 className="w-4 h-4" /></Link>
                     <button
                       onClick={() => { setDeleteId(product.id); setDeleteName(product.name); }}
@@ -155,6 +164,15 @@ const ProductsManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title={`Delete "${deleteName}"?`}
         description="This cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="products"
+        recordId={quickEditId}
+        fields={PROD_QUICK_EDIT_FIELDS}
+        queryKey={["admin-products"]}
       />
     </AdminLayout>
   );

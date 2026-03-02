@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,7 @@ const campaignTypes = [
 const FundingCampaignsManager = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({
     campaign_type: "development",
     title: "",
@@ -355,7 +357,7 @@ const FundingCampaignsManager = () => {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => deleteMutation.mutate(campaign.id)}
+                            onClick={() => setDeleteId(campaign.id)}
                             className="p-1 hover:text-destructive"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -370,6 +372,14 @@ const FundingCampaignsManager = () => {
           </ComicPanel>
         </div>
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this campaign?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };
