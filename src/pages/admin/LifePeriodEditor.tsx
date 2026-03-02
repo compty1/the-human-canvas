@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -9,13 +9,18 @@ import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Loader2, Plus, X, Image } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Plus, X, Image, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
+import { useAutosave } from "@/hooks/useAutosave";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 
 const LIFE_PERIOD_CATEGORIES = [
@@ -25,6 +30,8 @@ const LIFE_PERIOD_CATEGORIES = [
 const LifePeriodEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const cloneId = searchParams.get("clone");
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
@@ -44,6 +51,7 @@ const LifePeriodEditor = () => {
   });
 
   const [newTheme, setNewTheme] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Undo/Redo
   const [historyStack, setHistoryStack] = useState<typeof form[]>([]);
@@ -79,6 +87,13 @@ const LifePeriodEditor = () => {
     pushToHistory(newForm);
   };
 
+  // Autosave
+  const { hasDraft, draftTimestamp, restoreDraft, discardDraft, clearDraft } = useAutosave({
+    key: `life-period-${id || "new"}`,
+    data: form,
+    enabled: true,
+  });
+
   // Fetch existing period
   const { data: period, isLoading } = useQuery({
     queryKey: ["life-period-edit", id],
@@ -93,6 +108,22 @@ const LifePeriodEditor = () => {
       return data;
     },
     enabled: isEditing,
+  });
+
+  // Clone support
+  const { data: cloneSource } = useQuery({
+    queryKey: ["life-period-clone", cloneId],
+    queryFn: async () => {
+      if (!cloneId) return null;
+      const { data, error } = await supabase
+        .from("life_periods")
+        .select("*")
+        .eq("id", cloneId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!cloneId && !isEditing,
   });
 
   // Fetch artwork and projects for key works selection
@@ -121,27 +152,30 @@ const LifePeriodEditor = () => {
   });
 
   useEffect(() => {
-    if (period) {
-      setForm({
-        title: period.title || "",
-        start_date: period.start_date || "",
-        end_date: period.end_date || "",
-        description: period.description || "",
-        detailed_content: period.detailed_content || "",
-        themes: period.themes || [],
-        key_works: period.key_works || [],
-        image_url: period.image_url || "",
-        images: (period as Record<string, unknown>).images as string[] || [],
-        is_current: period.is_current || false,
-        order_index: period.order_index || 0,
-        category: (period as Record<string, unknown>).category as string || "uncategorized",
-      });
+    const source = period || cloneSource;
+    if (source) {
+      const initialForm = {
+        title: cloneSource ? `${source.title} (Copy)` : source.title || "",
+        start_date: source.start_date || "",
+        end_date: source.end_date || "",
+        description: source.description || "",
+        detailed_content: source.detailed_content || "",
+        themes: source.themes || [],
+        key_works: source.key_works || [],
+        image_url: source.image_url || "",
+        images: (source as Record<string, unknown>).images as string[] || [],
+        is_current: source.is_current || false,
+        order_index: source.order_index || 0,
+        category: (source as Record<string, unknown>).category as string || "uncategorized",
+      };
+      setForm(initialForm);
+      setHistoryStack([initialForm]);
+      setHistoryIndex(0);
     }
-  }, [period]);
+  }, [period, cloneSource]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // If setting as current, first unset any other current periods
       if (form.is_current) {
         await supabase
           .from("life_periods")
@@ -177,6 +211,7 @@ const LifePeriodEditor = () => {
       }
     },
     onSuccess: () => {
+      clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-life-periods"] });
       queryClient.invalidateQueries({ queryKey: ["life-periods"] });
       toast.success(isEditing ? "Period updated" : "Period added");
@@ -188,7 +223,22 @@ const LifePeriodEditor = () => {
     },
   });
 
-  useEditorShortcuts({
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("life_periods").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      clearDraft();
+      queryClient.invalidateQueries({ queryKey: ["admin-life-periods"] });
+      queryClient.invalidateQueries({ queryKey: ["life-periods"] });
+      toast.success("Life period deleted");
+      navigate("/admin/life-periods");
+    },
+    onError: () => toast.error("Failed to delete"),
+  });
+
+  const { shortcuts } = useEditorShortcuts({
     onSave: () => saveMutation.mutate(),
     onExit: () => navigate("/admin/life-periods"),
     isDirty: form.title !== (period?.title || ""),
@@ -196,18 +246,17 @@ const LifePeriodEditor = () => {
 
   const addTheme = () => {
     if (newTheme && !form.themes.includes(newTheme)) {
-      setForm(prev => ({ ...prev, themes: [...prev.themes, newTheme] }));
+      updateForm({ themes: [...form.themes, newTheme] });
       setNewTheme("");
     }
   };
 
   const toggleKeyWork = (workId: string) => {
-    setForm(prev => ({
-      ...prev,
-      key_works: prev.key_works.includes(workId)
-        ? prev.key_works.filter(id => id !== workId)
-        : [...prev.key_works, workId],
-    }));
+    updateForm({
+      key_works: form.key_works.includes(workId)
+        ? form.key_works.filter(id => id !== workId)
+        : [...form.key_works, workId],
+    });
   };
 
   if (isLoading) {
@@ -232,6 +281,7 @@ const LifePeriodEditor = () => {
               {isEditing ? "Edit Life Period" : "Add Life Period"}
             </h1>
           </div>
+          <KeyboardShortcutsHelp />
           <UndoRedoControls
             canUndo={canUndo}
             canRedo={canRedo}
@@ -240,14 +290,31 @@ const LifePeriodEditor = () => {
           />
         </div>
 
+        {/* Draft Recovery */}
+        {hasDraft && !isEditing && draftTimestamp && (
+          <DraftRecoveryBanner
+            timestamp={draftTimestamp}
+            onRestore={() => {
+              const draft = restoreDraft();
+              if (draft) {
+                setForm(draft);
+                toast.success("Draft restored");
+              }
+            }}
+            onDiscard={discardDraft}
+          />
+        )}
+
         {/* Bulk Text Importer */}
         <BulkTextImporter
           contentType="life_period"
           onImport={(data) => {
-            if (data.title) setForm(prev => ({ ...prev, title: String(data.title) }));
-            if (data.description) setForm(prev => ({ ...prev, description: String(data.description) }));
-            if (data.detailed_content) setForm(prev => ({ ...prev, detailed_content: String(data.detailed_content) }));
-            if (data.themes) setForm(prev => ({ ...prev, themes: Array.isArray(data.themes) ? data.themes : [] }));
+            const updates: Partial<typeof form> = {};
+            if (data.title) updates.title = String(data.title);
+            if (data.description) updates.description = String(data.description);
+            if (data.detailed_content) updates.detailed_content = String(data.detailed_content);
+            if (data.themes) updates.themes = Array.isArray(data.themes) ? data.themes : [];
+            updateForm(updates);
           }}
         />
 
@@ -260,7 +327,7 @@ const LifePeriodEditor = () => {
               <Input
                 id="title"
                 value={form.title}
-                onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => updateForm({ title: e.target.value })}
                 placeholder="e.g., The Discovery Years, Art Awakening"
               />
             </div>
@@ -272,7 +339,7 @@ const LifePeriodEditor = () => {
                   id="start_date"
                   type="date"
                   value={form.start_date}
-                  onChange={(e) => setForm(prev => ({ ...prev, start_date: e.target.value }))}
+                  onChange={(e) => updateForm({ start_date: e.target.value })}
                 />
               </div>
               <div>
@@ -281,17 +348,28 @@ const LifePeriodEditor = () => {
                   id="end_date"
                   type="date"
                   value={form.end_date}
-                  onChange={(e) => setForm(prev => ({ ...prev, end_date: e.target.value }))}
+                  onChange={(e) => updateForm({ end_date: e.target.value })}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="description">Short Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="description">Short Description</Label>
+                <AIGenerateButton
+                  fieldName="description"
+                  fieldLabel="Description"
+                  contentType="life_period"
+                  context={{ title: form.title, category: form.category, themes: form.themes }}
+                  currentValue={form.description}
+                  onGenerated={(value) => updateForm({ description: value })}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="description"
                 value={form.description}
-                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => updateForm({ description: e.target.value })}
                 rows={3}
               />
             </div>
@@ -301,7 +379,7 @@ const LifePeriodEditor = () => {
                 type="checkbox"
                 id="is_current"
                 checked={form.is_current}
-                onChange={(e) => setForm(prev => ({ ...prev, is_current: e.target.checked }))}
+                onChange={(e) => updateForm({ is_current: e.target.checked })}
                 className="w-4 h-4"
               />
               <Label htmlFor="is_current">This is the current period</Label>
@@ -312,7 +390,7 @@ const LifePeriodEditor = () => {
               <select
                 id="category"
                 value={form.category}
-                onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))}
+                onChange={(e) => updateForm({ category: e.target.value })}
                 className="w-full h-10 px-3 border-2 border-input bg-background"
               >
                 {LIFE_PERIOD_CATEGORIES.map((c) => (
@@ -323,7 +401,7 @@ const LifePeriodEditor = () => {
 
             <ImageUploader
               value={form.image_url}
-              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+              onChange={(url) => updateForm({ image_url: url })}
               label="Cover Image"
               folder="life-periods"
             />
@@ -337,13 +415,13 @@ const LifePeriodEditor = () => {
             <h2 className="text-xl font-display">Gallery Images</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            Add multiple images to showcase this period. These will appear in a gallery on the detail page.
+            Add multiple images to showcase this period.
           </p>
           <EnhancedImageManager
             mainImage=""
             screenshots={form.images}
             onMainImageChange={() => {}}
-            onScreenshotsChange={(urls) => setForm(prev => ({ ...prev, images: urls }))}
+            onScreenshotsChange={(urls) => updateForm({ images: urls })}
             folder="life-periods/gallery"
             maxImages={12}
           />
@@ -359,7 +437,7 @@ const LifePeriodEditor = () => {
             {form.themes.map((theme) => (
               <span key={theme} className="inline-flex items-center gap-1 px-3 py-1 bg-muted border-2 border-foreground font-bold text-sm">
                 {theme}
-                <button onClick={() => setForm(prev => ({ ...prev, themes: prev.themes.filter(t => t !== theme) }))}>
+                <button onClick={() => updateForm({ themes: form.themes.filter(t => t !== theme) })}>
                   <X className="w-4 h-4" />
                 </button>
               </span>
@@ -380,10 +458,21 @@ const LifePeriodEditor = () => {
 
         {/* Detailed Content */}
         <ComicPanel className="p-6">
-          <h2 className="text-xl font-display mb-4">Detailed Content</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display">Detailed Content</h2>
+            <AIGenerateButton
+              fieldName="detailed_content"
+              fieldLabel="Content"
+              contentType="life_period"
+              context={{ title: form.title, category: form.category, description: form.description, themes: form.themes }}
+              currentValue={form.detailed_content}
+              onGenerated={(value) => updateForm({ detailed_content: value })}
+              variant="small"
+            />
+          </div>
           <RichTextEditor
             content={form.detailed_content}
-            onChange={(content) => setForm(prev => ({ ...prev, detailed_content: content }))}
+            onChange={(content) => updateForm({ detailed_content: content })}
             placeholder="Write about this period in detail..."
           />
         </ComicPanel>
@@ -454,17 +543,32 @@ const LifePeriodEditor = () => {
           entityId={isEditing ? id : undefined}
         />
 
-        {/* Save */}
-        <div className="flex justify-end">
-          <PopButton onClick={() => saveMutation.mutate()} disabled={!form.title || !form.start_date || saveMutation.isPending}>
-            {saveMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {isEditing ? "Update" : "Save"} Period
-          </PopButton>
+        {/* Save / Delete */}
+        <div className="flex justify-between">
+          {isEditing && (
+            <PopButton variant="outline" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete
+            </PopButton>
+          )}
+          <div className={!isEditing ? "ml-auto" : ""}>
+            <PopButton onClick={() => saveMutation.mutate()} disabled={!form.title || !form.start_date || saveMutation.isPending}>
+              {saveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {isEditing ? "Update" : "Save"} Period
+            </PopButton>
+          </div>
         </div>
+
+        <DeleteConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onConfirm={() => deleteMutation.mutate()}
+          title="Delete Life Period?"
+          description="This will permanently delete this life period entry."
+        />
       </div>
     </AdminLayout>
   );

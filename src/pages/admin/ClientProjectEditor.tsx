@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -7,17 +7,25 @@ import { EnhancedImageManager } from "@/components/admin/EnhancedImageManager";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Plus, X, Loader2 } from "lucide-react";
+import { Save, ArrowLeft, Plus, X, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PROJECT_TYPES, getProjectTypeLabel } from "@/lib/clientProjectTypes";
+import { useAutosave } from "@/hooks/useAutosave";
+import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 
 const ClientProjectEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const cloneId = searchParams.get("clone");
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
@@ -43,6 +51,21 @@ const ClientProjectEditor = () => {
 
   const [newTech, setNewTech] = useState("");
   const [newFeature, setNewFeature] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Autosave
+  const { hasDraft, draftTimestamp, restoreDraft, discardDraft, clearDraft } = useAutosave({
+    key: `client-project-${id || "new"}`,
+    data: form,
+    enabled: true,
+  });
+
+  // Keyboard shortcuts
+  const { shortcuts } = useEditorShortcuts({
+    onSave: () => saveMutation.mutate(),
+    onExit: () => navigate("/admin/client-work"),
+    isDirty: form.project_name !== "",
+  });
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["client-project-edit", id],
@@ -59,29 +82,46 @@ const ClientProjectEditor = () => {
     enabled: isEditing,
   });
 
+  // Clone support
+  const { data: cloneSource } = useQuery({
+    queryKey: ["client-project-clone", cloneId],
+    queryFn: async () => {
+      if (!cloneId) return null;
+      const { data, error } = await supabase
+        .from("client_projects")
+        .select("*")
+        .eq("id", cloneId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!cloneId && !isEditing,
+  });
+
   useEffect(() => {
-    if (project) {
+    const source = project || cloneSource;
+    if (source) {
       setForm({
-        client_name: project.client_name || "",
-        project_name: project.project_name || "",
-        slug: project.slug || "",
-        description: project.description || "",
-        long_description: project.long_description || "",
-        image_url: project.image_url || "",
-        screenshots: project.screenshots || [],
-        tech_stack: project.tech_stack || [],
-        features: project.features || [],
-        status: project.status as "completed" | "in_progress",
-        start_date: project.start_date || "",
-        end_date: project.end_date || "",
-        testimonial: project.testimonial || "",
-        testimonial_author: project.testimonial_author || "",
-        is_public: project.is_public ?? true,
-        project_type: (project as any).project_type || "web_design",
-        type_metadata: (project as any).type_metadata || {},
+        client_name: source.client_name || "",
+        project_name: cloneSource ? `${source.project_name} (Copy)` : source.project_name || "",
+        slug: cloneSource ? `${source.slug}-copy` : source.slug || "",
+        description: source.description || "",
+        long_description: source.long_description || "",
+        image_url: source.image_url || "",
+        screenshots: source.screenshots || [],
+        tech_stack: source.tech_stack || [],
+        features: source.features || [],
+        status: source.status as "completed" | "in_progress",
+        start_date: source.start_date || "",
+        end_date: source.end_date || "",
+        testimonial: source.testimonial || "",
+        testimonial_author: source.testimonial_author || "",
+        is_public: source.is_public ?? true,
+        project_type: (source as any).project_type || "web_design",
+        type_metadata: (source as any).type_metadata || {},
       });
     }
-  }, [project]);
+  }, [project, cloneSource]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -103,6 +143,7 @@ const ClientProjectEditor = () => {
       }
     },
     onSuccess: () => {
+      clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-client-projects"] });
       queryClient.invalidateQueries({ queryKey: ["client-projects"] });
       toast.success(isEditing ? "Project updated" : "Project created");
@@ -112,6 +153,21 @@ const ClientProjectEditor = () => {
       toast.error("Failed to save project");
       console.error(error);
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("client_projects").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      clearDraft();
+      queryClient.invalidateQueries({ queryKey: ["admin-client-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["client-projects"] });
+      toast.success("Project deleted");
+      navigate("/admin/client-work");
+    },
+    onError: () => toast.error("Failed to delete"),
   });
 
   const generateSlug = () => {
@@ -159,12 +215,28 @@ const ClientProjectEditor = () => {
           <button onClick={() => navigate("/admin/client-work")} className="p-2 hover:bg-muted rounded">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-grow">
             <h1 className="text-3xl font-display">
               {isEditing ? "Edit Client Project" : "New Client Project"}
             </h1>
           </div>
+          <KeyboardShortcutsHelp />
         </div>
+
+        {/* Draft Recovery */}
+        {hasDraft && !isEditing && draftTimestamp && (
+          <DraftRecoveryBanner
+            timestamp={draftTimestamp}
+            onRestore={() => {
+              const draft = restoreDraft();
+              if (draft) {
+                setForm(draft);
+                toast.success("Draft restored");
+              }
+            }}
+            onDiscard={discardDraft}
+          />
+        )}
 
         {/* Bulk Text Importer */}
         <BulkTextImporter
@@ -239,7 +311,18 @@ const ClientProjectEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="description">Short Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="description">Short Description</Label>
+                <AIGenerateButton
+                  fieldName="description"
+                  fieldLabel="Description"
+                  contentType="client_project"
+                  context={{ project_name: form.project_name, client_name: form.client_name, project_type: form.project_type }}
+                  currentValue={form.description}
+                  onGenerated={(value) => setForm(prev => ({ ...prev, description: value }))}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="description"
                 value={form.description}
@@ -249,7 +332,18 @@ const ClientProjectEditor = () => {
             </div>
 
             <div>
-              <Label htmlFor="long_description">Full Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="long_description">Full Description</Label>
+                <AIGenerateButton
+                  fieldName="long_description"
+                  fieldLabel="Full Description"
+                  contentType="client_project"
+                  context={{ project_name: form.project_name, client_name: form.client_name, description: form.description }}
+                  currentValue={form.long_description}
+                  onGenerated={(value) => setForm(prev => ({ ...prev, long_description: value }))}
+                  variant="small"
+                />
+              </div>
               <Textarea
                 id="long_description"
                 value={form.long_description}
@@ -415,28 +509,16 @@ const ClientProjectEditor = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label>Industry</Label>
-                  <Input
-                    value={meta.industry || ""}
-                    onChange={e => updateMeta("industry", e.target.value)}
-                    placeholder="Technology, Healthcare..."
-                  />
+                  <Input value={meta.industry || ""} onChange={e => updateMeta("industry", e.target.value)} placeholder="Technology, Healthcare..." />
                 </div>
                 <div>
                   <Label>Deliverable Format</Label>
-                  <Input
-                    value={meta.format || ""}
-                    onChange={e => updateMeta("format", e.target.value)}
-                    placeholder="PDF, Presentation, Document..."
-                  />
+                  <Input value={meta.format || ""} onChange={e => updateMeta("format", e.target.value)} placeholder="PDF, Presentation, Document..." />
                 </div>
               </div>
               <div>
                 <Label>Executive Summary</Label>
-                <Textarea
-                  value={meta.executive_summary || ""}
-                  onChange={e => updateMeta("executive_summary", e.target.value)}
-                  rows={3}
-                />
+                <Textarea value={meta.executive_summary || ""} onChange={e => updateMeta("executive_summary", e.target.value)} rows={3} />
               </div>
               <div>
                 <Label>Key Sections (comma-separated)</Label>
@@ -456,28 +538,16 @@ const ClientProjectEditor = () => {
             <div className="grid gap-4">
               <div>
                 <Label>Materials (comma-separated)</Label>
-                <Input
-                  value={(meta.materials || []).join(", ")}
-                  onChange={e => updateMeta("materials", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
-                  placeholder="Wood, Metal, Plastic..."
-                />
+                <Input value={(meta.materials || []).join(", ")} onChange={e => updateMeta("materials", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))} placeholder="Wood, Metal, Plastic..." />
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label>Dimensions</Label>
-                  <Input
-                    value={meta.dimensions || ""}
-                    onChange={e => updateMeta("dimensions", e.target.value)}
-                    placeholder="10x20x5 cm"
-                  />
+                  <Input value={meta.dimensions || ""} onChange={e => updateMeta("dimensions", e.target.value)} placeholder="10x20x5 cm" />
                 </div>
                 <div>
                   <Label>Design Tools (comma-separated)</Label>
-                  <Input
-                    value={(meta.design_tools || []).join(", ")}
-                    onChange={e => updateMeta("design_tools", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
-                    placeholder="Figma, Blender, AutoCAD..."
-                  />
+                  <Input value={(meta.design_tools || []).join(", ")} onChange={e => updateMeta("design_tools", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))} placeholder="Figma, Blender, AutoCAD..." />
                 </div>
               </div>
             </div>
@@ -491,36 +561,20 @@ const ClientProjectEditor = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label>Product Reviewed</Label>
-                  <Input
-                    value={meta.product_reviewed || ""}
-                    onChange={e => updateMeta("product_reviewed", e.target.value)}
-                  />
+                  <Input value={meta.product_reviewed || ""} onChange={e => updateMeta("product_reviewed", e.target.value)} />
                 </div>
                 <div>
                   <Label>Rating (1-10)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={meta.rating || ""}
-                    onChange={e => updateMeta("rating", parseInt(e.target.value) || 0)}
-                  />
+                  <Input type="number" min={1} max={10} value={meta.rating || ""} onChange={e => updateMeta("rating", parseInt(e.target.value) || 0)} />
                 </div>
               </div>
               <div>
                 <Label>Key Findings (comma-separated)</Label>
-                <Input
-                  value={(meta.key_findings || []).join(", ")}
-                  onChange={e => updateMeta("key_findings", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
-                />
+                <Input value={(meta.key_findings || []).join(", ")} onChange={e => updateMeta("key_findings", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))} />
               </div>
               <div>
                 <Label>Methodology</Label>
-                <Textarea
-                  value={meta.methodology || ""}
-                  onChange={e => updateMeta("methodology", e.target.value)}
-                  rows={2}
-                />
+                <Textarea value={meta.methodology || ""} onChange={e => updateMeta("methodology", e.target.value)} rows={2} />
               </div>
             </div>
           </ComicPanel>
@@ -533,37 +587,21 @@ const ClientProjectEditor = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label>Focus Area</Label>
-                  <Input
-                    value={meta.focus_area || ""}
-                    onChange={e => updateMeta("focus_area", e.target.value)}
-                    placeholder="Growth strategy, operations..."
-                  />
+                  <Input value={meta.focus_area || ""} onChange={e => updateMeta("focus_area", e.target.value)} placeholder="Growth strategy, operations..." />
                 </div>
                 <div>
                   <Label>Duration</Label>
-                  <Input
-                    value={meta.duration || ""}
-                    onChange={e => updateMeta("duration", e.target.value)}
-                    placeholder="3 months, 6 weeks..."
-                  />
+                  <Input value={meta.duration || ""} onChange={e => updateMeta("duration", e.target.value)} placeholder="3 months, 6 weeks..." />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label>Recommendations Count</Label>
-                  <Input
-                    type="number"
-                    value={meta.recommendations_count || ""}
-                    onChange={e => updateMeta("recommendations_count", parseInt(e.target.value) || 0)}
-                  />
+                  <Input type="number" value={meta.recommendations_count || ""} onChange={e => updateMeta("recommendations_count", parseInt(e.target.value) || 0)} />
                 </div>
                 <div>
                   <Label>Outcome Metrics</Label>
-                  <Input
-                    value={meta.outcome_metrics || ""}
-                    onChange={e => updateMeta("outcome_metrics", e.target.value)}
-                    placeholder="30% revenue increase..."
-                  />
+                  <Input value={meta.outcome_metrics || ""} onChange={e => updateMeta("outcome_metrics", e.target.value)} placeholder="30% revenue increase..." />
                 </div>
               </div>
             </div>
@@ -576,36 +614,20 @@ const ClientProjectEditor = () => {
             <div className="grid gap-4">
               <div>
                 <Label>Platforms (comma-separated)</Label>
-                <Input
-                  value={(meta.platforms || []).join(", ")}
-                  onChange={e => updateMeta("platforms", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
-                  placeholder="Instagram, TikTok, LinkedIn..."
-                />
+                <Input value={(meta.platforms || []).join(", ")} onChange={e => updateMeta("platforms", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))} placeholder="Instagram, TikTok, LinkedIn..." />
               </div>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <Label>Campaign Type</Label>
-                  <Input
-                    value={meta.campaign_type || ""}
-                    onChange={e => updateMeta("campaign_type", e.target.value)}
-                    placeholder="Brand awareness, launch..."
-                  />
+                  <Input value={meta.campaign_type || ""} onChange={e => updateMeta("campaign_type", e.target.value)} placeholder="Brand awareness, launch..." />
                 </div>
                 <div>
                   <Label>Reach</Label>
-                  <Input
-                    value={meta.reach || ""}
-                    onChange={e => updateMeta("reach", e.target.value)}
-                    placeholder="50K impressions"
-                  />
+                  <Input value={meta.reach || ""} onChange={e => updateMeta("reach", e.target.value)} placeholder="50K impressions" />
                 </div>
                 <div>
                   <Label>Engagement</Label>
-                  <Input
-                    value={meta.engagement || ""}
-                    onChange={e => updateMeta("engagement", e.target.value)}
-                    placeholder="5% engagement rate"
-                  />
+                  <Input value={meta.engagement || ""} onChange={e => updateMeta("engagement", e.target.value)} placeholder="5% engagement rate" />
                 </div>
               </div>
             </div>
@@ -618,28 +640,16 @@ const ClientProjectEditor = () => {
             <div className="grid gap-4">
               <div>
                 <Label>Equipment (comma-separated)</Label>
-                <Input
-                  value={(meta.equipment || []).join(", ")}
-                  onChange={e => updateMeta("equipment", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
-                  placeholder="Canon R5, DJI Mavic..."
-                />
+                <Input value={(meta.equipment || []).join(", ")} onChange={e => updateMeta("equipment", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))} placeholder="Canon R5, DJI Mavic..." />
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label>Deliverables Count</Label>
-                  <Input
-                    type="number"
-                    value={meta.deliverables_count || ""}
-                    onChange={e => updateMeta("deliverables_count", parseInt(e.target.value) || 0)}
-                  />
+                  <Input type="number" value={meta.deliverables_count || ""} onChange={e => updateMeta("deliverables_count", parseInt(e.target.value) || 0)} />
                 </div>
                 <div>
                   <Label>Style / Genre</Label>
-                  <Input
-                    value={meta.style || ""}
-                    onChange={e => updateMeta("style", e.target.value)}
-                    placeholder="Documentary, portrait, commercial..."
-                  />
+                  <Input value={meta.style || ""} onChange={e => updateMeta("style", e.target.value)} placeholder="Documentary, portrait, commercial..." />
                 </div>
               </div>
             </div>
@@ -747,17 +757,32 @@ const ClientProjectEditor = () => {
           context={`Client: ${form.client_name}\nType: ${form.project_type}\nDescription: ${form.description}`}
         />
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <PopButton onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-            {saveMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {isEditing ? "Update Project" : "Create Project"}
-          </PopButton>
+        {/* Save / Delete */}
+        <div className="flex justify-between">
+          {isEditing && (
+            <PopButton variant="outline" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete
+            </PopButton>
+          )}
+          <div className={!isEditing ? "ml-auto" : ""}>
+            <PopButton onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {isEditing ? "Update Project" : "Create Project"}
+            </PopButton>
+          </div>
         </div>
+
+        <DeleteConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onConfirm={() => deleteMutation.mutate()}
+          title="Delete Client Project?"
+          description="This will permanently delete this client project."
+        />
       </div>
     </AdminLayout>
   );
