@@ -9,7 +9,8 @@ import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/a
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Loader2, History, Star, Filter, Search } from "lucide-react";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
+import { Plus, Edit2, Trash2, Loader2, History, Star, Filter, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -37,10 +38,17 @@ const LP_SORT: SortOption[] = [
   { label: "Title A-Z", key: "title", direction: "asc" },
 ];
 
+const LP_QUICK_EDIT_FIELDS: QuickEditField[] = [
+  { key: "title", label: "Title", type: "text" },
+  { key: "description", label: "Description", type: "textarea" },
+  { key: "themes", label: "Themes", type: "tags" },
+];
+
 const LifePeriodsManager = () => {
   const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
@@ -254,6 +262,13 @@ const LifePeriodsManager = () => {
                         </Link>
                         <DuplicateButton id={period.id} type="life-period" />
                         <button
+                          onClick={() => setQuickEditId(period.id)}
+                          className="p-2 border-2 border-foreground hover:bg-muted"
+                          title="Quick Edit"
+                        >
+                          <SlidersHorizontal className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => setDeleteId(period.id)}
                           className="p-2 border-2 border-foreground hover:bg-destructive hover:text-destructive-foreground"
                         >
@@ -274,7 +289,16 @@ const LifePeriodsManager = () => {
         onClearSelection={clearSelection}
         tableName="life_periods"
         queryKey={["admin-life-periods"]}
-        actions={["delete"]}
+        actions={["delete", "set-tags"]}
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="life_periods"
+        recordId={quickEditId}
+        fields={LP_QUICK_EDIT_FIELDS}
+        queryKey={["admin-life-periods"]}
       />
 
       <DeleteConfirmDialog

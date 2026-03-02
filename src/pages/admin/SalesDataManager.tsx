@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ const categories = ["stickers", "art", "commissions", "prints", "digital", "othe
 
 const SalesDataManager = () => {
   const queryClient = useQueryClient();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({
     period: "",
     category: "stickers",
@@ -216,7 +218,7 @@ const SalesDataManager = () => {
                       ${sale.amount.toLocaleString()}
                     </div>
                     <button
-                      onClick={() => deleteMutation.mutate(sale.id)}
+                      onClick={() => setDeleteId(sale.id)}
                       className="p-1 hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -243,6 +245,14 @@ const SalesDataManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this sales record?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };
