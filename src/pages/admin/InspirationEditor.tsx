@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -9,14 +9,19 @@ import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { RichTextEditor } from "@/components/editor";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, ArrowLeft, Loader2, Plus, X, Link as LinkIcon } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Plus, X, Link as LinkIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { useAutosave } from "@/hooks/useAutosave";
+import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 
 interface RelatedLink {
   title: string;
@@ -45,6 +50,8 @@ const categories = [
 const InspirationEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const cloneId = searchParams.get("clone");
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
@@ -60,6 +67,8 @@ const InspirationEditor = () => {
     order_index: 0,
   });
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   // Undo/Redo history
   const [history, setHistory] = useState<FormState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -70,7 +79,6 @@ const InspirationEditor = () => {
   const pushHistory = (newForm: FormState) => {
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newForm);
-    // Keep max 50 history states
     if (newHistory.length > 50) newHistory.shift();
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
@@ -112,6 +120,20 @@ const InspirationEditor = () => {
   const [newArea, setNewArea] = useState("");
   const [newLink, setNewLink] = useState({ title: "", url: "" });
 
+  // Autosave
+  const { hasDraft, draftTimestamp, restoreDraft, discardDraft, clearDraft } = useAutosave({
+    key: `inspiration-${id || "new"}`,
+    data: form,
+    enabled: true,
+  });
+
+  // Keyboard shortcuts
+  const { shortcuts } = useEditorShortcuts({
+    onSave: () => saveMutation.mutate(),
+    onExit: () => navigate("/admin/inspirations"),
+    isDirty: form.title !== "",
+  });
+
   const { data: inspiration, isLoading } = useQuery({
     queryKey: ["inspiration-edit", id],
     queryFn: async () => {
@@ -127,30 +149,46 @@ const InspirationEditor = () => {
     enabled: isEditing,
   });
 
+  // Clone support
+  const { data: cloneSource } = useQuery({
+    queryKey: ["inspiration-clone", cloneId],
+    queryFn: async () => {
+      if (!cloneId) return null;
+      const { data, error } = await supabase
+        .from("inspirations")
+        .select("*")
+        .eq("id", cloneId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!cloneId && !isEditing,
+  });
+
   useEffect(() => {
-    if (inspiration) {
+    const source = inspiration || cloneSource;
+    if (source) {
       const initialForm: FormState = {
-        title: inspiration.title || "",
-        category: inspiration.category || "person",
-        description: inspiration.description || "",
-        detailed_content: inspiration.detailed_content || "",
-        image_url: inspiration.image_url || "",
-        images: (inspiration as Record<string, unknown>).images as string[] || [],
-        related_links: Array.isArray(inspiration.related_links) 
-          ? (inspiration.related_links as unknown as RelatedLink[]) 
+        title: cloneSource ? `${source.title} (Copy)` : source.title || "",
+        category: source.category || "person",
+        description: source.description || "",
+        detailed_content: source.detailed_content || "",
+        image_url: source.image_url || "",
+        images: (source as Record<string, unknown>).images as string[] || [],
+        related_links: Array.isArray(source.related_links) 
+          ? (source.related_links as unknown as RelatedLink[]) 
           : [],
-        influence_areas: inspiration.influence_areas || [],
-        order_index: inspiration.order_index || 0,
+        influence_areas: source.influence_areas || [],
+        order_index: source.order_index || 0,
       };
       setForm(initialForm);
       setHistory([initialForm]);
       setHistoryIndex(0);
-    } else if (!isEditing) {
-      // Initialize history for new items
+    } else if (!isEditing && !cloneId) {
       setHistory([form]);
       setHistoryIndex(0);
     }
-  }, [inspiration, isEditing]);
+  }, [inspiration, cloneSource, isEditing]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -178,6 +216,7 @@ const InspirationEditor = () => {
       }
     },
     onSuccess: () => {
+      clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-inspirations"] });
       queryClient.invalidateQueries({ queryKey: ["inspirations"] });
       toast.success(isEditing ? "Inspiration updated" : "Inspiration added");
@@ -187,6 +226,21 @@ const InspirationEditor = () => {
       toast.error("Failed to save");
       console.error(error);
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("inspirations").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      clearDraft();
+      queryClient.invalidateQueries({ queryKey: ["admin-inspirations"] });
+      queryClient.invalidateQueries({ queryKey: ["inspirations"] });
+      toast.success("Inspiration deleted");
+      navigate("/admin/inspirations");
+    },
+    onError: () => toast.error("Failed to delete"),
   });
 
   const addInfluenceArea = () => {
@@ -225,6 +279,7 @@ const InspirationEditor = () => {
               {isEditing ? "Edit Inspiration" : "Add Inspiration"}
             </h1>
           </div>
+          <KeyboardShortcutsHelp />
           <UndoRedoControls
             canUndo={canUndo}
             canRedo={canRedo}
@@ -232,6 +287,21 @@ const InspirationEditor = () => {
             onRedo={redo}
           />
         </div>
+
+        {/* Draft Recovery */}
+        {hasDraft && !isEditing && draftTimestamp && (
+          <DraftRecoveryBanner
+            timestamp={draftTimestamp}
+            onRestore={() => {
+              const draft = restoreDraft();
+              if (draft) {
+                setForm(draft);
+                toast.success("Draft restored");
+              }
+            }}
+            onDiscard={discardDraft}
+          />
+        )}
 
         {/* Bulk Text Importer */}
         <BulkTextImporter
@@ -430,17 +500,32 @@ const InspirationEditor = () => {
           context={`Category: ${form.category}\nDescription: ${form.description}`}
         />
 
-        {/* Save */}
-        <div className="flex justify-end">
-          <PopButton onClick={() => saveMutation.mutate()} disabled={!form.title || saveMutation.isPending}>
-            {saveMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {isEditing ? "Update" : "Save"} Inspiration
-          </PopButton>
+        {/* Save / Delete */}
+        <div className="flex justify-between">
+          {isEditing && (
+            <PopButton variant="outline" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete
+            </PopButton>
+          )}
+          <div className={!isEditing ? "ml-auto" : ""}>
+            <PopButton onClick={() => saveMutation.mutate()} disabled={!form.title || saveMutation.isPending}>
+              {saveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {isEditing ? "Update" : "Save"} Inspiration
+            </PopButton>
+          </div>
         </div>
+
+        <DeleteConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onConfirm={() => deleteMutation.mutate()}
+          title="Delete Inspiration?"
+          description="This will permanently delete this inspiration entry."
+        />
       </div>
     </AdminLayout>
   );

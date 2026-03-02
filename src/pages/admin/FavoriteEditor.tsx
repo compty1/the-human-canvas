@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
@@ -7,15 +7,20 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import { BulkTextImporter } from "@/components/admin/BulkTextImporter";
 import { UndoRedoControls } from "@/components/admin/UndoRedoControls";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Save, ArrowLeft, Loader2, Link as LinkIcon, Plus, X, Music, Film, ChevronDown } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Link as LinkIcon, Plus, X, Music, Film, ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAIChatPanel } from "@/components/admin/ItemAIChatPanel";
 import { KnowledgeEntryWidget } from "@/components/admin/KnowledgeEntryWidget";
+import { useAutosave } from "@/hooks/useAutosave";
+import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { 
   streamingPlatforms, 
   musicPlatforms, 
@@ -48,6 +53,8 @@ interface StreamingLinks {
 const FavoriteEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const cloneId = searchParams.get("clone");
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
@@ -64,14 +71,12 @@ const FavoriteEditor = () => {
     is_current: false,
     discovered_date: "",
     tags: [] as string[],
-    // Streaming fields
     streaming_links: {} as StreamingLinks,
     media_subtype: "",
     release_year: null as number | null,
     season_count: null as number | null,
     album_name: "",
     artist_name: "",
-    // Childhood roots fields
     is_childhood_root: false,
     childhood_age_range: "",
     childhood_impact: "",
@@ -80,6 +85,7 @@ const FavoriteEditor = () => {
   const [newTag, setNewTag] = useState("");
   const [importing, setImporting] = useState(false);
   const [streamingOpen, setStreamingOpen] = useState(true);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Undo/Redo
   const [historyStack, setHistoryStack] = useState<typeof form[]>([]);
@@ -115,6 +121,20 @@ const FavoriteEditor = () => {
     pushToHistory(newForm);
   };
 
+  // Autosave
+  const { hasDraft, draftTimestamp, restoreDraft, discardDraft, clearDraft } = useAutosave({
+    key: `favorite-${id || "new"}`,
+    data: form,
+    enabled: true,
+  });
+
+  // Keyboard shortcuts
+  const { shortcuts } = useEditorShortcuts({
+    onSave: () => saveMutation.mutate(),
+    onExit: () => navigate("/admin/favorites"),
+    isDirty: form.title !== "",
+  });
+
   const { data: favorite, isLoading } = useQuery({
     queryKey: ["favorite-edit", id],
     queryFn: async () => {
@@ -130,33 +150,53 @@ const FavoriteEditor = () => {
     enabled: isEditing,
   });
 
+  // Clone support
+  const { data: cloneSource } = useQuery({
+    queryKey: ["favorite-clone", cloneId],
+    queryFn: async () => {
+      if (!cloneId) return null;
+      const { data, error } = await supabase
+        .from("favorites")
+        .select("*")
+        .eq("id", cloneId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!cloneId && !isEditing,
+  });
+
   useEffect(() => {
-    if (favorite) {
-      setForm({
-        title: favorite.title || "",
-        type: favorite.type || "art",
-        source_url: favorite.source_url || "",
-        image_url: favorite.image_url || "",
-        creator_name: favorite.creator_name || "",
-        creator_url: favorite.creator_url || "",
-        creator_location: favorite.creator_location || "",
-        description: favorite.description || "",
-        impact_statement: favorite.impact_statement || "",
-        is_current: favorite.is_current || false,
-        discovered_date: favorite.discovered_date || "",
-        tags: favorite.tags || [],
-        streaming_links: (favorite.streaming_links as StreamingLinks) || {},
-        media_subtype: favorite.media_subtype || "",
-        release_year: favorite.release_year || null,
-        season_count: favorite.season_count || null,
-        album_name: favorite.album_name || "",
-        artist_name: favorite.artist_name || "",
-        is_childhood_root: (favorite as Record<string, unknown>).is_childhood_root as boolean || false,
-        childhood_age_range: (favorite as Record<string, unknown>).childhood_age_range as string || "",
-        childhood_impact: (favorite as Record<string, unknown>).childhood_impact as string || "",
-      });
+    const source = favorite || cloneSource;
+    if (source) {
+      const initialForm = {
+        title: cloneSource ? `${source.title} (Copy)` : source.title || "",
+        type: source.type || "art",
+        source_url: source.source_url || "",
+        image_url: source.image_url || "",
+        creator_name: source.creator_name || "",
+        creator_url: source.creator_url || "",
+        creator_location: source.creator_location || "",
+        description: source.description || "",
+        impact_statement: source.impact_statement || "",
+        is_current: source.is_current || false,
+        discovered_date: source.discovered_date || "",
+        tags: source.tags || [],
+        streaming_links: (source.streaming_links as StreamingLinks) || {},
+        media_subtype: source.media_subtype || "",
+        release_year: source.release_year || null,
+        season_count: source.season_count || null,
+        album_name: source.album_name || "",
+        artist_name: source.artist_name || "",
+        is_childhood_root: (source as Record<string, unknown>).is_childhood_root as boolean || false,
+        childhood_age_range: (source as Record<string, unknown>).childhood_age_range as string || "",
+        childhood_impact: (source as Record<string, unknown>).childhood_impact as string || "",
+      };
+      setForm(initialForm);
+      setHistoryStack([initialForm]);
+      setHistoryIndex(0);
     }
-  }, [favorite]);
+  }, [favorite, cloneSource]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -192,6 +232,7 @@ const FavoriteEditor = () => {
       }
     },
     onSuccess: () => {
+      clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-favorites"] });
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
       toast.success(isEditing ? "Favorite updated" : "Favorite added");
@@ -201,6 +242,21 @@ const FavoriteEditor = () => {
       toast.error("Failed to save");
       console.error(error);
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("favorites").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      clearDraft();
+      queryClient.invalidateQueries({ queryKey: ["admin-favorites"] });
+      queryClient.invalidateQueries({ queryKey: ["favorites"] });
+      toast.success("Favorite deleted");
+      navigate("/admin/favorites");
+    },
+    onError: () => toast.error("Failed to delete"),
   });
 
   const importFromUrl = async () => {
@@ -218,12 +274,11 @@ const FavoriteEditor = () => {
       if (error) throw error;
 
       if (data) {
-        setForm(prev => ({
-          ...prev,
-          title: data.title || prev.title,
-          description: data.description || prev.description,
-          image_url: data.og_image || prev.image_url,
-        }));
+        updateForm({
+          title: data.title || form.title,
+          description: data.description || form.description,
+          image_url: data.og_image || form.image_url,
+        });
         toast.success("Imported metadata from URL");
       }
     } catch (error) {
@@ -236,28 +291,25 @@ const FavoriteEditor = () => {
 
   const addTag = () => {
     if (newTag && !form.tags.includes(newTag)) {
-      setForm(prev => ({ ...prev, tags: [...prev.tags, newTag] }));
+      updateForm({ tags: [...form.tags, newTag] });
       setNewTag("");
     }
   };
 
   const updateStreamingLink = (platform: string, url: string) => {
-    setForm(prev => ({
-      ...prev,
+    updateForm({
       streaming_links: {
-        ...prev.streaming_links,
+        ...form.streaming_links,
         [platform]: url
       }
-    }));
+    });
   };
 
-  // Auto-detect platform and populate field when URL is pasted
   const handleUrlPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pastedUrl = e.clipboardData.getData('text');
     const detectedPlatform = detectPlatformFromUrl(pastedUrl);
     
     if (detectedPlatform) {
-      // Check if this platform is relevant to the current media type
       const relevantPlatforms = getPlatformsForType(form.type);
       if (relevantPlatforms.includes(detectedPlatform)) {
         e.preventDefault();
@@ -308,6 +360,7 @@ const FavoriteEditor = () => {
               {isEditing ? "Edit Favorite" : "Add Favorite"}
             </h1>
           </div>
+          <KeyboardShortcutsHelp />
           <UndoRedoControls
             canUndo={canUndo}
             canRedo={canRedo}
@@ -316,16 +369,33 @@ const FavoriteEditor = () => {
           />
         </div>
 
+        {/* Draft Recovery */}
+        {hasDraft && !isEditing && draftTimestamp && (
+          <DraftRecoveryBanner
+            timestamp={draftTimestamp}
+            onRestore={() => {
+              const draft = restoreDraft();
+              if (draft) {
+                setForm(draft);
+                toast.success("Draft restored");
+              }
+            }}
+            onDiscard={discardDraft}
+          />
+        )}
+
         {/* Bulk Text Importer */}
         <BulkTextImporter
           contentType="favorite"
           onImport={(data) => {
-            if (data.title) setForm(prev => ({ ...prev, title: String(data.title) }));
-            if (data.description) setForm(prev => ({ ...prev, description: String(data.description) }));
-            if (data.impact_statement) setForm(prev => ({ ...prev, impact_statement: String(data.impact_statement) }));
-            if (data.creator_name) setForm(prev => ({ ...prev, creator_name: String(data.creator_name) }));
-            if (data.type) setForm(prev => ({ ...prev, type: String(data.type) }));
-            if (data.tags) setForm(prev => ({ ...prev, tags: Array.isArray(data.tags) ? data.tags : [] }));
+            const updates: Partial<typeof form> = {};
+            if (data.title) updates.title = String(data.title);
+            if (data.description) updates.description = String(data.description);
+            if (data.impact_statement) updates.impact_statement = String(data.impact_statement);
+            if (data.creator_name) updates.creator_name = String(data.creator_name);
+            if (data.type) updates.type = String(data.type);
+            if (data.tags) updates.tags = Array.isArray(data.tags) ? data.tags : [];
+            updateForm(updates);
           }}
         />
 
@@ -335,7 +405,7 @@ const FavoriteEditor = () => {
           <div className="flex gap-2">
             <Input
               value={form.source_url}
-              onChange={(e) => setForm(prev => ({ ...prev, source_url: e.target.value }))}
+              onChange={(e) => updateForm({ source_url: e.target.value })}
               placeholder="https://example.com/content"
             />
             <PopButton onClick={importFromUrl} disabled={importing}>
@@ -359,7 +429,7 @@ const FavoriteEditor = () => {
                 <Input
                   id="title"
                   value={form.title}
-                  onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => updateForm({ title: e.target.value })}
                 />
               </div>
               <div>
@@ -367,7 +437,7 @@ const FavoriteEditor = () => {
                 <select
                   id="type"
                   value={form.type}
-                  onChange={(e) => setForm(prev => ({ ...prev, type: e.target.value, media_subtype: "" }))}
+                  onChange={(e) => updateForm({ type: e.target.value, media_subtype: "" })}
                   className="w-full h-10 px-3 border-2 border-input bg-background"
                 >
                   {types.map((t) => (
@@ -422,7 +492,7 @@ const FavoriteEditor = () => {
 
             <ImageUploader
               value={form.image_url}
-              onChange={(url) => setForm(prev => ({ ...prev, image_url: url }))}
+              onChange={(url) => updateForm({ image_url: url })}
               label="Image"
               folder="favorites"
             />
@@ -432,7 +502,7 @@ const FavoriteEditor = () => {
                 type="checkbox"
                 id="is_current"
                 checked={form.is_current}
-                onChange={(e) => setForm(prev => ({ ...prev, is_current: e.target.checked }))}
+                onChange={(e) => updateForm({ is_current: e.target.checked })}
                 className="w-4 h-4"
               />
               <Label htmlFor="is_current">Currently enjoying this</Label>
@@ -444,13 +514,13 @@ const FavoriteEditor = () => {
                 id="discovered_date"
                 type="date"
                 value={form.discovered_date}
-                onChange={(e) => setForm(prev => ({ ...prev, discovered_date: e.target.value }))}
+                onChange={(e) => updateForm({ discovered_date: e.target.value })}
               />
             </div>
           </div>
         </ComicPanel>
 
-        {/* Streaming Links - Show for music, movies, shows */}
+        {/* Streaming Links */}
         {isMediaType && (
           <Collapsible open={streamingOpen} onOpenChange={setStreamingOpen}>
             <ComicPanel className="p-6">
@@ -463,7 +533,6 @@ const FavoriteEditor = () => {
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4">
                 <div className="grid gap-4">
-                  {/* Auto-detect URL input */}
                   <div className="p-3 bg-muted/50 rounded border-2 border-dashed">
                     <Label className="text-sm text-muted-foreground">Paste any streaming URL to auto-detect platform</Label>
                     <Input
@@ -473,7 +542,6 @@ const FavoriteEditor = () => {
                     />
                   </div>
 
-                  {/* Media Subtype */}
                   <div>
                     <Label>Subtype</Label>
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -481,7 +549,7 @@ const FavoriteEditor = () => {
                         <button
                           key={subtype}
                           type="button"
-                          onClick={() => setForm(prev => ({ ...prev, media_subtype: subtype }))}
+                          onClick={() => updateForm({ media_subtype: subtype })}
                           className={`px-3 py-1 border-2 font-bold text-sm capitalize ${
                             form.media_subtype === subtype
                               ? 'bg-foreground text-background border-foreground'
@@ -494,7 +562,6 @@ const FavoriteEditor = () => {
                     </div>
                   </div>
 
-                  {/* Music-specific fields */}
                   {isMusicType && (
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
@@ -502,7 +569,7 @@ const FavoriteEditor = () => {
                         <Input
                           id="artist_name"
                           value={form.artist_name}
-                          onChange={(e) => setForm(prev => ({ ...prev, artist_name: e.target.value }))}
+                          onChange={(e) => updateForm({ artist_name: e.target.value })}
                           placeholder="e.g., Daft Punk"
                         />
                       </div>
@@ -512,7 +579,7 @@ const FavoriteEditor = () => {
                           <Input
                             id="album_name"
                             value={form.album_name}
-                            onChange={(e) => setForm(prev => ({ ...prev, album_name: e.target.value }))}
+                            onChange={(e) => updateForm({ album_name: e.target.value })}
                             placeholder="e.g., Random Access Memories"
                           />
                         </div>
@@ -520,7 +587,6 @@ const FavoriteEditor = () => {
                     </div>
                   )}
 
-                  {/* Release Year and Season Count */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="release_year">Release Year</Label>
@@ -530,10 +596,9 @@ const FavoriteEditor = () => {
                         min="1900"
                         max="2099"
                         value={form.release_year || ""}
-                        onChange={(e) => setForm(prev => ({ 
-                          ...prev, 
+                        onChange={(e) => updateForm({ 
                           release_year: e.target.value ? parseInt(e.target.value) : null 
-                        }))}
+                        })}
                         placeholder="e.g., 2024"
                       />
                     </div>
@@ -545,17 +610,15 @@ const FavoriteEditor = () => {
                           type="number"
                           min="1"
                           value={form.season_count || ""}
-                          onChange={(e) => setForm(prev => ({ 
-                            ...prev, 
+                          onChange={(e) => updateForm({ 
                             season_count: e.target.value ? parseInt(e.target.value) : null 
-                          }))}
+                          })}
                           placeholder={isPodcastType ? "e.g., 50" : "e.g., 2"}
                         />
                       </div>
                     )}
                   </div>
 
-                  {/* Platform Links */}
                   <div className="space-y-3 mt-2">
                     <Label>Streaming Platform Links</Label>
                     {getCurrentPlatforms().map((platformKey) => {
@@ -595,6 +658,46 @@ const FavoriteEditor = () => {
           </Collapsible>
         )}
 
+        {/* Childhood Roots */}
+        <ComicPanel className="p-6">
+          <h2 className="text-xl font-display mb-4">Childhood Roots</h2>
+          <div className="grid gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_childhood_root"
+                checked={form.is_childhood_root}
+                onChange={(e) => updateForm({ is_childhood_root: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="is_childhood_root">This is a childhood influence</Label>
+            </div>
+            {form.is_childhood_root && (
+              <>
+                <div>
+                  <Label htmlFor="childhood_age_range">Age Range</Label>
+                  <Input
+                    id="childhood_age_range"
+                    value={form.childhood_age_range}
+                    onChange={(e) => updateForm({ childhood_age_range: e.target.value })}
+                    placeholder="e.g., 5-10"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="childhood_impact">Childhood Impact</Label>
+                  <Textarea
+                    id="childhood_impact"
+                    value={form.childhood_impact}
+                    onChange={(e) => updateForm({ childhood_impact: e.target.value })}
+                    rows={3}
+                    placeholder="How did this shape you as a child?"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </ComicPanel>
+
         {/* Creator Info */}
         <ComicPanel className="p-6">
           <h2 className="text-xl font-display mb-4">Creator Information</h2>
@@ -605,7 +708,7 @@ const FavoriteEditor = () => {
                 <Input
                   id="creator_name"
                   value={form.creator_name}
-                  onChange={(e) => setForm(prev => ({ ...prev, creator_name: e.target.value }))}
+                  onChange={(e) => updateForm({ creator_name: e.target.value })}
                 />
               </div>
               <div>
@@ -613,7 +716,7 @@ const FavoriteEditor = () => {
                 <Input
                   id="creator_location"
                   value={form.creator_location}
-                  onChange={(e) => setForm(prev => ({ ...prev, creator_location: e.target.value }))}
+                  onChange={(e) => updateForm({ creator_location: e.target.value })}
                   placeholder="e.g., Europe, Japan, USA"
                 />
               </div>
@@ -623,7 +726,7 @@ const FavoriteEditor = () => {
               <Input
                 id="creator_url"
                 value={form.creator_url}
-                onChange={(e) => setForm(prev => ({ ...prev, creator_url: e.target.value }))}
+                onChange={(e) => updateForm({ creator_url: e.target.value })}
                 placeholder="https://creator-website.com"
               />
             </div>
@@ -637,7 +740,7 @@ const FavoriteEditor = () => {
             {form.tags.map((tag) => (
               <span key={tag} className="inline-flex items-center gap-1 px-3 py-1 bg-muted border-2 border-foreground font-bold text-sm">
                 {tag}
-                <button onClick={() => setForm(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }))}>
+                <button onClick={() => updateForm({ tags: form.tags.filter(t => t !== tag) })}>
                   <X className="w-4 h-4" />
                 </button>
               </span>
@@ -670,17 +773,32 @@ const FavoriteEditor = () => {
           context={`Type: ${form.type}\nDescription: ${form.description}`}
         />
 
-        {/* Save */}
-        <div className="flex justify-end">
-          <PopButton onClick={() => saveMutation.mutate()} disabled={!form.title || saveMutation.isPending}>
-            {saveMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {isEditing ? "Update" : "Save"} Favorite
-          </PopButton>
+        {/* Save / Delete */}
+        <div className="flex justify-between">
+          {isEditing && (
+            <PopButton variant="outline" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete
+            </PopButton>
+          )}
+          <div className={!isEditing ? "ml-auto" : ""}>
+            <PopButton onClick={() => saveMutation.mutate()} disabled={!form.title || saveMutation.isPending}>
+              {saveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {isEditing ? "Update" : "Save"} Favorite
+            </PopButton>
+          </div>
         </div>
+
+        <DeleteConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onConfirm={() => deleteMutation.mutate()}
+          title="Delete Favorite?"
+          description="This will permanently delete this favorite entry."
+        />
       </div>
     </AdminLayout>
   );
