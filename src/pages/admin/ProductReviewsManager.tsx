@@ -6,10 +6,11 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, Search, Eye, Star, CheckSquare } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Eye, Star, CheckSquare, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 const PR_SORT: SortOption[] = [
@@ -21,8 +22,15 @@ const PR_SORT: SortOption[] = [
 const ProductReviewsManager = () => {
   const [search, setSearch] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "product_name", label: "Product Name", type: "text" },
+    { key: "summary", label: "Summary", type: "textarea" },
+    { key: "published", label: "Published", type: "boolean" },
+  ];
 
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["admin-product-reviews"],
@@ -117,6 +125,7 @@ const ProductReviewsManager = () => {
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{review.summary}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => setQuickEditId(review.id)} className="p-2 hover:bg-muted rounded" title="Quick Edit"><SlidersHorizontal className="w-4 h-4" /></button>
                         <Link to={`/product-reviews/${review.slug}`} className="p-2 hover:bg-muted rounded"><Eye className="w-4 h-4" /></Link>
                         <DuplicateButton id={review.id} type="product-review" />
                         <Link to={`/admin/product-reviews/${review.id}/edit`} className="p-2 hover:bg-muted rounded"><Edit className="w-4 h-4" /></Link>
@@ -149,6 +158,15 @@ const ProductReviewsManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title="Delete this review?"
         description="This action cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="product_reviews"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-product-reviews"]}
       />
     </AdminLayout>
   );

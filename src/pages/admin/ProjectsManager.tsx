@@ -6,6 +6,7 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,8 @@ import {
   ExternalLink, 
   Search,
   Eye,
-  CheckSquare
+  CheckSquare,
+  SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,8 +33,15 @@ const ProjectsManager = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "title", label: "Title", type: "text" },
+    { key: "description", label: "Description", type: "textarea" },
+    { key: "tech_stack", label: "Tech Stack", type: "tags" },
+  ];
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["admin-projects"],
@@ -188,6 +197,9 @@ const ProjectsManager = () => {
                       
                       {/* Actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => setQuickEditId(project.id)} className="p-2 hover:bg-muted rounded" title="Quick Edit">
+                          <SlidersHorizontal className="w-4 h-4" />
+                        </button>
                         {project.external_url && (
                           <a 
                             href={project.external_url} 
@@ -256,7 +268,7 @@ const ProjectsManager = () => {
           onClearSelection={clearSelection}
           tableName="projects"
           queryKey={["admin-projects"]}
-          actions={["archive", "delete"]}
+          actions={["archive", "set-tags", "delete"]}
           statusField="status"
         />
       </div>
@@ -267,6 +279,15 @@ const ProjectsManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title="Delete this project?"
         description="This action cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="projects"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-projects"]}
       />
     </AdminLayout>
   );

@@ -4,12 +4,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical, Search } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 interface Inspiration {
@@ -49,7 +50,14 @@ const InspirationsManager = () => {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const { selectedIds, toggleSelection, clearSelection } = useSelection();
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "title", label: "Title", type: "text" },
+    { key: "description", label: "Description", type: "textarea" },
+    { key: "influence_areas", label: "Influence Areas", type: "tags" },
+  ];
 
   const { data: inspirations = [], isLoading } = useQuery({
     queryKey: ["admin-inspirations"],
@@ -267,6 +275,9 @@ const InspirationsManager = () => {
                       )}
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
+                      <button onClick={() => setQuickEditId(insp.id)} className="p-2 border-2 border-foreground hover:bg-muted" title="Quick Edit">
+                        <SlidersHorizontal className="w-4 h-4" />
+                      </button>
                       <Link to={`/admin/inspirations/${insp.id}/edit`}>
                         <button className="p-2 border-2 border-foreground hover:bg-muted">
                           <Edit2 className="w-4 h-4" />
@@ -302,6 +313,15 @@ const InspirationsManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title="Delete this inspiration?"
         description="This action cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="inspirations"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-inspirations"]}
       />
     </AdminLayout>
   );
