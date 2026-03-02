@@ -4,12 +4,13 @@ import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Star, TrendingUp, ExternalLink, Search } from "lucide-react";
+import { Plus, Edit2, Trash2, Star, TrendingUp, ExternalLink, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 const EXP_SORT_OPTIONS: SortOption[] = [
@@ -23,7 +24,14 @@ const ExperimentsManager = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState("");
   const [search, setSearch] = useState("");
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const { selectedIds, toggleSelection, clearSelection } = useSelection();
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "name", label: "Name", type: "text" },
+    { key: "description", label: "Description", type: "textarea" },
+    { key: "skills_demonstrated", label: "Skills", type: "tags" },
+  ];
 
   const { data: experiments, isLoading } = useQuery({
     queryKey: ["admin-experiments"],
@@ -127,6 +135,7 @@ const ExperimentsManager = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button onClick={() => setQuickEditId(exp.id)} className="p-2 hover:bg-muted" title="Quick Edit"><SlidersHorizontal className="w-4 h-4" /></button>
                     <Link to={`/experiments/${exp.slug}`} target="_blank" className="p-2 hover:bg-muted" title="View"><ExternalLink className="w-4 h-4" /></Link>
                     <DuplicateButton id={exp.id} type="experiment" />
                     <Link to={`/admin/experiments/${exp.id}/edit`} className="p-2 hover:bg-muted" title="Edit"><Edit2 className="w-4 h-4" /></Link>
@@ -146,7 +155,7 @@ const ExperimentsManager = () => {
         )}
       </div>
 
-      <BulkActionsBar selectedIds={selectedIds} onClearSelection={clearSelection} tableName="experiments" queryKey={["admin-experiments"]} actions={["delete"]} />
+      <BulkActionsBar selectedIds={selectedIds} onClearSelection={clearSelection} tableName="experiments" queryKey={["admin-experiments"]} actions={["set-tags", "delete"]} />
 
       <DeleteConfirmDialog
         open={!!deleteId}
@@ -154,6 +163,15 @@ const ExperimentsManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title={`Delete "${deleteName}"?`}
         description="This cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="experiments"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-experiments"]}
       />
     </AdminLayout>
   );

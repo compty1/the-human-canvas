@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
@@ -23,7 +24,8 @@ import {
   EyeOff,
   GripVertical,
   Copy,
-  Search
+  Search,
+  SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -59,7 +61,15 @@ const ExperiencesManager = () => {
   const [filter, setFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const { selectedIds, toggleSelection, clearSelection } = useSelection();
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "title", label: "Title", type: "text" },
+    { key: "description", label: "Description", type: "textarea" },
+    { key: "skills_used", label: "Skills Used", type: "tags" },
+    { key: "published", label: "Published", type: "boolean" },
+  ];
 
   const { data: experiences = [], isLoading } = useQuery({
     queryKey: ["admin-experiences"],
@@ -215,6 +225,9 @@ const ExperiencesManager = () => {
                       </div>
                     </div>
 
+                    <button onClick={() => setQuickEditId(exp.id)} className="p-2 hover:bg-muted rounded" title="Quick Edit">
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="p-2 hover:bg-muted rounded">
@@ -270,7 +283,7 @@ const ExperiencesManager = () => {
         onClearSelection={clearSelection}
         tableName="experiences"
         queryKey={["admin-experiences"]}
-        actions={["publish", "unpublish", "delete"]}
+        actions={["publish", "unpublish", "set-tags", "delete"]}
       />
 
       <DeleteConfirmDialog
@@ -279,6 +292,15 @@ const ExperiencesManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title="Delete this experience?"
         description="This action cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="experiences"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-experiences"]}
       />
     </AdminLayout>
   );

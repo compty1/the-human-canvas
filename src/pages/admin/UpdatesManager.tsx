@@ -6,10 +6,11 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, Eye, EyeOff, Loader2, MessageSquare, CheckSquare, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Loader2, MessageSquare, CheckSquare, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -34,6 +35,14 @@ const UpdatesManager = () => {
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "title", label: "Title", type: "text" },
+    { key: "excerpt", label: "Excerpt", type: "textarea" },
+    { key: "published", label: "Published", type: "boolean" },
+    { key: "tags", label: "Tags", type: "tags" },
+  ];
 
   const { data: updates = [], isLoading } = useQuery({
     queryKey: ["admin-updates"],
@@ -116,6 +125,9 @@ const UpdatesManager = () => {
                     {update.excerpt && <p className="text-sm text-muted-foreground line-clamp-1">{update.excerpt}</p>}
                   </div>
                   <div className="flex items-center gap-1">
+                    <button onClick={() => setQuickEditId(update.id)} className="p-2 hover:bg-muted rounded" title="Quick Edit">
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </button>
                     <button onClick={() => togglePublishMutation.mutate({ id: update.id, published: !update.published })} className="p-2 hover:bg-muted rounded" title={update.published ? "Unpublish" : "Publish"}>
                       {update.published ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
@@ -129,10 +141,19 @@ const UpdatesManager = () => {
           </div>
         )}
 
-        <BulkActionsBar selectedIds={selectedIds} onClearSelection={clearSelection} tableName="updates" queryKey={["admin-updates"]} actions={["publish", "unpublish", "delete"]} statusField="published" />
+        <BulkActionsBar selectedIds={selectedIds} onClearSelection={clearSelection} tableName="updates" queryKey={["admin-updates"]} actions={["publish", "unpublish", "set-tags", "delete"]} statusField="published" />
       </div>
 
       <DeleteConfirmDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)} onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }} title="Delete this update?" description="This action cannot be undone." />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="updates"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-updates"]}
+      />
     </AdminLayout>
   );
 };

@@ -5,10 +5,11 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star, CheckSquare, Search } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star, CheckSquare, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
@@ -56,6 +57,13 @@ const FavoritesManager = () => {
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "title", label: "Title", type: "text" },
+    { key: "description", label: "Description", type: "textarea" },
+    { key: "tags", label: "Tags", type: "tags" },
+  ];
 
   const { data: favorites = [], isLoading } = useQuery({
     queryKey: ["admin-favorites"],
@@ -229,6 +237,9 @@ const FavoritesManager = () => {
                     )}
 
                     <div className="flex items-center gap-2 mt-4">
+                      <button onClick={() => setQuickEditId(fav.id)} className="p-2 border-2 border-foreground hover:bg-muted" title="Quick Edit">
+                        <SlidersHorizontal className="w-4 h-4" />
+                      </button>
                       <Link to={`/admin/favorites/${fav.id}/edit`}>
                         <button className="p-2 border-2 border-foreground hover:bg-muted">
                           <Edit2 className="w-4 h-4" />
@@ -262,7 +273,7 @@ const FavoritesManager = () => {
           onClearSelection={clearSelection}
           tableName="favorites"
           queryKey={["admin-favorites"]}
-          actions={["delete"]}
+          actions={["set-tags", "delete"]}
         />
       </div>
 
@@ -272,6 +283,15 @@ const FavoritesManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title="Delete this favorite?"
         description="This action cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="favorites"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-favorites"]}
       />
     </AdminLayout>
   );

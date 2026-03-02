@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { QuickEditDrawer, QuickEditField } from "@/components/admin/QuickEditDrawer";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { useAdminListControls, SortPaginationBar, SortOption } from "@/components/admin/AdminListControls";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,8 +95,14 @@ const ArtworkManager = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, clearSelection } = useSelection();
+
+  const QUICK_EDIT_FIELDS: QuickEditField[] = [
+    { key: "title", label: "Title", type: "text" },
+    { key: "description", label: "Description", type: "textarea" },
+  ];
 
   const { data: artwork, isLoading } = useQuery({
     queryKey: ["admin-artwork"],
@@ -244,7 +251,11 @@ const ArtworkManager = () => {
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                     <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => { setQuickEditId(art.id); }} className="flex items-center gap-2">
+                        <Edit className="w-4 h-4" /> Quick Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
                           <ChevronRight className="w-4 h-4 mr-2" />
@@ -327,7 +338,7 @@ const ArtworkManager = () => {
         onClearSelection={clearSelection}
         tableName="artwork"
         queryKey={["admin-artwork"]}
-        actions={["delete"]}
+        actions={["set-category", "delete"]}
       />
 
       <DeleteConfirmDialog
@@ -336,6 +347,15 @@ const ArtworkManager = () => {
         onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
         title="Delete this artwork?"
         description="This action cannot be undone."
+      />
+
+      <QuickEditDrawer
+        open={!!quickEditId}
+        onOpenChange={(open) => !open && setQuickEditId(null)}
+        tableName="artwork"
+        recordId={quickEditId}
+        fields={QUICK_EDIT_FIELDS}
+        queryKey={["admin-artwork"]}
       />
     </AdminLayout>
   );
