@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -17,6 +18,13 @@ import {
   Minus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -49,20 +57,31 @@ const ToolbarDivider = () => (
 );
 
 export const EditorToolbar = ({ editor, onImageUpload }: EditorToolbarProps) => {
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkOpen, setLinkOpen] = useState(false);
+
   if (!editor) return null;
 
-  const addLink = () => {
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL", previousUrl);
-    
-    if (url === null) return;
-    
-    if (url === "") {
+  const openLinkPopover = () => {
+    const previousUrl = editor.getAttributes("link").href || "";
+    setLinkUrl(previousUrl);
+    setLinkOpen(true);
+  };
+
+  const applyLink = () => {
+    if (linkUrl === "") {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
+    } else {
+      editor.chain().focus().extendMarkRange("link").setLink({ href: linkUrl }).run();
     }
-    
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    setLinkOpen(false);
+    setLinkUrl("");
+  };
+
+  const removeLink = () => {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    setLinkOpen(false);
+    setLinkUrl("");
   };
 
   return (
@@ -160,13 +179,42 @@ export const EditorToolbar = ({ editor, onImageUpload }: EditorToolbarProps) => 
       <ToolbarDivider />
 
       {/* Links & Images */}
-      <ToolbarButton
-        onClick={addLink}
-        isActive={editor.isActive("link")}
-        title="Add Link"
-      >
-        <LinkIcon className="w-4 h-4" />
-      </ToolbarButton>
+      <Popover open={linkOpen} onOpenChange={setLinkOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={openLinkPopover}
+            title="Add Link"
+            className={cn(
+              "p-2 border-2 border-foreground transition-all hover:bg-accent",
+              editor.isActive("link") && "bg-primary text-primary-foreground"
+            )}
+          >
+            <LinkIcon className="w-4 h-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-3" align="start">
+          <div className="space-y-2">
+            <Input
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && applyLink()}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={applyLink} className="flex-1">
+                Apply
+              </Button>
+              {editor.isActive("link") && (
+                <Button size="sm" variant="destructive" onClick={removeLink}>
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
       {onImageUpload && (
         <ToolbarButton onClick={onImageUpload} title="Add Image">
           <ImageIcon className="w-4 h-4" />

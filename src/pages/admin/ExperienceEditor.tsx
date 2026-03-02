@@ -184,6 +184,7 @@ const ExperienceEditor = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-experiences"] });
+      queryClient.invalidateQueries({ queryKey: ["experiences"] });
       toast.success(isEditing ? "Experience updated" : "Experience created");
       navigate("/admin/experiences");
     },

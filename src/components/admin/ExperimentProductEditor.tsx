@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { ImageUploader, MultiImageUploader } from "@/components/admin/ImageUploader";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,6 +60,8 @@ export const ExperimentProductEditor = ({ experimentId }: Props) => {
   const [form, setForm] = useState(emptyProduct);
   const [newTag, setNewTag] = useState("");
   const [newMaterial, setNewMaterial] = useState("");
+  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
+  const [deleteProductName, setDeleteProductName] = useState("");
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["experiment-products", experimentId],
@@ -177,6 +180,7 @@ export const ExperimentProductEditor = ({ experimentId }: Props) => {
   };
 
   return (
+    <>
     <ComicPanel className="p-6">
       <div
         className="flex items-center justify-between cursor-pointer"
@@ -238,9 +242,8 @@ export const ExperimentProductEditor = ({ experimentId }: Props) => {
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm("Delete this product?")) {
-                          deleteMutation.mutate(product.id);
-                        }
+                        setDeleteProductId(product.id);
+                        setDeleteProductName(product.name);
                       }}
                       className="p-2 hover:bg-destructive/10 text-destructive"
                       title="Delete"
@@ -467,5 +470,17 @@ export const ExperimentProductEditor = ({ experimentId }: Props) => {
         </div>
       )}
     </ComicPanel>
+
+    <DeleteConfirmDialog
+      open={!!deleteProductId}
+      onOpenChange={(open) => !open && setDeleteProductId(null)}
+      onConfirm={() => {
+        if (deleteProductId) deleteMutation.mutate(deleteProductId);
+        setDeleteProductId(null);
+      }}
+      title={`Delete "${deleteProductName}"?`}
+      description="This product will be permanently removed."
+    />
+    </>
   );
 };

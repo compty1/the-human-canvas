@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -219,6 +220,7 @@ const FavoritesManager = () => {
                           <Edit2 className="w-4 h-4" />
                         </button>
                       </Link>
+                      <DuplicateButton id={fav.id} type="favorite" />
                       <button 
                         onClick={() => toggleCurrent(fav.id, fav.is_current)}
                         className={`p-2 border-2 border-foreground ${fav.is_current ? "bg-pop-yellow" : "hover:bg-muted"}`}

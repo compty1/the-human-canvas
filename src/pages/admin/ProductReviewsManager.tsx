@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Search, Eye, Star, CheckSquare } from "lucide-react";
@@ -108,6 +109,7 @@ const ProductReviewsManager = () => {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Link to={`/product-reviews/${review.slug}`} className="p-2 hover:bg-muted rounded"><Eye className="w-4 h-4" /></Link>
+                        <DuplicateButton id={review.id} type="product-review" />
                         <Link to={`/admin/product-reviews/${review.id}/edit`} className="p-2 hover:bg-muted rounded"><Edit className="w-4 h-4" /></Link>
                         <button onClick={() => setDeleteId(review.id)} className="p-2 hover:bg-destructive/10 rounded text-destructive"><Trash2 className="w-4 h-4" /></button>
                       </div>

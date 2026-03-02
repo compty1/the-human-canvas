@@ -6,7 +6,8 @@ import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, Search, Image, Upload, MoreVertical, ExternalLink, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Image, Upload, MoreVertical, ExternalLink, ChevronRight, Copy } from "lucide-react";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkArtworkUploader } from "@/components/admin/BulkArtworkUploader";
 import {
   DropdownMenu,
@@ -254,6 +255,12 @@ const ArtworkManager = () => {
                         <Link to={`/admin/artwork/${art.id}/edit`} className="flex items-center">
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={`/admin/artwork/new?clone=${art.id}`} className="flex items-center">
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>

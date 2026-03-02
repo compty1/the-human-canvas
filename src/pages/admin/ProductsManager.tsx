@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, ExternalLink, DollarSign, Package, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -118,6 +119,7 @@ const ProductsManager = () => {
                     {product.status === "active" && (
                       <Link to={`/store/${product.slug}`} target="_blank" className="p-2 hover:bg-muted" title="View"><ExternalLink className="w-4 h-4" /></Link>
                     )}
+                    <DuplicateButton id={product.id} type="product" className="p-2 hover:bg-muted" />
                     <Link to={`/admin/products/${product.id}/edit`} className="p-2 hover:bg-muted" title="Edit"><Edit2 className="w-4 h-4" /></Link>
                     <button
                       onClick={() => { setDeleteId(product.id); setDeleteName(product.name); }}

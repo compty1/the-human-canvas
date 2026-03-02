@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Loader2, Sparkles, User, Lightbulb, Compass, Heart, GripVertical } from "lucide-react";
 import { toast } from "sonner";
@@ -246,6 +247,7 @@ const InspirationsManager = () => {
                           <Edit2 className="w-4 h-4" />
                         </button>
                       </Link>
+                      <DuplicateButton id={insp.id} type="inspiration" />
                       <button
                         onClick={() => setDeleteId(insp.id)}
                         className="p-2 border-2 border-foreground hover:bg-destructive hover:text-destructive-foreground"

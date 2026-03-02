@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -17,7 +18,8 @@ import {
   MoreVertical,
   Eye,
   EyeOff,
-  GripVertical
+  GripVertical,
+  Copy
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -197,6 +199,11 @@ const ExperiencesManager = () => {
                         <DropdownMenuItem asChild>
                           <Link to={`/admin/experiences/${exp.id}/edit`} className="flex items-center gap-2">
                             <Edit className="w-4 h-4" /> Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to={`/admin/experiences/new?clone=${exp.id}`} className="flex items-center gap-2">
+                            <Copy className="w-4 h-4" /> Duplicate
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
