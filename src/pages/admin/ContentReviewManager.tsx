@@ -5,12 +5,19 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Search, Check, X, Clock, Eye, Calendar, 
   FileText, Newspaper, FolderKanban, Beaker, Star 
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ContentType = "articles" | "updates" | "projects" | "experiments" | "product_reviews";
 type ReviewStatus = "draft" | "pending_review" | "approved" | "scheduled" | "published" | "rejected";
@@ -46,6 +53,8 @@ const ContentReviewManager = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContentType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | "all">("all");
+  const [scheduleItem, setScheduleItem] = useState<ContentItem | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("");
   const queryClient = useQueryClient();
 
   // Fetch all content items
@@ -300,15 +309,8 @@ const ContentReviewManager = () => {
                           </button>
                           <button
                             onClick={() => {
-                              const date = prompt("Enter schedule date (YYYY-MM-DD HH:MM):");
-                              if (date) {
-                                updateStatusMutation.mutate({ 
-                                  id: item.id, 
-                                  type: item.type, 
-                                  status: "scheduled",
-                                  scheduledAt: new Date(date).toISOString()
-                                });
-                              }
+                              setScheduleItem(item);
+                              setScheduleDate("");
                             }}
                             className="p-2 hover:bg-cyan-100 text-cyan-600"
                             title="Schedule"
@@ -328,6 +330,45 @@ const ContentReviewManager = () => {
             <p className="text-muted-foreground">No content matches your filters</p>
           </ComicPanel>
         )}
+        {/* Schedule Dialog */}
+        <Dialog open={!!scheduleItem} onOpenChange={(open) => !open && setScheduleItem(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Schedule "{scheduleItem?.title}"</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Schedule Date & Time</Label>
+                <Input
+                  type="datetime-local"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <PopButton variant="outline" onClick={() => setScheduleItem(null)}>
+                  Cancel
+                </PopButton>
+                <PopButton
+                  disabled={!scheduleDate}
+                  onClick={() => {
+                    if (scheduleItem && scheduleDate) {
+                      updateStatusMutation.mutate({
+                        id: scheduleItem.id,
+                        type: scheduleItem.type,
+                        status: "scheduled",
+                        scheduledAt: new Date(scheduleDate).toISOString(),
+                      });
+                      setScheduleItem(null);
+                    }
+                  }}
+                >
+                  <Calendar className="w-4 h-4 mr-1" /> Schedule
+                </PopButton>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

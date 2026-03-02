@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronDown, ChevronUp, Plus, X, BookOpen, Edit, Check } from "lucide-react";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ export const KnowledgeEntryWidget = ({
   const [showAdd, setShowAdd] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({ title: "", content: "", category: "general", tags: "" });
+  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ["knowledge-entries", entityType, entityId],
@@ -154,7 +156,7 @@ export const KnowledgeEntryWidget = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() => deleteMutation.mutate(entry.id)}
+                        onClick={() => setDeleteEntryId(entry.id)}
                         className="p-1 hover:text-destructive"
                       >
                         <X className="w-3 h-3" />
@@ -247,6 +249,18 @@ export const KnowledgeEntryWidget = ({
           )}
         </div>
       )}
+      <DeleteConfirmDialog
+        open={!!deleteEntryId}
+        onOpenChange={(open) => !open && setDeleteEntryId(null)}
+        onConfirm={() => {
+          if (deleteEntryId) {
+            deleteMutation.mutate(deleteEntryId);
+            setDeleteEntryId(null);
+          }
+        }}
+        title="Delete knowledge entry?"
+        description="This will permanently remove this knowledge entry."
+      />
     </div>
   );
 };

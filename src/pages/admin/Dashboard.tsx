@@ -11,6 +11,12 @@ import {
   TrendingUp,
   Clock,
   MousePointer,
+  BookOpen,
+  Heart,
+  Briefcase,
+  Star,
+  History,
+  Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -49,7 +55,7 @@ const Dashboard = () => {
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [pageViews, projects, articles, updates, artwork, leads, experiments, favorites, experiences, certifications, products] =
+      const [pageViews, projects, articles, updates, artwork, leads, experiments, favorites, experiences, certifications, products, knowledgeEntries, mediaLibrary, lifePeriods, inspirations, clientProjects, productReviews] =
         await Promise.all([
           supabase.from("page_views").select("id", { count: "exact" }),
           supabase.from("projects").select("id", { count: "exact" }),
@@ -62,6 +68,12 @@ const Dashboard = () => {
           supabase.from("experiences").select("id", { count: "exact" }),
           supabase.from("certifications").select("id", { count: "exact" }),
           supabase.from("products").select("id", { count: "exact" }),
+          supabase.from("knowledge_entries").select("id", { count: "exact" }),
+          supabase.from("media_library").select("id", { count: "exact" }),
+          supabase.from("life_periods").select("id", { count: "exact" }),
+          supabase.from("inspirations").select("id", { count: "exact" }),
+          supabase.from("client_projects").select("id", { count: "exact" }),
+          supabase.from("product_reviews").select("id", { count: "exact" }),
         ]);
 
       return {
@@ -76,6 +88,12 @@ const Dashboard = () => {
         experiences: experiences.count || 0,
         certifications: certifications.count || 0,
         products: products.count || 0,
+        knowledgeEntries: knowledgeEntries.count || 0,
+        mediaLibrary: mediaLibrary.count || 0,
+        lifePeriods: lifePeriods.count || 0,
+        inspirations: inspirations.count || 0,
+        clientProjects: clientProjects.count || 0,
+        productReviews: productReviews.count || 0,
       };
     },
   });
@@ -171,23 +189,16 @@ const Dashboard = () => {
             href="/admin/leads"
           />
           <StatCard
-            title="Experiments"
-            value={stats?.experiments || 0}
-            icon={FolderKanban}
-            color="bg-pop-orange"
-            href="/admin/experiments"
-          />
-          <StatCard
             title="Favorites"
             value={stats?.favorites || 0}
-            icon={Eye}
+            icon={Heart}
             color="bg-pop-cyan"
             href="/admin/favorites"
           />
           <StatCard
             title="Experiences"
             value={stats?.experiences || 0}
-            icon={FileText}
+            icon={Briefcase}
             color="bg-secondary"
             href="/admin/experiences"
           />
@@ -197,6 +208,48 @@ const Dashboard = () => {
             icon={FolderKanban}
             color="bg-pop-magenta"
             href="/admin/products"
+          />
+          <StatCard
+            title="Client Projects"
+            value={stats?.clientProjects || 0}
+            icon={Briefcase}
+            color="bg-pop-yellow text-foreground"
+            href="/admin/client-work"
+          />
+          <StatCard
+            title="Product Reviews"
+            value={stats?.productReviews || 0}
+            icon={Star}
+            color="bg-pop-orange"
+            href="/admin/product-reviews"
+          />
+          <StatCard
+            title="Knowledge Base"
+            value={stats?.knowledgeEntries || 0}
+            icon={BookOpen}
+            color="bg-pop-cyan"
+            href="/admin/knowledge-base"
+          />
+          <StatCard
+            title="Media Library"
+            value={stats?.mediaLibrary || 0}
+            icon={Image}
+            color="bg-primary text-primary-foreground"
+            href="/admin/media-library"
+          />
+          <StatCard
+            title="Life Periods"
+            value={stats?.lifePeriods || 0}
+            icon={History}
+            color="bg-accent text-accent-foreground"
+            href="/admin/life-periods"
+          />
+          <StatCard
+            title="Inspirations"
+            value={stats?.inspirations || 0}
+            icon={Sparkles}
+            color="bg-pop-magenta"
+            href="/admin/inspirations"
           />
         </div>
 

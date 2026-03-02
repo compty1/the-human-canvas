@@ -20,6 +20,14 @@ import {
   MoreVertical,
   Copy
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -29,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 
-type ContentType = "article" | "update" | "project";
+type ContentType = "article" | "update" | "project" | "experiment" | "product_review";
 
 interface ContentItem {
   id: string;
@@ -46,12 +54,16 @@ const typeIcons: Record<ContentType, React.ElementType> = {
   article: Newspaper,
   update: MessageSquare,
   project: FolderKanban,
+  experiment: FolderKanban,
+  product_review: FileText,
 };
 
 const typeColors: Record<ContentType, string> = {
   article: "bg-blue-500",
   update: "bg-purple-500",
   project: "bg-green-500",
+  experiment: "bg-orange-500",
+  product_review: "bg-yellow-500",
 };
 
 const ContentLibrary = () => {
@@ -121,17 +133,64 @@ const ContentLibrary = () => {
         })));
       }
 
+      // Fetch experiments
+      const { data: experiments } = await supabase
+        .from("experiments")
+        .select("id, name, scheduled_at, created_at, updated_at, review_status, status")
+        .order("created_at", { ascending: false });
+      
+      if (experiments) {
+        items.push(...experiments.map(e => ({
+          id: e.id,
+          title: e.name,
+          type: "experiment" as ContentType,
+          status: e.review_status || e.status || "draft",
+          scheduled_at: e.scheduled_at,
+          created_at: e.created_at,
+          updated_at: e.updated_at,
+        })));
+      }
+
+      // Fetch product reviews
+      const { data: productReviews } = await supabase
+        .from("product_reviews")
+        .select("id, product_name, published, scheduled_at, created_at, updated_at, review_status")
+        .order("created_at", { ascending: false });
+      
+      if (productReviews) {
+        items.push(...productReviews.map(r => ({
+          id: r.id,
+          title: r.product_name,
+          type: "product_review" as ContentType,
+          status: r.review_status || (r.published ? "published" : "draft"),
+          scheduled_at: r.scheduled_at,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          published: r.published,
+        })));
+      }
+
       // Sort by updated_at
       return items.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
     },
   });
 
+  const getTableName = (type: ContentType) => {
+    switch (type) {
+      case "article": return "articles" as const;
+      case "update": return "updates" as const;
+      case "project": return "projects" as const;
+      case "experiment": return "experiments" as const;
+      case "product_review": return "product_reviews" as const;
+    }
+  };
+
   const publishMutation = useMutation({
     mutationFn: async ({ id, type, publish }: { id: string; type: ContentType; publish: boolean }) => {
-      const table = type === "article" ? "articles" : type === "update" ? "updates" : "projects";
+      const table = getTableName(type);
       const { error } = await supabase
         .from(table)
-        .update({ published: publish, review_status: publish ? "published" : "draft" })
+        .update({ published: publish, review_status: publish ? "published" : "draft" } as any)
         .eq("id", id);
       if (error) throw error;
     },
@@ -141,12 +200,15 @@ const ContentLibrary = () => {
     },
   });
 
+  const [scheduleItem, setScheduleItem] = useState<ContentItem | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("");
+
   const scheduleMutation = useMutation({
     mutationFn: async ({ id, type, scheduledAt }: { id: string; type: ContentType; scheduledAt: string }) => {
-      const table = type === "article" ? "articles" : type === "update" ? "updates" : "projects";
+      const table = getTableName(type);
       const { error } = await supabase
         .from(table)
-        .update({ scheduled_at: scheduledAt, review_status: "scheduled" })
+        .update({ scheduled_at: scheduledAt, review_status: "scheduled" } as any)
         .eq("id", id);
       if (error) throw error;
     },
@@ -161,6 +223,8 @@ const ContentLibrary = () => {
       case "article": return `/admin/articles/${item.id}/edit`;
       case "update": return `/admin/updates/${item.id}/edit`;
       case "project": return `/admin/projects/${item.id}/edit`;
+      case "experiment": return `/admin/experiments/${item.id}/edit`;
+      case "product_review": return `/admin/product-reviews/${item.id}/edit`;
     }
   };
 
@@ -175,7 +239,7 @@ const ContentLibrary = () => {
   });
 
   const statuses = ["all", "draft", "scheduled", "published"];
-  const types: (ContentType | "all")[] = ["all", "article", "update", "project"];
+  const types: (ContentType | "all")[] = ["all", "article", "update", "project", "experiment", "product_review"];
 
   return (
     <AdminLayout>
@@ -186,7 +250,7 @@ const ContentLibrary = () => {
             <h1 className="text-3xl font-display">Content Library</h1>
             <p className="text-muted-foreground">Manage all your content in one place</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Link to="/admin/articles/new">
               <PopButton size="sm">
                 <Plus className="w-4 h-4 mr-1" /> Article
@@ -200,6 +264,16 @@ const ContentLibrary = () => {
             <Link to="/admin/projects/new">
               <PopButton size="sm" variant="secondary">
                 <Plus className="w-4 h-4 mr-1" /> Project
+              </PopButton>
+            </Link>
+            <Link to="/admin/experiments/new">
+              <PopButton size="sm" variant="secondary">
+                <Plus className="w-4 h-4 mr-1" /> Experiment
+              </PopButton>
+            </Link>
+            <Link to="/admin/product-reviews/new">
+              <PopButton size="sm" variant="secondary">
+                <Plus className="w-4 h-4 mr-1" /> Review
               </PopButton>
             </Link>
           </div>
@@ -342,10 +416,8 @@ const ContentLibrary = () => {
                         {item.status !== "published" && (
                           <DropdownMenuItem
                             onClick={() => {
-                              const date = prompt("Enter scheduled date (YYYY-MM-DD HH:MM):");
-                              if (date) {
-                                scheduleMutation.mutate({ id: item.id, type: item.type, scheduledAt: new Date(date).toISOString() });
-                              }
+                              setScheduleItem(item);
+                              setScheduleDate("");
                             }}
                             className="flex items-center gap-2"
                           >
@@ -360,6 +432,44 @@ const ContentLibrary = () => {
             })}
           </div>
         )}
+        {/* Schedule Dialog */}
+        <Dialog open={!!scheduleItem} onOpenChange={(open) => !open && setScheduleItem(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Schedule "{scheduleItem?.title}"</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Schedule Date & Time</Label>
+                <Input
+                  type="datetime-local"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <PopButton variant="outline" onClick={() => setScheduleItem(null)}>
+                  Cancel
+                </PopButton>
+                <PopButton
+                  disabled={!scheduleDate}
+                  onClick={() => {
+                    if (scheduleItem && scheduleDate) {
+                      scheduleMutation.mutate({
+                        id: scheduleItem.id,
+                        type: scheduleItem.type,
+                        scheduledAt: new Date(scheduleDate).toISOString(),
+                      });
+                      setScheduleItem(null);
+                    }
+                  }}
+                >
+                  <Calendar className="w-4 h-4 mr-1" /> Schedule
+                </PopButton>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
