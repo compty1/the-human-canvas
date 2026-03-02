@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ const SkillsManager = () => {
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [newSkill, setNewSkill] = useState({ name: "", category: "", proficiency: 80, icon_name: "" });
   const [showNewForm, setShowNewForm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: skills, isLoading } = useQuery({
@@ -207,11 +209,7 @@ const SkillsManager = () => {
                             Edit
                           </button>
                           <button 
-                            onClick={() => {
-                              if (confirm("Delete this skill?")) {
-                                deleteMutation.mutate(skill.id);
-                              }
-                            }}
+                            onClick={() => setDeleteId(skill.id)}
                             className="p-2 hover:bg-destructive/10 text-destructive rounded"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -233,6 +231,14 @@ const SkillsManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this skill?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

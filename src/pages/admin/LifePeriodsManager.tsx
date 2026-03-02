@@ -1,12 +1,13 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Loader2, History, Star, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { useState } from "react";
 
 interface LifePeriod {
   id: string;
@@ -29,6 +30,7 @@ const LIFE_PERIOD_CATEGORIES = [
 const LifePeriodsManager = () => {
   const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: periods = [], isLoading } = useQuery({
     queryKey: ["admin-life-periods"],
@@ -54,7 +56,6 @@ const LifePeriodsManager = () => {
   });
 
   const toggleCurrent = async (id: string, currentValue: boolean) => {
-    // If setting as current, first unset any other current periods
     if (!currentValue) {
       await supabase
         .from("life_periods")
@@ -156,13 +157,11 @@ const LifePeriodsManager = () => {
           </ComicPanel>
         ) : (
           <div className="relative">
-            {/* Timeline line */}
             <div className="absolute left-8 top-0 bottom-0 w-1 bg-foreground hidden md:block" />
             
           <div className="space-y-6">
               {periods.filter(p => categoryFilter === "all" || (p.category || "uncategorized") === categoryFilter).map((period) => (
                 <div key={period.id} className="flex gap-6">
-                  {/* Timeline dot */}
                   <div className="hidden md:flex flex-shrink-0 w-16 items-start justify-center pt-4">
                     <div className={`w-4 h-4 rounded-full border-4 border-foreground ${
                       period.is_current ? "bg-pop-yellow" : "bg-background"
@@ -224,11 +223,7 @@ const LifePeriodsManager = () => {
                           </button>
                         </Link>
                         <button
-                          onClick={() => {
-                            if (confirm("Delete this period?")) {
-                              deleteMutation.mutate(period.id);
-                            }
-                          }}
+                          onClick={() => setDeleteId(period.id)}
                           className="p-2 border-2 border-foreground hover:bg-destructive hover:text-destructive-foreground"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -242,6 +237,17 @@ const LifePeriodsManager = () => {
           </div>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) deleteMutation.mutate(deleteId);
+          setDeleteId(null);
+        }}
+        title="Delete period?"
+        description="This will permanently delete this life period."
+      />
     </AdminLayout>
   );
 };

@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { 
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 const ProjectsManager = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
 
@@ -198,11 +200,7 @@ const ProjectsManager = () => {
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button 
-                          onClick={() => {
-                            if (confirm("Delete this project?")) {
-                              deleteMutation.mutate(project.id);
-                            }
-                          }}
+                          onClick={() => setDeleteId(project.id)}
                           className="p-2 hover:bg-destructive/10 rounded text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -250,6 +248,14 @@ const ProjectsManager = () => {
           statusField="status"
         />
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this project?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

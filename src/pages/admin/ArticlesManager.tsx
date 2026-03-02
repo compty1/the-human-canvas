@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -32,6 +34,7 @@ interface Article {
 const ArticlesManager = () => {
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: articles = [], isLoading } = useQuery({
     queryKey: ["admin-articles"],
@@ -209,11 +212,7 @@ const ArticlesManager = () => {
                       <Pencil className="w-4 h-4" />
                     </Link>
                     <button
-                      onClick={() => {
-                        if (confirm("Delete this article?")) {
-                          deleteMutation.mutate(article.id);
-                        }
-                      }}
+                      onClick={() => setDeleteId(article.id)}
                       className="p-2 hover:bg-destructive/10 rounded text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -235,6 +234,14 @@ const ArticlesManager = () => {
           statusField="published"
         />
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this article?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

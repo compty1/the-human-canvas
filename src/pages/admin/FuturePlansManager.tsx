@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ const FuturePlansManager = () => {
   const queryClient = useQueryClient();
   const [editingPlan, setEditingPlan] = useState<FuturePlan | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -119,9 +121,7 @@ const FuturePlansManager = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Delete this plan?")) return;
-    const updatedPlans = (plans || []).filter(plan => plan.id !== id);
-    saveMutation.mutate(updatedPlans);
+    setDeleteId(id);
   };
 
   const startEdit = (plan: FuturePlan) => {
@@ -339,6 +339,20 @@ const FuturePlansManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) {
+            const updatedPlans = (plans || []).filter(plan => plan.id !== deleteId);
+            saveMutation.mutate(updatedPlans);
+          }
+          setDeleteId(null);
+        }}
+        title="Delete this plan?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

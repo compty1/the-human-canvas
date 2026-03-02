@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Loader2, Heart, Music, Film, Book, Palette, Users, Star, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -43,6 +45,7 @@ const typeColors: Record<string, string> = {
 const FavoritesManager = () => {
   const queryClient = useQueryClient();
   const { selectedIds, toggleSelection, selectAll, clearSelection } = useSelection();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: favorites = [], isLoading } = useQuery({
     queryKey: ["admin-favorites"],
@@ -224,11 +227,7 @@ const FavoritesManager = () => {
                         <Star className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm("Delete this favorite?")) {
-                            deleteMutation.mutate(fav.id);
-                          }
-                        }}
+                        onClick={() => setDeleteId(fav.id)}
                         className="p-2 border-2 border-foreground hover:bg-destructive hover:text-destructive-foreground"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -250,6 +249,14 @@ const FavoritesManager = () => {
           actions={["delete"]}
         />
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this favorite?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

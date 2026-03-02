@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ const SuppliesManager = () => {
   const queryClient = useQueryClient();
   const [editingSupply, setEditingSupply] = useState<Partial<Supply> | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: supplies = [], isLoading } = useQuery({
     queryKey: ["admin-supplies"],
@@ -257,11 +259,7 @@ const SuppliesManager = () => {
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm("Delete this supply?")) {
-                            deleteMutation.mutate(supply.id);
-                          }
-                        }}
+                        onClick={() => setDeleteId(supply.id)}
                         className="p-2 hover:bg-destructive/10 rounded text-destructive"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -436,6 +434,14 @@ const SuppliesManager = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => { if (deleteId) deleteMutation.mutate(deleteId); setDeleteId(null); }}
+        title="Delete this supply?"
+        description="This action cannot be undone."
+      />
     </AdminLayout>
   );
 };

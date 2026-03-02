@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, Loader2, Briefcase, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ interface ClientProject {
 const ClientWorkManager = () => {
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["admin-client-projects"],
@@ -145,11 +147,7 @@ const ClientWorkManager = () => {
               <ComicPanel key={project.id} className="p-0 overflow-hidden">
                 {project.image_url && (
                   <div className="aspect-video overflow-hidden">
-                    <img
-                      src={project.image_url}
-                      alt={project.project_name}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={project.image_url} alt={project.project_name} className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className="p-4">
@@ -163,21 +161,15 @@ const ClientWorkManager = () => {
                       {getProjectTypeIcon(project.project_type || "web_design")} {getProjectTypeLabel(project.project_type || "web_design")}
                     </span>
                     {!project.is_public && (
-                      <span className="px-2 py-0.5 text-xs font-bold uppercase bg-muted">
-                        Hidden
-                      </span>
+                      <span className="px-2 py-0.5 text-xs font-bold uppercase bg-muted">Hidden</span>
                     )}
                   </div>
                   
                   <h3 className="font-display text-xl mb-1">{project.project_name}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Client: {project.client_name}
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-2">Client: {project.client_name}</p>
                   
                   {project.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                      {project.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{project.description}</p>
                   )}
 
                   <div className="flex items-center gap-2">
@@ -194,11 +186,7 @@ const ClientWorkManager = () => {
                       {project.is_public ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm("Delete this project?")) {
-                          deleteMutation.mutate(project.id);
-                        }
-                      }}
+                      onClick={() => setDeleteId(project.id)}
                       className="p-2 border-2 border-foreground hover:bg-destructive hover:text-destructive-foreground"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -210,6 +198,17 @@ const ClientWorkManager = () => {
           </div>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) deleteMutation.mutate(deleteId);
+          setDeleteId(null);
+        }}
+        title="Delete project?"
+        description="This will permanently delete this client project."
+      />
     </AdminLayout>
   );
 };
