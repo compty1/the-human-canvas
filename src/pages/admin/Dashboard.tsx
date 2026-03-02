@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel } from "@/components/pop-art";
 import { supabase } from "@/integrations/supabase/client";
+import { RecentEditsWidget } from "@/components/admin/RecentEditsWidget";
+import { ContentHealthWidget } from "@/components/admin/ContentHealthWidget";
 import {
   Eye,
   FileText,
@@ -251,6 +253,12 @@ const Dashboard = () => {
             color="bg-pop-magenta"
             href="/admin/inspirations"
           />
+        </div>
+
+        {/* Content Health & Recent Edits */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <ContentHealthWidget />
+          <RecentEditsWidget />
         </div>
 
         {/* Two Column Layout */}

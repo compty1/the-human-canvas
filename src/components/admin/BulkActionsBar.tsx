@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { TagBulkEditor } from "./TagBulkEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { PopButton } from "@/components/pop-art";
 import {
@@ -20,7 +21,7 @@ interface BulkActionsBarProps {
   onClearSelection: () => void;
   tableName: string;
   queryKey: string[];
-  actions?: ("publish" | "unpublish" | "delete" | "archive")[];
+  actions?: ("publish" | "unpublish" | "delete" | "archive" | "set-tags" | "set-category")[];
   statusField?: string;
 }
 
@@ -148,6 +149,26 @@ export const BulkActionsBar = ({
                 )}
                 Archive
               </button>
+            )}
+
+            {actions.includes("set-tags") && (
+              <TagBulkEditor
+                selectedIds={selectedIds}
+                tableName={tableName}
+                queryKey={queryKey}
+                onDone={onClearSelection}
+                field="tags"
+              />
+            )}
+
+            {actions.includes("set-category") && (
+              <TagBulkEditor
+                selectedIds={selectedIds}
+                tableName={tableName}
+                queryKey={queryKey}
+                onDone={onClearSelection}
+                field="category"
+              />
             )}
 
             {actions.includes("delete") && (
