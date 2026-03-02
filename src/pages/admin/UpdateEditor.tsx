@@ -11,6 +11,7 @@ import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
 import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -178,7 +179,10 @@ const UpdateEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("update", id, form as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["updates"] });
       queryClient.invalidateQueries({ queryKey: ["admin-updates"] });
@@ -238,6 +242,23 @@ const UpdateEditor = () => {
             {isEditing ? "Edit Update" : "New Update"}
           </h1>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="update"
+              contentId={id}
+              onRestore={(data) => {
+                const restored = {
+                  title: String(data.title || ""),
+                  slug: String(data.slug || ""),
+                  content: String(data.content || ""),
+                  excerpt: String(data.excerpt || ""),
+                  tags: Array.isArray(data.tags) ? data.tags.join(", ") : String(data.tags || ""),
+                  published: Boolean(data.published),
+                };
+                setForm(restored);
+              }}
+            />
+          )}
           <UndoRedoControls canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
           <div className="flex items-center gap-2">
             <Switch id="published" checked={form.published} onCheckedChange={(checked) => updateForm({ published: checked })} />

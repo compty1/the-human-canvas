@@ -13,6 +13,7 @@ import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,7 +115,10 @@ const ProductReviewEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("product_review", id, formData as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["product-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["admin-product-reviews"] });
@@ -172,6 +176,13 @@ const ProductReviewEditor = () => {
           <button onClick={() => navigate("/admin/product-reviews")} className="p-2 hover:bg-muted rounded"><ArrowLeft className="w-5 h-5" /></button>
           <div className="flex-grow"><h1 className="text-3xl font-display">{isEditing ? "Edit Product Review" : "New Product Review"}</h1></div>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="product_review"
+              contentId={id}
+              onRestore={(data) => setFormData({ ...formData, ...data } as typeof formData)}
+            />
+          )}
           <div className="flex items-center gap-2">
             <Label htmlFor="published">Published</Label>
             <Switch id="published" checked={formData.published} onCheckedChange={(checked) => setFormData({ ...formData, published: checked })} />

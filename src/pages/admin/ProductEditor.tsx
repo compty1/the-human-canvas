@@ -10,6 +10,7 @@ import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,7 +76,7 @@ const ProductEditor = () => {
       if (isEditing) { const { error } = await supabase.from("products").update(data).eq("id", id); if (error) throw error; }
       else { const { error } = await supabase.from("products").insert(data); if (error) throw error; }
     },
-    onSuccess: () => { clearDraft(); queryClient.invalidateQueries({ queryKey: ["admin-products"] }); queryClient.invalidateQueries({ queryKey: ["products"] }); toast.success(isEditing ? "Product updated" : "Product created"); navigate("/admin/products"); },
+    onSuccess: async () => { if (isEditing && id) { await saveContentVersion("product", id, form as unknown as Record<string, unknown>); } clearDraft(); queryClient.invalidateQueries({ queryKey: ["admin-products"] }); queryClient.invalidateQueries({ queryKey: ["products"] }); toast.success(isEditing ? "Product updated" : "Product created"); navigate("/admin/products"); },
     onError: (error) => { toast.error("Failed to save product"); console.error(error); },
   });
 
@@ -99,6 +100,13 @@ const ProductEditor = () => {
           <button onClick={() => navigate("/admin/products")} className="p-2 hover:bg-muted"><ArrowLeft className="w-5 h-5" /></button>
           <h1 className="text-3xl font-display flex-grow">{isEditing ? "Edit Product" : "Add Product"}</h1>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="product"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
         </div>
 
         <ComicPanel className="p-6">

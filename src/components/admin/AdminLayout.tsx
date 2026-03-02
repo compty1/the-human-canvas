@@ -112,6 +112,8 @@ const navGroups: NavGroup[] = [
       { label: "Bulk Import", href: "/admin/import", icon: Upload },
       { label: "Lead Finder", href: "/admin/leads", icon: Users },
       { label: "Notes & Ideas", href: "/admin/notes", icon: StickyNote },
+      { label: "Contact Inquiries", href: "/admin/contact-inquiries", icon: MessageSquare },
+      { label: "Subscribers", href: "/admin/subscribers", icon: Users },
     ],
   },
   {

@@ -14,6 +14,7 @@ import { DraftRecoveryBanner } from "@/components/admin/DraftRecoveryBanner";
 import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -293,7 +294,10 @@ const ProjectEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("project", id, form as unknown as Record<string, unknown>);
+      }
       queryClient.invalidateQueries({ queryKey: ["admin-projects"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       clearDraft();

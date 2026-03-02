@@ -14,6 +14,7 @@ import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { useEditorShortcuts } from "@/hooks/useEditorShortcuts";
 import { useAutosave } from "@/hooks/useAutosave";
+import { VersionHistory, saveContentVersion } from "@/components/admin/VersionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -194,7 +195,10 @@ const ExperimentEditor = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isEditing && id) {
+        await saveContentVersion("experiment", id, form as unknown as Record<string, unknown>);
+      }
       clearDraft();
       queryClient.invalidateQueries({ queryKey: ["admin-experiments"] });
       queryClient.invalidateQueries({ queryKey: ["experiments"] });
@@ -273,6 +277,13 @@ const ExperimentEditor = () => {
             {isEditing ? "Edit Experiment" : "Add Experiment"}
           </h1>
           <KeyboardShortcutsHelp />
+          {isEditing && id && (
+            <VersionHistory
+              contentType="experiment"
+              contentId={id}
+              onRestore={(data) => setForm({ ...form, ...data } as typeof form)}
+            />
+          )}
           <UndoRedoControls canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
         </div>
 
