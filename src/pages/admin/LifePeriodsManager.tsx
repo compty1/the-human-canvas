@@ -5,8 +5,10 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, Loader2, History, Star, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit2, Trash2, Loader2, History, Star, Filter, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -32,6 +34,8 @@ const LifePeriodsManager = () => {
   const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
   const { data: periods = [], isLoading } = useQuery({
     queryKey: ["admin-life-periods"],
@@ -117,7 +121,16 @@ const LifePeriodsManager = () => {
           ))}
         </div>
 
-        {/* Current Period Highlight */}
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search life periods..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         {currentPeriod && (
           <ComicPanel className="p-6 bg-pop-yellow/20">
             <div className="flex items-center gap-2 mb-2">
@@ -161,7 +174,11 @@ const LifePeriodsManager = () => {
             <div className="absolute left-8 top-0 bottom-0 w-1 bg-foreground hidden md:block" />
             
           <div className="space-y-6">
-              {periods.filter(p => categoryFilter === "all" || (p.category || "uncategorized") === categoryFilter).map((period) => (
+              {periods.filter(p => {
+                const matchesCategory = categoryFilter === "all" || (p.category || "uncategorized") === categoryFilter;
+                const matchesSearch = !search || p.title.toLowerCase().includes(search.toLowerCase());
+                return matchesCategory && matchesSearch;
+              }).map((period) => (
                 <div key={period.id} className="flex gap-6">
                   <div className="hidden md:flex flex-shrink-0 w-16 items-start justify-center pt-4">
                     <div className={`w-4 h-4 rounded-full border-4 border-foreground ${
@@ -211,6 +228,7 @@ const LifePeriodsManager = () => {
                         )}
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
+                        <SelectableCheckbox id={period.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                         <button 
                           onClick={() => toggleCurrent(period.id, period.is_current)}
                           className={`p-2 border-2 border-foreground ${period.is_current ? "bg-pop-yellow" : "hover:bg-muted"}`}
@@ -239,6 +257,14 @@ const LifePeriodsManager = () => {
           </div>
         )}
       </div>
+
+      <BulkActionsBar
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        tableName="life_periods"
+        queryKey={["admin-life-periods"]}
+        actions={["delete"]}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}

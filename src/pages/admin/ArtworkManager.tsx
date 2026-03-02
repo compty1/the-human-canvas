@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, Search, Image, Upload, MoreVertical, ExternalLink, ChevronRight, Copy } from "lucide-react";
@@ -87,6 +88,7 @@ const ArtworkManager = () => {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
   const { data: artwork, isLoading } = useQuery({
     queryKey: ["admin-artwork"],
@@ -282,7 +284,8 @@ const ArtworkManager = () => {
                 </div>
 
                 {/* Category Badge */}
-                <div className="absolute top-2 left-2">
+                <div className="absolute top-2 left-2 flex items-center gap-2">
+                  <SelectableCheckbox id={art.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                   <span className="px-2 py-1 text-xs font-bold uppercase bg-background/90 border border-foreground">
                     {art.category || "uncategorized"}
                   </span>
@@ -307,6 +310,14 @@ const ArtworkManager = () => {
           </ComicPanel>
         )}
       </div>
+
+      <BulkActionsBar
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        tableName="artwork"
+        queryKey={["admin-artwork"]}
+        actions={["delete"]}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}

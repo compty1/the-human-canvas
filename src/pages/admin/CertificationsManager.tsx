@@ -5,7 +5,9 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 import { 
   Plus, 
   Edit, 
@@ -15,7 +17,8 @@ import {
   ExternalLink,
   DollarSign,
   MoreVertical,
-  Copy
+  Copy,
+  Search
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -37,6 +40,8 @@ const CertificationsManager = () => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
   const { data: certifications = [], isLoading } = useQuery({
     queryKey: ["admin-certifications"],
@@ -64,9 +69,11 @@ const CertificationsManager = () => {
     },
   });
 
-  const filteredCertifications = filter === "all" 
-    ? certifications 
-    : certifications.filter(c => c.status === filter);
+  const filteredCertifications = certifications.filter(c => {
+    const matchesStatus = filter === "all" || c.status === filter;
+    const matchesSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.issuer.toLowerCase().includes(search.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   const statuses = ["all", "earned", "in_progress", "planned", "wanted"];
 
@@ -108,7 +115,16 @@ const CertificationsManager = () => {
           })}
         </div>
 
-        {/* Certifications List */}
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search certifications..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -128,6 +144,7 @@ const CertificationsManager = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCertifications.map((cert) => (
               <ComicPanel key={cert.id} className="p-4">
+                <SelectableCheckbox id={cert.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-1 text-xs font-bold text-white capitalize ${statusColors[cert.status || "planned"]}`}>
@@ -211,6 +228,14 @@ const CertificationsManager = () => {
           </div>
         )}
       </div>
+
+      <BulkActionsBar
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        tableName="certifications"
+        queryKey={["admin-certifications"]}
+        actions={["delete"]}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}

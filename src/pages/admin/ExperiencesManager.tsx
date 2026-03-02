@@ -5,7 +5,9 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ComicPanel, PopButton } from "@/components/pop-art";
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog";
 import { DuplicateButton } from "@/components/admin/DuplicateButton";
+import { BulkActionsBar, SelectableCheckbox, useSelection } from "@/components/admin/BulkActionsBar";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 import { 
   Plus, 
   Edit, 
@@ -19,7 +21,8 @@ import {
   Eye,
   EyeOff,
   GripVertical,
-  Copy
+  Copy,
+  Search
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -49,6 +52,8 @@ const ExperiencesManager = () => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const { selectedIds, toggleSelection, clearSelection } = useSelection();
 
   const { data: experiences = [], isLoading } = useQuery({
     queryKey: ["admin-experiences"],
@@ -90,9 +95,11 @@ const ExperiencesManager = () => {
     },
   });
 
-  const filteredExperiences = filter === "all" 
-    ? experiences 
-    : experiences.filter(e => e.category === filter);
+  const filteredExperiences = experiences.filter(e => {
+    const matchesCategory = filter === "all" || e.category === filter;
+    const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const categories = ["all", "creative", "business", "technical", "service", "other"];
 
@@ -136,7 +143,16 @@ const ExperiencesManager = () => {
           })}
         </div>
 
-        {/* Experiences List */}
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search experiences..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -159,6 +175,7 @@ const ExperiencesManager = () => {
               return (
                 <ComicPanel key={exp.id} className="p-4">
                   <div className="flex items-center gap-4">
+                    <SelectableCheckbox id={exp.id} selectedIds={selectedIds} onToggle={toggleSelection} />
                     <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab" />
                     
                     <div className={`w-10 h-10 flex items-center justify-center text-white ${categoryColors[exp.category] || "bg-gray-500"}`}>
@@ -238,6 +255,14 @@ const ExperiencesManager = () => {
           </div>
         )}
       </div>
+
+      <BulkActionsBar
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        tableName="experiences"
+        queryKey={["admin-experiences"]}
+        actions={["publish", "unpublish", "delete"]}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}
