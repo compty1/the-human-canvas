@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { ComicPanel, LikeButton } from "@/components/pop-art";
@@ -62,18 +62,7 @@ interface ArtworkItem {
   created_at?: string;
 }
 
-// Media categories
-const categories = [
-  { id: "all", label: "All Work" },
-  { id: "photography", label: "Photography" },
-  { id: "colored", label: "Colored Digital" },
-  { id: "sketch", label: "Pencil & Sketch" },
-  { id: "mixed", label: "Mixed Media" },
-  { id: "graphic_design", label: "Graphic Design" },
-  { id: "portrait", label: "Portrait" },
-  { id: "landscape", label: "Landscape" },
-  { id: "pop_art", label: "Pop Art" },
-];
+// Categories will be built dynamically from fetched data
 
 // Period sections
 interface PeriodSection {
@@ -157,6 +146,15 @@ const ArtGallery = () => {
     images: item.images?.map(resolveImageUrl) || [],
     created_at: item.created_at,
   }));
+
+  // Build dynamic categories from data
+  const categories = useMemo(() => {
+    const uniqueCats = [...new Set(artworkData.map(a => a.category).filter(Boolean))].sort();
+    return [
+      { id: "all", label: "All Work" },
+      ...uniqueCats.map(c => ({ id: c, label: c.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()) })),
+    ];
+  }, [artworkData]);
 
   // Filter by category
   const filteredByCategory =

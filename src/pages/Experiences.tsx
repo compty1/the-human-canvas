@@ -34,7 +34,7 @@ const categoryColors: Record<string, string> = {
   other: "bg-gray-500",
 };
 
-const categories = ["all", "creative", "business", "technical", "service", "other"];
+// Categories will be built dynamically from fetched data
 
 const formatDateRange = (startDate?: string | null, endDate?: string | null, isOngoing?: boolean) => {
   if (!startDate) return null;
@@ -63,6 +63,11 @@ const Experiences = () => {
       return data;
     },
   });
+
+  const categories = useMemo(() => {
+    const uniqueCats = [...new Set(experiences.map(e => e.category).filter(Boolean))].sort();
+    return ["all", ...uniqueCats];
+  }, [experiences]);
 
   const filteredExperiences = useMemo(() => {
     return experiences.filter(e => {

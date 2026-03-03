@@ -136,7 +136,7 @@ const ProjectsManager = () => {
             />
           </div>
           <div className="flex gap-2">
-            {["all", "live", "in_progress", "planned"].map((status) => (
+            {["all", ...new Set((projects ?? []).map(p => p.status).filter(Boolean))].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
