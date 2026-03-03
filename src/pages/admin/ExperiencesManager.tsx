@@ -119,7 +119,7 @@ const ExperiencesManager = () => {
 
   const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredExperiences, EXP_SORT);
 
-  const categories = ["all", "creative", "business", "technical", "service", "other"];
+  const categories = ["all", ...new Set(experiences.map(e => e.category).filter(Boolean))].sort((a, b) => a === "all" ? -1 : b === "all" ? 1 : a.localeCompare(b));
 
   return (
     <AdminLayout>

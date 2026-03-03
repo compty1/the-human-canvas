@@ -64,20 +64,7 @@ const localAssetMap: Record<string, string> = {
   "/src/assets/artwork/bandaged-portrait.png": bandagedPortrait,
 };
 
-// All available categories
-const ALL_CATEGORIES = [
-  "portrait",
-  "landscape",
-  "photography",
-  "mixed",
-  "abstract",
-  "digital",
-  "traditional",
-  "sketch",
-  "colored",
-  "pop_art",
-  "graphic_design",
-];
+// Dynamic categories will be built from fetched data
 
 // Resolve image URL - converts local asset paths to imported modules
 const resolveImageUrl = (url: string): string => {
@@ -148,9 +135,10 @@ const ArtworkManager = () => {
     },
   });
 
-  const categories = artwork 
-    ? ["all", ...new Set(artwork.map(a => a.category || "uncategorized"))]
-    : ["all"];
+  const allCategories = artwork 
+    ? [...new Set(artwork.map(a => a.category || "uncategorized"))].sort()
+    : [];
+  const categories = ["all", ...allCategories];
 
   const filteredArtwork = (artwork ?? []).filter(a => {
     const matchesSearch = a.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -159,7 +147,7 @@ const ArtworkManager = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions } = useAdminListControls(filteredArtwork, ART_SORT);
+  const { sortIndex, setSortIndex, page, setPage, totalPages, paginated, sortOptions, showAll, setShowAll } = useAdminListControls(filteredArtwork, ART_SORT, 48, true);
 
   return (
     <AdminLayout>
@@ -221,7 +209,7 @@ const ArtworkManager = () => {
           </div>
         </div>
 
-        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredArtwork.length} />
+        <SortPaginationBar sortOptions={sortOptions} sortIndex={sortIndex} onSortChange={setSortIndex} page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filteredArtwork.length} pageSize={48} showAll={showAll} onToggleShowAll={setShowAll ? () => setShowAll(!showAll) : undefined} />
 
         {/* Artwork Grid */}
         {isLoading ? (
@@ -262,7 +250,7 @@ const ArtworkManager = () => {
                           Change Category
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent>
-                          {ALL_CATEGORIES.map((cat) => (
+                          {allCategories.map((cat) => (
                             <DropdownMenuItem
                               key={cat}
                               onClick={() => updateCategoryMutation.mutate({ id: art.id, category: cat })}
