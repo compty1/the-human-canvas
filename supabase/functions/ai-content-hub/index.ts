@@ -37,7 +37,7 @@ TABLE: articles
   - tags: text[] (array of strings)
   - reading_time_minutes: integer
   - published: boolean (default false)
-  - review_status: enum content_review_status — values: draft, pending_review, approved, published, rejected
+  - review_status: enum content_review_status — values: draft, pending_review, approved, scheduled, published, rejected
   - reviewer_notes: text
   - admin_notes: text
   - scheduled_at: timestamptz
@@ -68,7 +68,7 @@ TABLE: projects
   - features: text[] (array)
   - color_palette: text[] (array)
   - screenshots: text[] (array)
-  - status: enum project_status (REQUIRED, default 'in_progress') — values: in_progress, completed, on_hold, archived, concept
+  - status: enum project_status (REQUIRED, default 'planned') — values: live, in_progress, planned, finishing_stages, final_review
   - published: boolean (default false)
   - review_status: enum content_review_status
   - reviewer_notes: text
@@ -220,7 +220,8 @@ TABLE: client_projects
   - project_name: text (REQUIRED)
   - client_name: text (REQUIRED)
   - slug: text (REQUIRED)
-  - status: text (REQUIRED, default 'active')
+  - project_type: text (REQUIRED, default 'web_design') — e.g. web_design, branding, photography, illustration, video, copywriting
+  - status: text (REQUIRED, default 'in_progress') — e.g. in_progress, completed, on_hold, planned
   - description: text
   - long_description: text
   - image_url: text
@@ -357,7 +358,7 @@ TABLE-TO-ADMIN-ROUTE MAPPING
 CONTENT STATUS FIELDS
 ═══════════════════════════════════════════════════
 - published (boolean): articles, updates, projects, experiments, product_reviews, experiences
-- review_status: articles, experiments, product_reviews, projects (values: draft, pending_review, approved, published, rejected)
+- review_status: articles, experiments, product_reviews, projects (values: draft, pending_review, approved, scheduled, published, rejected)
 - life_periods does NOT have published/review_status — all records are always visible
 
 ═══════════════════════════════════════════════════
