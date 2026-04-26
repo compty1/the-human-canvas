@@ -111,7 +111,6 @@ const Index = () => {
           .from("projects")
           .select("id, title, description, slug, external_url")
           .eq("status", "live")
-          .eq("published", true)
           .order("created_at", { ascending: false })
           .limit(3);
         if (error) throw error;
@@ -120,8 +119,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from("projects")
         .select("id, title, description, slug, external_url")
-        .in("id", featuredProjectIds)
-        .eq("published", true);
+        .in("id", featuredProjectIds);
       if (error) throw error;
       return data;
     },
