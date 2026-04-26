@@ -405,7 +405,7 @@ serve(async (req) => {
     const MAX_CONTEXT_BYTES = 50_000;
     if (contextStr.length > MAX_CONTEXT_BYTES) {
       console.warn(`Context payload too large (${contextStr.length} bytes), truncating to ${MAX_CONTEXT_BYTES}`);
-      contextStr = contextStr.substring(0, MAX_CONTEXT_BYTES) + '..."truncated"}';
+      contextStr = contextStr.substring(0, MAX_CONTEXT_BYTES) + "\n\n[CONTEXT TRUNCATED — payload exceeded size limit]";
     }
     const contextMessage = contextStr
       ? `\n\nCURRENT SITE CONTENT SUMMARY:\n${contextStr}`
