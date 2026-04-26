@@ -68,8 +68,7 @@ TABLE: projects
   - features: text[] (array)
   - color_palette: text[] (array)
   - screenshots: text[] (array)
-  - status: enum project_status (REQUIRED, default 'planned') — values: live, in_progress, planned, finishing_stages, final_review
-  - published: boolean (default false)
+  - status: enum project_status (REQUIRED, default 'planned') — values: live, in_progress, planned, finishing_stages, final_review (visibility on the public site is controlled by status; there is NO `published` column on projects)
   - review_status: enum content_review_status
   - reviewer_notes: text
   - admin_notes: text
@@ -357,7 +356,7 @@ TABLE-TO-ADMIN-ROUTE MAPPING
 ═══════════════════════════════════════════════════
 CONTENT STATUS FIELDS
 ═══════════════════════════════════════════════════
-- published (boolean): articles, updates, projects, experiments, product_reviews, experiences
+- published (boolean): articles, updates, experiments, product_reviews, experiences (NOT projects — projects use status='live' for visibility)
 - review_status: articles, experiments, product_reviews, projects (values: draft, pending_review, approved, scheduled, published, rejected)
 - life_periods does NOT have published/review_status — all records are always visible
 
