@@ -113,7 +113,7 @@ const ContentReviewManager = () => {
       if (scheduledAt) updateData.scheduled_at = scheduledAt;
       if (status === "published") updateData.published = true;
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from(type)
         .update(updateData)
         .eq("id", id);

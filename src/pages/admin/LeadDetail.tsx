@@ -129,7 +129,7 @@ const LeadDetail = () => {
     mutationFn: async (data: Record<string, unknown>) => {
       const { error } = await supabase
         .from("leads")
-        .update(data)
+        .update(data as never)
         .eq("id", id);
       if (error) throw error;
     },

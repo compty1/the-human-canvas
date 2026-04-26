@@ -37,7 +37,7 @@ TABLE: articles
   - tags: text[] (array of strings)
   - reading_time_minutes: integer
   - published: boolean (default false)
-  - review_status: enum content_review_status — values: draft, pending_review, approved, published, rejected
+  - review_status: enum content_review_status — values: draft, pending_review, approved, scheduled, published, rejected
   - reviewer_notes: text
   - admin_notes: text
   - scheduled_at: timestamptz
@@ -68,8 +68,7 @@ TABLE: projects
   - features: text[] (array)
   - color_palette: text[] (array)
   - screenshots: text[] (array)
-  - status: enum project_status (REQUIRED, default 'in_progress') — values: in_progress, completed, on_hold, archived, concept
-  - published: boolean (default false)
+  - status: enum project_status (REQUIRED, default 'planned') — values: live, in_progress, planned, finishing_stages, final_review (visibility on the public site is controlled by status; there is NO published column on projects)
   - review_status: enum content_review_status
   - reviewer_notes: text
   - admin_notes: text
@@ -220,7 +219,8 @@ TABLE: client_projects
   - project_name: text (REQUIRED)
   - client_name: text (REQUIRED)
   - slug: text (REQUIRED)
-  - status: text (REQUIRED, default 'active')
+  - project_type: text (REQUIRED, default 'web_design') — e.g. web_design, branding, photography, illustration, video, copywriting
+  - status: text (REQUIRED, default 'in_progress') — e.g. in_progress, completed, on_hold, planned
   - description: text
   - long_description: text
   - image_url: text
@@ -356,8 +356,8 @@ TABLE-TO-ADMIN-ROUTE MAPPING
 ═══════════════════════════════════════════════════
 CONTENT STATUS FIELDS
 ═══════════════════════════════════════════════════
-- published (boolean): articles, updates, projects, experiments, product_reviews, experiences
-- review_status: articles, experiments, product_reviews, projects (values: draft, pending_review, approved, published, rejected)
+- published (boolean): articles, updates, experiments, product_reviews, experiences (NOT projects — projects use status='live' for visibility)
+- review_status: articles, experiments, product_reviews, projects (values: draft, pending_review, approved, scheduled, published, rejected)
 - life_periods does NOT have published/review_status — all records are always visible
 
 ═══════════════════════════════════════════════════
@@ -404,7 +404,7 @@ serve(async (req) => {
     const MAX_CONTEXT_BYTES = 50_000;
     if (contextStr.length > MAX_CONTEXT_BYTES) {
       console.warn(`Context payload too large (${contextStr.length} bytes), truncating to ${MAX_CONTEXT_BYTES}`);
-      contextStr = contextStr.substring(0, MAX_CONTEXT_BYTES) + '..."truncated"}';
+      contextStr = contextStr.substring(0, MAX_CONTEXT_BYTES) + "\n\n[CONTEXT TRUNCATED — payload exceeded size limit]";
     }
     const contextMessage = contextStr
       ? `\n\nCURRENT SITE CONTENT SUMMARY:\n${contextStr}`

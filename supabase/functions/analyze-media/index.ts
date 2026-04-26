@@ -1,18 +1,40 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-Deno.serve(async (req) => {
+async function verifyAdmin(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return false;
+  const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+  return !!isAdmin;
+}
+
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    if (!(await verifyAdmin(req))) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { urls } = await req.json();
-    
+
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return new Response(
         JSON.stringify({ error: 'No URLs provided' }),
@@ -22,7 +44,7 @@ Deno.serve(async (req) => {
 
     // Limit to 10 images per request
     const limitedUrls = urls.slice(0, 10);
-    
+
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!apiKey) {
       return new Response(
@@ -35,7 +57,7 @@ Deno.serve(async (req) => {
 
     for (const url of limitedUrls) {
       try {
-        const response = await fetch('https://api.lovable.dev/v1/chat/completions', {
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -69,6 +91,16 @@ Return ONLY valid JSON, no markdown or extra text.`
         });
 
         if (!response.ok) {
+          if (response.status === 429) {
+            return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
+              status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          if (response.status === 402) {
+            return new Response(JSON.stringify({ error: "Payment required, please add credits." }), {
+              status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
           console.error(`AI API error for ${url}: ${response.status}`);
           results.push({ url, error: 'Analysis failed' });
           continue;
@@ -76,7 +108,7 @@ Return ONLY valid JSON, no markdown or extra text.`
 
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || '';
-        
+
         // Parse JSON from response (handle markdown code blocks)
         let parsed;
         try {

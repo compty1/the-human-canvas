@@ -107,11 +107,19 @@ const Index = () => {
     queryKey: ["featured-projects", featuredProjectIds],
     queryFn: async () => {
       if (!featuredProjectIds || featuredProjectIds.length === 0) {
-        const { data, error } = await supabase.from("projects").select("id, title, description, slug, external_url").eq("status", "live").limit(3);
+        const { data, error } = await supabase
+          .from("projects")
+          .select("id, title, description, slug, external_url")
+          .eq("status", "live")
+          .order("created_at", { ascending: false })
+          .limit(3);
         if (error) throw error;
         return data;
       }
-      const { data, error } = await supabase.from("projects").select("id, title, description, slug, external_url").in("id", featuredProjectIds);
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, description, slug, external_url")
+        .in("id", featuredProjectIds);
       if (error) throw error;
       return data;
     },
