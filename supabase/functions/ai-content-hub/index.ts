@@ -68,7 +68,7 @@ TABLE: projects
   - features: text[] (array)
   - color_palette: text[] (array)
   - screenshots: text[] (array)
-  - status: enum project_status (REQUIRED, default 'planned') — values: live, in_progress, planned, finishing_stages, final_review (visibility on the public site is controlled by status; there is NO `published` column on projects)
+  - status: enum project_status (REQUIRED, default 'planned') — values: live, in_progress, planned, finishing_stages, final_review (visibility on the public site is controlled by status; there is NO published column on projects)
   - review_status: enum content_review_status
   - reviewer_notes: text
   - admin_notes: text
